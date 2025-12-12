@@ -55,7 +55,7 @@ export function Sidebar() {
   )
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-[var(--burgundy)] to-[#2a1215] min-h-[calc(100vh-84px)] shadow-xl">
+    <aside className="w-64 bg-gradient-to-b from-[var(--burgundy)] to-[#2a1215] min-h-screen sticky top-0 shadow-xl">
       {/* Decorative top element */}
       <div className="h-px bg-gradient-to-r from-transparent via-[var(--gold)]/30 to-transparent" />
 

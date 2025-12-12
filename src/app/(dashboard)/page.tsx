@@ -17,6 +17,8 @@ import {
   formatFullDate,
   formatDayMonth,
 } from "@/lib/date-utils"
+import { es } from "date-fns/locale"
+import { format } from "date-fns"
 
 interface Solicitud {
   id: string
@@ -27,6 +29,8 @@ interface Solicitud {
   user: {
     id: string
     name: string
+    alias: string | null
+    avatar: string | null
   }
 }
 
@@ -112,18 +116,19 @@ export default function DashboardPage() {
                 <span className="text-[8px] text-muted-foreground">+{descansosDelDia.length - 3}</span>
               )}
             </div>
-            {/* Desktop: nombres */}
+            {/* Desktop: nombres con avatares */}
             <div className="hidden md:flex flex-col gap-0.5 mt-1 w-full px-0.5">
               {descansosDelDia.slice(0, 2).map((d, i) => (
                 <div
                   key={i}
-                  className={`text-[9px] leading-tight truncate px-1 py-0.5 rounded ${
+                  className={`text-[9px] leading-tight truncate px-1 py-0.5 rounded flex items-center gap-0.5 ${
                     d.estado === "APROBADA"
                       ? "bg-green-100 text-green-800"
                       : "bg-yellow-100 text-yellow-800"
                   }`}
                 >
-                  {d.user.name.split(" ")[0]}
+                  {d.user.avatar && <span className="text-[10px]">{d.user.avatar}</span>}
+                  {d.user.alias || d.user.name.split(" ")[0]}
                 </div>
               ))}
               {descansosDelDia.length > 2 && (
@@ -157,9 +162,15 @@ export default function DashboardPage() {
                       key={d.id}
                       className="flex items-center gap-2 text-sm bg-green-50 p-2 rounded"
                     >
-                      <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                      {d.user.avatar ? (
+                        <span className="text-lg flex-shrink-0">{d.user.avatar}</span>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{d.user.name}</p>
+                        <p className="font-medium truncate">
+                          {d.user.alias || d.user.name}
+                        </p>
                         {d.motivo && (
                           <p className="text-xs text-muted-foreground truncate">
                             {d.motivo}
@@ -183,9 +194,15 @@ export default function DashboardPage() {
                       key={d.id}
                       className="flex items-center gap-2 text-sm bg-yellow-50 p-2 rounded"
                     >
-                      <div className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" />
+                      {d.user.avatar ? (
+                        <span className="text-lg flex-shrink-0">{d.user.avatar}</span>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" />
+                      )}
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{d.user.name}</p>
+                        <p className="font-medium truncate">
+                          {d.user.alias || d.user.name}
+                        </p>
                         {d.motivo && (
                           <p className="text-xs text-muted-foreground truncate">
                             {d.motivo}
@@ -214,20 +231,19 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <Card className="lg:col-span-2 overflow-hidden">
-          <CardHeader className="pb-2 md:pb-4">
-            <CardTitle className="text-lg md:text-xl capitalize">
-              {selectedMonth.toLocaleDateString("es-ES", {
-                month: "long",
-                year: "numeric",
-              })}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 md:p-6">
+          <CardContent className="p-2 md:p-6 pt-4 md:pt-6">
             <Calendar
               mode="multiple"
               selected={[]}
               month={selectedMonth}
               onMonthChange={setSelectedMonth}
+              locale={es}
+              formatters={{
+                formatCaption: (date) => {
+                  const month = format(date, "LLLL", { locale: es })
+                  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${date.getFullYear()}`
+                },
+              }}
               className="rounded-md border w-full [--cell-size:theme(spacing.12)] md:[--cell-size:theme(spacing.20)]"
               components={{
                 DayButton: ({ day, ...props }) => (
@@ -289,9 +305,16 @@ export default function DashboardPage() {
                     key={s.id}
                     className="flex justify-between items-center p-2 bg-gray-50 rounded"
                   >
-                    <div>
-                      <p className="font-medium">{formatDayMonth(s.fecha)}</p>
-                      <p className="text-sm text-gray-500">{s.user.name}</p>
+                    <div className="flex items-center gap-2">
+                      {s.user.avatar && (
+                        <span className="text-lg">{s.user.avatar}</span>
+                      )}
+                      <div>
+                        <p className="font-medium">{formatDayMonth(s.fecha)}</p>
+                        <p className="text-sm text-gray-500">
+                          {s.user.alias || s.user.name}
+                        </p>
+                      </div>
                     </div>
                     <Badge
                       variant={

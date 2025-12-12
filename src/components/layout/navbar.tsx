@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Music } from "lucide-react"
 import { MobileNav } from "./mobile-nav"
+import { ProfileModal } from "@/components/profile/profile-modal"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -32,17 +33,10 @@ export function Navbar() {
           </div>
         </Link>
 
-        <div className="ml-auto flex items-center gap-3 md:gap-6">
+        <div className="ml-auto flex items-center gap-3 md:gap-4">
           {session?.user && (
             <>
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-white/90">
-                  {session.user.name}
-                </p>
-                <p className="text-xs text-[var(--gold)]">
-                  {session.user.role === "ADMIN" ? "Administrador" : "Integrante"}
-                </p>
-              </div>
+              <ProfileModal />
               <Button
                 size="sm"
                 onClick={() => signOut({ callbackUrl: "/login" })}
