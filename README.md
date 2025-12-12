@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Orquesta - Sistema de Gestion de Descansos
 
-## Getting Started
+Sistema web para administrar tiempos de descanso de integrantes de una orquesta, con regla automatica del 5% sobre el promedio mensual.
 
-First, run the development server:
+## Stack Tecnologico
 
+- **Next.js 16** (App Router)
+- **Prisma** + PostgreSQL
+- **NextAuth v5** (Credentials)
+- **Tailwind CSS** + shadcn/ui
+
+## Reglas de Negocio
+
+- **Regla del 5%**: Ningun integrante puede exceder el promedio de descansos del grupo + 5%
+- **Periodo**: Mensual
+- **Aprobacion**: Automatica si cumple la regla; casos especiales requieren aprobacion del admin
+
+## Requisitos Previos
+
+- Node.js 18+
+- PostgreSQL (local o remoto)
+
+## Instalacion
+
+1. **Clonar e instalar dependencias:**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Configurar variables de entorno:**
+```bash
+cp .env.example .env
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Editar `.env` con tu configuracion de PostgreSQL:
+```
+DATABASE_URL="postgresql://usuario:password@localhost:5432/ensayos_colon?schema=public"
+AUTH_SECRET="tu-secret-key-segura"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. **Crear la base de datos y ejecutar migraciones:**
+```bash
+npm run db:push
+```
 
-## Learn More
+4. **Cargar datos iniciales (admin y usuarios de prueba):**
+```bash
+npm run db:seed
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Credenciales de Prueba
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Rol | Email | Password |
+|-----|-------|----------|
+| Admin | admin@orquesta.com | admin123 |
+| Integrante | violin1@orquesta.com | integrante123 |
+| Integrante | viola1@orquesta.com | integrante123 |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Ejecucion
 
-## Deploy on Vercel
+```bash
+# Desarrollo
+npm run dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Produccion
+npm run build
+npm start
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Abrir [http://localhost:3000](http://localhost:3000)
+
+## Funcionalidades
+
+### Para Integrantes
+- Ver calendario mensual con descansos
+- Solicitar nuevos descansos
+- Ver historial de solicitudes
+- Ver estadisticas personales y del grupo
+
+### Para Admin
+- Todo lo anterior +
+- Gestionar integrantes (crear, editar, eliminar)
+- Aprobar/rechazar casos especiales (solicitudes que exceden el 5%)
+- Ver estadisticas detalladas de todos los integrantes
+
+## Comandos Utiles
+
+```bash
+npm run dev          # Iniciar en desarrollo
+npm run build        # Build de produccion
+npm run db:generate  # Generar cliente Prisma
+npm run db:push      # Sincronizar schema con BD
+npm run db:migrate   # Crear migracion
+npm run db:seed      # Cargar datos iniciales
+npm run db:studio    # Abrir Prisma Studio
+```
