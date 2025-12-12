@@ -116,13 +116,33 @@ export default function NuevaSolicitudPage() {
     return descansos[fechaKey] || []
   }
 
+  const isSelected = (date: Date): boolean => {
+    if (!fecha) return false
+    return (
+      fecha.getDate() === date.getDate() &&
+      fecha.getMonth() === date.getMonth() &&
+      fecha.getFullYear() === date.getFullYear()
+    )
+  }
+
   const renderDay = (date: Date) => {
     const descansosDelDia = getDescansosDelDia(date)
     const fechaKey = getArgentinaDateKey(date)
     const cantidadDescansos = descansosDelDia.length
+    const selected = isSelected(date)
 
     if (cantidadDescansos === 0) {
-      return <span>{date.getDate()}</span>
+      return (
+        <span
+          className={
+            selected
+              ? "flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground"
+              : ""
+          }
+        >
+          {date.getDate()}
+        </span>
+      )
     }
 
     return (
@@ -131,7 +151,11 @@ export default function NuevaSolicitudPage() {
         onOpenChange={(open) => setPopoverFecha(open ? fechaKey : null)}
       >
         <PopoverTrigger asChild>
-          <div className="relative w-full h-full flex flex-col items-center justify-center cursor-pointer">
+          <div
+            className={`relative w-full h-full flex flex-col items-center justify-center cursor-pointer rounded-md ${
+              selected ? "bg-primary text-primary-foreground" : ""
+            }`}
+          >
             <span>{date.getDate()}</span>
             <div className="flex gap-0.5 mt-0.5">
               {cantidadDescansos <= 3 ? (

@@ -79,11 +79,14 @@ export async function calcularEstadisticasUsuario(
         ? 100
         : 0
 
-  const puedesolicitarSinAprobacion = descansosAprobados < limiteMaximo
-  const descansosRestantesPermitidos = Math.max(
-    0,
-    limiteMaximo - descansosAprobados
-  )
+  // Si el promedio es 0, siempre puede solicitar sin aprobación
+  // Si hay promedio, verificar que no supere el límite del 5%
+  const puedesolicitarSinAprobacion =
+    promedioGrupo === 0 || descansosAprobados < limiteMaximo
+  const descansosRestantesPermitidos =
+    promedioGrupo === 0
+      ? Infinity
+      : Math.max(0, limiteMaximo - descansosAprobados)
 
   return {
     userId,

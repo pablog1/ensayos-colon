@@ -40,11 +40,18 @@ export default function DashboardPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [popoverFecha, setPopoverFecha] = useState<string | null>(null)
+  const [verSoloMios, setVerSoloMios] = useState(true)
+
+  // Filtrar solicitudes para la lista lateral
+  const solicitudesFiltradas = verSoloMios
+    ? solicitudes.filter((s) => s.user.id === session?.user?.id)
+    : solicitudes
 
   const fetchSolicitudes = useCallback(async () => {
     setLoading(true)
     const mes = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}`
-    const res = await fetch(`/api/solicitudes?mes=${mes}`)
+    // todas=true para mostrar solicitudes de todos los integrantes en el calendario
+    const res = await fetch(`/api/solicitudes?mes=${mes}&todas=true`)
     const data = await res.json()
     setSolicitudes(data)
     setLoading(false)
@@ -234,15 +241,35 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Descansos del Mes</CardTitle>
+            <div className="flex gap-1 mt-2">
+              <Button
+                variant={verSoloMios ? "default" : "outline"}
+                size="sm"
+                onClick={() => setVerSoloMios(true)}
+              >
+                Mis descansos
+              </Button>
+              <Button
+                variant={!verSoloMios ? "default" : "outline"}
+                size="sm"
+                onClick={() => setVerSoloMios(false)}
+              >
+                Todos
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
               <p className="text-gray-500">Cargando...</p>
-            ) : solicitudes.length === 0 ? (
-              <p className="text-gray-500">No hay descansos este mes</p>
+            ) : solicitudesFiltradas.length === 0 ? (
+              <p className="text-gray-500">
+                {verSoloMios
+                  ? "No tienes descansos este mes"
+                  : "No hay descansos este mes"}
+              </p>
             ) : (
               <ul className="space-y-3 max-h-[500px] overflow-y-auto">
-                {solicitudes.map((s) => (
+                {solicitudesFiltradas.map((s) => (
                   <li
                     key={s.id}
                     className="flex justify-between items-center p-2 bg-gray-50 rounded"

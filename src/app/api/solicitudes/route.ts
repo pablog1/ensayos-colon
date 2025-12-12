@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const mes = searchParams.get("mes")
   const userId = searchParams.get("userId")
+  const verTodas = searchParams.get("todas") === "true"
 
   let fechaFilter = {}
   if (mes) {
@@ -27,13 +28,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Admin puede ver todas, integrante solo las suyas
-  const userFilter =
-    session.user.role === "ADMIN"
-      ? userId
-        ? { userId }
-        : {}
-      : { userId: session.user.id }
+  // Si todas=true, mostrar todas las solicitudes (para calendario general)
+  // Si no, admin puede ver todas, integrante solo las suyas
+  let userFilter = {}
+  if (!verTodas) {
+    userFilter =
+      session.user.role === "ADMIN"
+        ? userId
+          ? { userId }
+          : {}
+        : { userId: session.user.id }
+  }
 
   const solicitudes = await prisma.solicitud.findMany({
     where: {
