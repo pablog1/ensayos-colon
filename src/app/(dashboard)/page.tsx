@@ -97,8 +97,23 @@ export default function DashboardPage() {
       >
         <PopoverTrigger asChild>
           <div className="relative w-full h-full flex flex-col items-center cursor-pointer py-1">
-            <span className="font-medium">{date.getDate()}</span>
-            <div className="flex flex-col gap-0.5 mt-1 w-full px-0.5">
+            <span className="font-medium text-sm md:text-base">{date.getDate()}</span>
+            {/* Mobile: solo puntos */}
+            <div className="flex gap-0.5 mt-1 md:hidden">
+              {descansosDelDia.slice(0, 3).map((d, i) => (
+                <div
+                  key={i}
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    d.estado === "APROBADA" ? "bg-green-500" : "bg-yellow-500"
+                  }`}
+                />
+              ))}
+              {descansosDelDia.length > 3 && (
+                <span className="text-[8px] text-muted-foreground">+{descansosDelDia.length - 3}</span>
+              )}
+            </div>
+            {/* Desktop: nombres */}
+            <div className="hidden md:flex flex-col gap-0.5 mt-1 w-full px-0.5">
               {descansosDelDia.slice(0, 2).map((d, i) => (
                 <div
                   key={i}
@@ -189,36 +204,36 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Calendario de Descansos</h1>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <h1 className="text-xl md:text-2xl font-bold">Calendario de Descansos</h1>
         <Link href="/solicitudes/nueva">
-          <Button>Solicitar Descanso</Button>
+          <Button size="sm" className="w-full sm:w-auto">Solicitar Descanso</Button>
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <Card className="lg:col-span-2 overflow-hidden">
+          <CardHeader className="pb-2 md:pb-4">
+            <CardTitle className="text-lg md:text-xl capitalize">
               {selectedMonth.toLocaleDateString("es-ES", {
                 month: "long",
                 year: "numeric",
               })}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 md:p-6">
             <Calendar
               mode="multiple"
               selected={[]}
               month={selectedMonth}
               onMonthChange={setSelectedMonth}
-              className="rounded-md border w-full [--cell-size:theme(spacing.20)]"
+              className="rounded-md border w-full [--cell-size:theme(spacing.12)] md:[--cell-size:theme(spacing.20)]"
               components={{
                 DayButton: ({ day, ...props }) => (
                   <button
                     {...props}
-                    className={`${props.className} !h-auto min-h-[theme(spacing.20)] w-full`}
+                    className={`${props.className} !h-auto min-h-12 md:min-h-20 w-full`}
                   >
                     {renderDay(day.date)}
                   </button>

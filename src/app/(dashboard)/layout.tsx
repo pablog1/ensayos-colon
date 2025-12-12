@@ -12,11 +12,14 @@ export default function DashboardLayout({
 }) {
   return (
     <SessionProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Navbar />
         <div className="flex">
-          <Sidebar />
-          <main className="flex-1 p-6">{children}</main>
+          {/* Sidebar - hidden on mobile */}
+          <div className="hidden md:block">
+            <Sidebar />
+          </div>
+          <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
         </div>
         <Toaster />
       </div>
