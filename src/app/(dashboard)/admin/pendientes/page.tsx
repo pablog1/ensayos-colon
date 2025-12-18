@@ -18,7 +18,6 @@ import { Clock, CheckCircle, XCircle } from "lucide-react"
 interface SolicitudPendiente {
   id: string
   fecha: string
-  motivo: string | null
   esCasoEspecial: boolean
   porcentajeAlMomento: number | null
   createdAt: string
@@ -122,7 +121,6 @@ export default function PendientesPage() {
                 <TableRow>
                   <TableHead>Integrante</TableHead>
                   <TableHead>Fecha del rotativo</TableHead>
-                  <TableHead>Motivo</TableHead>
                   <TableHead>Solicitado</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -153,15 +151,6 @@ export default function PendientesPage() {
                           month: "long",
                         })}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {s.motivo ? (
-                        <span className="text-sm">{s.motivo}</span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground italic">
-                          Sin motivo especificado
-                        </span>
-                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm text-muted-foreground">

@@ -352,12 +352,6 @@ export default function ReglasPage() {
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
-              <h4 className="font-semibold mb-2">Privacidad</h4>
-              <p className="text-sm text-muted-foreground">
-                Los motivos de tus solicitudes son siempre privados y solo los ve el administrador.
-              </p>
-            </div>
-            <div className="p-4 bg-muted/50 rounded-lg">
               <h4 className="font-semibold mb-2">Artículos</h4>
               <p className="text-sm text-muted-foreground">
                 Las ausencias por normativa laboral (artículos) no cuentan como rotativo.

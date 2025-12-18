@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { fecha, motivo } = body
+  const { fecha } = body
 
   if (!fecha) {
     return NextResponse.json({ error: "Fecha es requerida" }, { status: 400 })
@@ -112,7 +112,6 @@ export async function POST(req: NextRequest) {
     data: {
       userId: session.user.id,
       fecha: fechaDate,
-      motivo: motivo || null,
       estado: validacion.autoApprove ? "APROBADA" : "PENDIENTE",
       esCasoEspecial: validacion.esCasoEspecial,
       porcentajeAlMomento: validacion.porcentaje,

@@ -18,7 +18,6 @@ import { toast } from "sonner"
 interface Solicitud {
   id: string
   fecha: string
-  motivo: string | null
   estado: string
   esCasoEspecial: boolean
   createdAt: string
@@ -93,7 +92,6 @@ export default function SolicitudesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
-                  <TableHead>Motivo</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Caso Especial</TableHead>
                   <TableHead>Acciones</TableHead>
@@ -110,7 +108,6 @@ export default function SolicitudesPage() {
                         year: "numeric",
                       })}
                     </TableCell>
-                    <TableCell>{s.motivo || "-"}</TableCell>
                     <TableCell>
                       <Badge variant={estadoBadgeVariant(s.estado)}>
                         {s.estado}

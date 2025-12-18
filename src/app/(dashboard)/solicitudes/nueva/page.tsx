@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Calendar } from "@/components/ui/calendar"
@@ -39,7 +37,6 @@ interface DescansoInfo {
   id: string
   userName: string
   estado: string
-  motivo: string | null
 }
 
 type DescansosCalendario = Record<string, DescansoInfo[]>
@@ -47,7 +44,6 @@ type DescansosCalendario = Record<string, DescansoInfo[]>
 export default function NuevaSolicitudPage() {
   const router = useRouter()
   const [fecha, setFecha] = useState<Date | undefined>()
-  const [motivo, setMotivo] = useState("")
   const [loading, setLoading] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
   const [mesActual, setMesActual] = useState(new Date())
@@ -91,7 +87,6 @@ export default function NuevaSolicitudPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         fecha: fecha.toISOString().split("T")[0],
-        motivo: motivo || null,
       }),
     })
 
@@ -203,11 +198,6 @@ export default function NuevaSolicitudPage() {
                   />
                   <div className="min-w-0">
                     <p className="font-medium truncate">{d.userName}</p>
-                    {d.motivo && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {d.motivo}
-                      </p>
-                    )}
                   </div>
                 </div>
               ))}
@@ -316,19 +306,6 @@ export default function NuevaSolicitudPage() {
                   ),
                 }}
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="motivo">Motivo (opcional y privado)</Label>
-              <Input
-                id="motivo"
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-                placeholder="Ej: Cita médica, compromiso personal..."
-              />
-              <p className="text-xs text-muted-foreground">
-                Solo lo verá el administrador
-              </p>
             </div>
 
             <div className="flex gap-4">

@@ -25,7 +25,6 @@ interface Solicitud {
   fecha: string
   estado: string
   esCasoEspecial: boolean
-  motivo: string | null
   user: {
     id: string
     name: string
@@ -171,11 +170,6 @@ export default function DashboardPage() {
                         <p className="font-medium truncate">
                           {d.user.alias || d.user.name}
                         </p>
-                        {d.motivo && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {d.motivo}
-                          </p>
-                        )}
                       </div>
                     </div>
                   ))}
@@ -203,11 +197,6 @@ export default function DashboardPage() {
                         <p className="font-medium truncate">
                           {d.user.alias || d.user.name}
                         </p>
-                        {d.motivo && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            {d.motivo}
-                          </p>
-                        )}
                       </div>
                     </div>
                   ))}

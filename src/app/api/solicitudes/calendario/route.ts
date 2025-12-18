@@ -9,7 +9,6 @@ export interface DescansoCalendario {
     id: string
     userName: string
     estado: string
-    motivo: string | null
   }[]
 }
 
@@ -63,7 +62,6 @@ export async function GET(req: NextRequest) {
       id: sol.id,
       userName: sol.user.name,
       estado: sol.estado,
-      motivo: sol.motivo,
     })
   }
 

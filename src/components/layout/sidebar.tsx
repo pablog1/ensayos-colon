@@ -12,6 +12,8 @@ import {
   AlertCircle,
   BookOpen,
   Settings,
+  Music,
+  CalendarDays,
 } from "lucide-react"
 
 const navItems = [
@@ -40,8 +42,20 @@ const navItems = [
     roles: ["ADMIN", "INTEGRANTE"],
   },
   {
+    href: "/admin/titulos",
+    label: "Títulos",
+    icon: Music,
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/admin/calendario",
+    label: "Calendario Admin",
+    icon: CalendarDays,
+    roles: ["ADMIN"],
+  },
+  {
     href: "/admin/integrantes",
-    label: "Integrantes",
+    label: "Usuarios",
     icon: Users,
     roles: ["ADMIN"],
   },
