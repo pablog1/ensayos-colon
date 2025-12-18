@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma db push && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",
@@ -12,6 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed/seed.ts",
     "db:seed:rules": "tsx prisma/seed/rules.ts",
+    "db:seed:temporadas": "tsx prisma/seed/temporadas.ts",
+    "db:seed:all": "tsx prisma/seed/seed.ts && tsx prisma/seed/rules.ts && tsx prisma/seed/temporadas.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "test": "vitest",
