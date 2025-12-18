@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
-// GET /api/integrantes - Lista integrantes (solo admin)
+// GET /api/integrantes - Lista todos los usuarios (solo admin)
 export async function GET() {
   const session = await auth()
   if (!session?.user) {
@@ -15,11 +15,11 @@ export async function GET() {
   }
 
   const integrantes = await prisma.user.findMany({
-    where: { role: "INTEGRANTE" },
     select: {
       id: true,
       email: true,
       name: true,
+      role: true,
       createdAt: true,
       _count: {
         select: {
@@ -27,13 +27,13 @@ export async function GET() {
         },
       },
     },
-    orderBy: { name: "asc" },
+    orderBy: [{ role: "asc" }, { name: "asc" }],
   })
 
   return NextResponse.json(integrantes)
 }
 
-// POST /api/integrantes - Crear integrante (solo admin)
+// POST /api/integrantes - Crear usuario (solo admin)
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { email, name, password } = body
+  const { email, name, password, role } = body
 
   if (!email || !name || !password) {
     return NextResponse.json(
@@ -53,6 +53,10 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     )
   }
+
+  // Validar rol
+  const validRoles = ["ADMIN", "INTEGRANTE"]
+  const userRole = role && validRoles.includes(role) ? role : "INTEGRANTE"
 
   // Verificar que el email no exista
   const existente = await prisma.user.findUnique({
@@ -74,12 +78,13 @@ export async function POST(req: NextRequest) {
       email,
       name,
       password: hashedPassword,
-      role: "INTEGRANTE",
+      role: userRole,
     },
     select: {
       id: true,
       email: true,
       name: true,
+      role: true,
       createdAt: true,
     },
   })

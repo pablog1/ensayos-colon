@@ -68,7 +68,7 @@ export default function LoginPage() {
             Teatro Colón
           </h1>
           <p className="text-sm text-[var(--gold)] tracking-widest uppercase mt-1">
-            Sistema de Gestión de Descansos
+            Sistema de Gestión de Rotativos
           </p>
           <div className="ornament mt-4" />
         </CardHeader>

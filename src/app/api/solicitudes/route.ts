@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
   hoy.setHours(0, 0, 0, 0)
   if (fechaDate < hoy) {
     return NextResponse.json(
-      { error: "No se pueden solicitar descansos en fechas pasadas" },
+      { error: "No se pueden solicitar rotativos en fechas pasadas" },
       { status: 400 }
     )
   }
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Validar regla del 5%
+  // Validar límites del usuario
   const validacion = await validarSolicitud(session.user.id, fechaDate)
 
   const solicitud = await prisma.solicitud.create({

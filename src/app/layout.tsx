@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Orquesta - Gestion de Descansos",
-  description: "Sistema de administracion de tiempos de descanso",
+  title: "Orquesta - Gestion de Rotativos",
+  description: "Sistema de administracion de rotativos",
 }
 
 export default function RootLayout({

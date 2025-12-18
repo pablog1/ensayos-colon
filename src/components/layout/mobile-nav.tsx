@@ -95,7 +95,7 @@ export function MobileNav() {
                 Teatro Colón
               </span>
               <span className="text-xs text-[var(--gold)] tracking-wider">
-                Gestión de Descansos
+                Gestión de Rotativos - Primeros Violines
               </span>
             </div>
           </SheetTitle>

@@ -6,36 +6,42 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("Seeding database...")
 
-  // Crear admin
-  const adminPassword = await bcrypt.hash("admin123", 10)
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@orquesta.com" },
-    update: {},
-    create: {
-      email: "admin@orquesta.com",
-      name: "Administrador",
-      alias: "Admin",
-      avatar: "🎼",
-      password: adminPassword,
-      role: "ADMIN",
-    },
-  })
-  console.log(`Admin created: ${admin.email}`)
+  const password = await bcrypt.hash("admin123", 10)
 
-  // Crear 10 integrantes de ejemplo con alias y avatares
-  const integrantePassword = await bcrypt.hash("integrante123", 10)
+  // 4 Administradores (que también son integrantes/músicos)
+  const admins = [
+    { email: "admin@orquesta.com", name: "Roberto Giménez", alias: "Roberto", avatar: "🎼" },
+    { email: "concertino@orquesta.com", name: "Alejandra Vidal", alias: "Ale", avatar: "🎻" },
+    { email: "jefe.seccion@orquesta.com", name: "Fernando Acosta", alias: "Fer", avatar: "🎻" },
+    { email: "coordinador@orquesta.com", name: "Claudia Méndez", alias: "Clau", avatar: "🎻" },
+  ]
 
+  for (const data of admins) {
+    const user = await prisma.user.upsert({
+      where: { email: data.email },
+      update: { alias: data.alias, avatar: data.avatar },
+      create: {
+        ...data,
+        password,
+        role: "ADMIN",
+      },
+    })
+    console.log(`Admin created: ${user.email} (${data.alias})`)
+  }
+
+  // 11 Integrantes (músicos)
   const integrantes = [
     { email: "violin1@orquesta.com", name: "María García", alias: "Mari", avatar: "🎻" },
     { email: "violin2@orquesta.com", name: "Juan López", alias: "Juancho", avatar: "🎻" },
-    { email: "viola1@orquesta.com", name: "Ana Martínez", alias: "Anita", avatar: "🎻" },
-    { email: "cello1@orquesta.com", name: "Carlos Rodríguez", alias: "Carlitos", avatar: "🎻" },
-    { email: "contrabajo1@orquesta.com", name: "Laura Fernández", alias: "Lau", avatar: "🎸" },
-    { email: "flauta1@orquesta.com", name: "Pedro Sánchez", alias: "Pete", avatar: "🎵" },
-    { email: "oboe1@orquesta.com", name: "Sofia Díaz", alias: "Sofi", avatar: "🎶" },
-    { email: "clarinete1@orquesta.com", name: "Miguel Torres", alias: "Migue", avatar: "🎷" },
-    { email: "fagot1@orquesta.com", name: "Lucía Ruiz", alias: "Lu", avatar: "🎵" },
-    { email: "trompa1@orquesta.com", name: "Diego Morales", alias: "Dieguito", avatar: "🎺" },
+    { email: "violin3@orquesta.com", name: "Ana Martínez", alias: "Anita", avatar: "🎻" },
+    { email: "violin4@orquesta.com", name: "Carlos Rodríguez", alias: "Carlitos", avatar: "🎻" },
+    { email: "violin5@orquesta.com", name: "Laura Fernández", alias: "Lau", avatar: "🎻" },
+    { email: "violin6@orquesta.com", name: "Pedro Sánchez", alias: "Pete", avatar: "🎻" },
+    { email: "violin7@orquesta.com", name: "Sofía Díaz", alias: "Sofi", avatar: "🎻" },
+    { email: "violin8@orquesta.com", name: "Miguel Torres", alias: "Migue", avatar: "🎻" },
+    { email: "violin9@orquesta.com", name: "Lucía Ruiz", alias: "Lu", avatar: "🎻" },
+    { email: "violin10@orquesta.com", name: "Diego Morales", alias: "Dieguito", avatar: "🎻" },
+    { email: "violin11@orquesta.com", name: "Paula Herrera", alias: "Pau", avatar: "🎻" },
   ]
 
   const createdUsers: Array<{ id: string; name: string }> = []
@@ -46,7 +52,7 @@ async function main() {
       update: { alias: data.alias, avatar: data.avatar },
       create: {
         ...data,
-        password: integrantePassword,
+        password,
         role: "INTEGRANTE",
       },
     })
@@ -117,13 +123,14 @@ async function main() {
   }
 
   console.log("\nSeeding completed!")
-  console.log("\nCredentials:")
-  console.log("Admin: admin@orquesta.com / admin123")
-  console.log("Integrantes: [instrumento]1@orquesta.com / integrante123")
-  console.log("\nEjemplos:")
-  console.log("  violin1@orquesta.com (María García)")
-  console.log("  flauta1@orquesta.com (Pedro Sánchez)")
-  console.log("  trompa1@orquesta.com (Diego Morales)")
+  console.log("\n=== Credenciales (contraseña: admin123) ===")
+  console.log("\nAdministradores (4):")
+  console.log("  admin@orquesta.com (Roberto Giménez)")
+  console.log("  concertino@orquesta.com (Alejandra Vidal)")
+  console.log("  jefe.seccion@orquesta.com (Fernando Acosta)")
+  console.log("  coordinador@orquesta.com (Claudia Méndez)")
+  console.log("\nIntegrantes (11):")
+  console.log("  violin1@orquesta.com hasta violin11@orquesta.com")
 }
 
 main()

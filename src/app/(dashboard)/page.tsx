@@ -146,7 +146,7 @@ export default function DashboardPage() {
                 {formatFullDate(date)}
               </p>
               <p className="text-sm text-muted-foreground">
-                {descansosDelDia.length} descanso
+                {descansosDelDia.length} rotativo
                 {descansosDelDia.length > 1 ? "s" : ""}
               </p>
             </div>
@@ -223,9 +223,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 className="text-xl md:text-2xl font-bold">Calendario de Descansos</h1>
+        <h1 className="text-xl md:text-2xl font-bold">Calendario de Rotativos</h1>
         <Link href="/solicitudes/nueva">
-          <Button size="sm" className="w-full sm:w-auto">Solicitar Descanso</Button>
+          <Button size="sm" className="w-full sm:w-auto">Solicitar Rotativo</Button>
         </Link>
       </div>
 
@@ -271,14 +271,14 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Descansos del Mes</CardTitle>
+            <CardTitle>Rotativos del Mes</CardTitle>
             <div className="flex gap-1 mt-2">
               <Button
                 variant={verSoloMios ? "default" : "outline"}
                 size="sm"
                 onClick={() => setVerSoloMios(true)}
               >
-                Mis descansos
+                Mis rotativos
               </Button>
               <Button
                 variant={!verSoloMios ? "default" : "outline"}
@@ -295,8 +295,8 @@ export default function DashboardPage() {
             ) : solicitudesFiltradas.length === 0 ? (
               <p className="text-gray-500">
                 {verSoloMios
-                  ? "No tienes descansos este mes"
-                  : "No hay descansos este mes"}
+                  ? "No tienes rotativos este mes"
+                  : "No hay rotativos este mes"}
               </p>
             ) : (
               <ul className="space-y-3 max-h-[500px] overflow-y-auto">

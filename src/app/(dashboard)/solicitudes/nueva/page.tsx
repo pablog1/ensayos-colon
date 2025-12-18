@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { Calendar } from "@/components/ui/calendar"
 import {
   Popover,
@@ -13,10 +15,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { toast } from "sonner"
+import { format } from "date-fns"
 import {
   getArgentinaDateKey,
   formatFullDate,
 } from "@/lib/date-utils"
+import { CalendarPlus, Info } from "lucide-react"
 
 interface Stats {
   personal: {
@@ -76,7 +80,7 @@ export default function NuevaSolicitudPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!fecha) {
-      toast.error("Selecciona una fecha")
+      toast.error("Seleccioná una fecha")
       return
     }
 
@@ -96,10 +100,10 @@ export default function NuevaSolicitudPage() {
     if (res.ok) {
       if (data.validacion.esCasoEspecial) {
         toast.warning(
-          "Solicitud creada como caso especial. Requiere aprobacion del admin."
+          "Solicitud creada. Requiere aprobación del administrador."
         )
       } else {
-        toast.success("Solicitud aprobada automaticamente")
+        toast.success("¡Rotativo aprobado!")
       }
       router.push("/solicitudes")
     } else {
@@ -109,7 +113,7 @@ export default function NuevaSolicitudPage() {
     setLoading(false)
   }
 
-  const superaLimite = stats?.personal && !stats.personal.puedesolicitarMas
+  const noPuedesSolicitar = stats?.personal && !stats.personal.puedesolicitarMas
 
   const getDescansosDelDia = (date: Date): DescansoInfo[] => {
     const fechaKey = getArgentinaDateKey(date)
@@ -184,7 +188,7 @@ export default function NuevaSolicitudPage() {
               {formatFullDate(date)}
             </p>
             <p className="text-xs text-muted-foreground">
-              {cantidadDescansos} descanso{cantidadDescansos > 1 ? "s" : ""}
+              {cantidadDescansos} rotativo{cantidadDescansos > 1 ? "s" : ""}
             </p>
             <div className="space-y-1.5 max-h-40 overflow-y-auto">
               {descansosDelDia.map((d) => (
@@ -214,67 +218,80 @@ export default function NuevaSolicitudPage() {
     )
   }
 
+  // Calcular progreso
+  const maxAnual = 50
+  const tomados = stats?.personal?.descansosAprobados || 0
+  const disponibles = stats?.personal?.descansosRestantesPermitidos || 0
+  const progreso = Math.min(100, (tomados / maxAnual) * 100)
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Solicitar Descanso</h1>
+      <div className="flex items-center gap-3">
+        <CalendarPlus className="w-8 h-8 text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold">Solicitar Rotativo</h1>
+          <p className="text-muted-foreground">
+            Elegí la fecha y enviá tu solicitud
+          </p>
+        </div>
+      </div>
 
-      {stats?.personal && stats?.grupo && (
+      {/* Resumen de estado */}
+      {stats?.personal && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Tu situacion actual</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p>
-              <span className="font-medium">Descansos aprobados este mes:</span>{" "}
-              {stats.personal.descansosAprobados}
-            </p>
-            <p>
-              <span className="font-medium">Promedio del grupo:</span>{" "}
-              {stats.grupo.promedioDescansos}
-            </p>
-            <p>
-              <span className="font-medium">Limite maximo (promedio + 5%):</span>{" "}
-              {stats.grupo.limiteMaximo}
-            </p>
-            <p>
-              <span className="font-medium">Tu porcentaje vs promedio:</span>{" "}
-              <span
-                className={
-                  stats.personal.porcentajeVsPromedio > 0
-                    ? "text-red-600"
-                    : "text-green-600"
-                }
-              >
-                {stats.personal.porcentajeVsPromedio > 0 ? "+" : ""}
-                {stats.personal.porcentajeVsPromedio}%
-              </span>
-            </p>
+          <CardContent className="pt-6">
+            <div className="space-y-4">
+              {/* Progreso visual */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tu progreso anual</span>
+                  <span className="font-medium">{tomados} de ~{maxAnual}</span>
+                </div>
+                <Progress value={progreso} className="h-2" />
+              </div>
+
+              {/* Números clave */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-muted/50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">{tomados}</div>
+                  <div className="text-xs text-muted-foreground">Tomados</div>
+                </div>
+                <div className="p-3 bg-green-50 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">{disponibles}</div>
+                  <div className="text-xs text-green-600">Disponibles</div>
+                </div>
+              </div>
+
+              {/* Estado */}
+              {noPuedesSolicitar ? (
+                <div className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg text-sm">
+                  <Info className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" />
+                  <div className="text-yellow-800">
+                    <strong>Alcanzaste tu límite anual.</strong> Podés seguir solicitando, pero requerirá aprobación del administrador.
+                  </div>
+                </div>
+              ) : (
+                <Badge className="bg-green-100 text-green-800">
+                  Podés solicitar rotativos
+                </Badge>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {superaLimite && (
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-yellow-800">
-            <strong>Atencion:</strong> Ya has alcanzado el limite del 5% sobre
-            el promedio. Tu proxima solicitud sera marcada como{" "}
-            <strong>caso especial</strong> y requerira aprobacion del
-            administrador.
-          </p>
-        </div>
-      )}
-
       <Card>
         <CardHeader>
-          <CardTitle>Nueva Solicitud</CardTitle>
+          <CardTitle>Elegí la fecha</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label>Fecha del descanso</Label>
-              <p className="text-xs text-muted-foreground">
-                Los puntos indican descansos de otros integrantes (verde =
-                aprobado, amarillo = pendiente)
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                Aprobado
+                <span className="w-2 h-2 rounded-full bg-yellow-500 ml-2"></span>
+                Pendiente
               </p>
               <Calendar
                 mode="single"
@@ -302,18 +319,25 @@ export default function NuevaSolicitudPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="motivo">Motivo (opcional)</Label>
+              <Label htmlFor="motivo">Motivo (opcional y privado)</Label>
               <Input
                 id="motivo"
                 value={motivo}
                 onChange={(e) => setMotivo(e.target.value)}
-                placeholder="Ej: Cita medica"
+                placeholder="Ej: Cita médica, compromiso personal..."
               />
+              <p className="text-xs text-muted-foreground">
+                Solo lo verá el administrador
+              </p>
             </div>
 
             <div className="flex gap-4">
-              <Button type="submit" disabled={loading || !fecha}>
-                {loading ? "Enviando..." : "Solicitar"}
+              <Button
+                type="submit"
+                disabled={loading || !fecha}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {loading ? "Enviando..." : "Solicitar rotativo"}
               </Button>
               <Button
                 type="button"

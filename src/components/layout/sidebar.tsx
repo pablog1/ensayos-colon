@@ -10,6 +10,8 @@ import {
   BarChart3,
   Users,
   AlertCircle,
+  BookOpen,
+  Settings,
 } from "lucide-react"
 
 const navItems = [
@@ -32,6 +34,12 @@ const navItems = [
     roles: ["ADMIN", "INTEGRANTE"],
   },
   {
+    href: "/reglas",
+    label: "Reglas",
+    icon: BookOpen,
+    roles: ["ADMIN", "INTEGRANTE"],
+  },
+  {
     href: "/admin/integrantes",
     label: "Integrantes",
     icon: Users,
@@ -41,6 +49,12 @@ const navItems = [
     href: "/admin/pendientes",
     label: "Casos Pendientes",
     icon: AlertCircle,
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/admin/configuracion",
+    label: "Configuración",
+    icon: Settings,
     roles: ["ADMIN"],
   },
 ]

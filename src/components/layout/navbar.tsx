@@ -28,7 +28,7 @@ export function Navbar() {
               Teatro Colón
             </span>
             <span className="text-[10px] md:text-xs text-[var(--gold)] tracking-widest uppercase hidden sm:block">
-              Gestión de Descansos
+              Gestión de Rotativos - Primeros Violines
             </span>
           </div>
         </Link>

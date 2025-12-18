@@ -1,6 +1,6 @@
-# Orquesta - Sistema de Gestion de Descansos
+# Orquesta - Sistema de Gestion de Rotativos
 
-Sistema web para administrar tiempos de descanso de integrantes de una orquesta, con regla automatica del 5% sobre el promedio mensual.
+Sistema web para administrar rotativos de integrantes de una orquesta, con regla automatica del 5% sobre el promedio mensual.
 
 ## Stack Tecnologico
 
@@ -11,7 +11,7 @@ Sistema web para administrar tiempos de descanso de integrantes de una orquesta,
 
 ## Reglas de Negocio
 
-- **Regla del 5%**: Ningun integrante puede exceder el promedio de descansos del grupo + 5%
+- **Regla del 5%**: Ningun integrante puede exceder el promedio de rotativos del grupo + 5%
 - **Periodo**: Mensual
 - **Aprobacion**: Automatica si cumple la regla; casos especiales requieren aprobacion del admin
 
@@ -73,8 +73,8 @@ Abrir [http://localhost:3000](http://localhost:3000)
 ## Funcionalidades
 
 ### Para Integrantes
-- Ver calendario mensual con descansos
-- Solicitar nuevos descansos
+- Ver calendario mensual con rotativos
+- Solicitar nuevos rotativos
 - Ver historial de solicitudes
 - Ver estadisticas personales y del grupo
 

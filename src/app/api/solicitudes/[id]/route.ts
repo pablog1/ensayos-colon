@@ -135,7 +135,7 @@ export async function DELETE(
   hoy.setHours(0, 0, 0, 0)
   if (solicitud.fecha < hoy) {
     return NextResponse.json(
-      { error: "No se pueden cancelar descansos pasados" },
+      { error: "No se pueden cancelar rotativos pasados" },
       { status: 400 }
     )
   }

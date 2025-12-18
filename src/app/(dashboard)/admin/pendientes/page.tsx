@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { toast } from "sonner"
+import { Clock, CheckCircle, XCircle } from "lucide-react"
 
 interface SolicitudPendiente {
   id: string
@@ -25,6 +26,8 @@ interface SolicitudPendiente {
     id: string
     name: string
     email: string
+    alias?: string | null
+    avatar?: string | null
   }
 }
 
@@ -39,10 +42,10 @@ export default function PendientesPage() {
   const fetchPendientes = async () => {
     const res = await fetch("/api/solicitudes")
     const data = await res.json()
-    // Filtrar solo pendientes y casos especiales
+    // Filtrar todas las solicitudes pendientes
     const pendientes = data.filter(
-      (s: SolicitudPendiente) => s.esCasoEspecial && s.porcentajeAlMomento !== null
-    ).filter((s: { estado: string }) => s.estado === "PENDIENTE")
+      (s: { estado: string }) => s.estado === "PENDIENTE"
+    )
     setSolicitudes(pendientes)
     setLoading(false)
   }
@@ -62,7 +65,7 @@ export default function PendientesPage() {
   }
 
   const rechazar = async (id: string) => {
-    if (!confirm("¿Estas seguro de rechazar esta solicitud?")) return
+    if (!confirm("¿Estás seguro de rechazar esta solicitud?")) return
 
     const res = await fetch(`/api/solicitudes/${id}/rechazar`, {
       method: "POST",
@@ -79,23 +82,38 @@ export default function PendientesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Casos Especiales Pendientes</h1>
+      <div className="flex items-center gap-3">
+        <Clock className="w-8 h-8 text-primary" />
+        <div>
+          <h1 className="text-2xl font-bold">Solicitudes Pendientes</h1>
+          <p className="text-muted-foreground">
+            Rotativos que requieren tu aprobación
+          </p>
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Solicitudes que exceden el 5% ({solicitudes.length})
+          <CardTitle className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-base px-3 py-1">
+              {solicitudes.length}
+            </Badge>
+            solicitudes esperando revisión
           </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-gray-500">Cargando...</p>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
           ) : solicitudes.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No hay casos pendientes</p>
-              <p className="text-sm text-gray-400 mt-2">
-                Los casos especiales aparecen cuando un integrante solicita un
-                descanso que excede el 5% sobre el promedio del grupo.
+            <div className="text-center py-12">
+              <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+              <p className="text-lg font-medium text-gray-700">
+                No hay solicitudes pendientes
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Todas las solicitudes han sido procesadas
               </p>
             </div>
           ) : (
@@ -103,41 +121,66 @@ export default function PendientesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Integrante</TableHead>
-                  <TableHead>Fecha Solicitada</TableHead>
+                  <TableHead>Fecha del rotativo</TableHead>
                   <TableHead>Motivo</TableHead>
-                  <TableHead>% sobre promedio</TableHead>
                   <TableHead>Solicitado</TableHead>
-                  <TableHead>Acciones</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {solicitudes.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>
-                      <div>
-                        <p className="font-medium">{s.user.name}</p>
-                        <p className="text-sm text-gray-500">{s.user.email}</p>
+                      <div className="flex items-center gap-2">
+                        {s.user.avatar && (
+                          <span className="text-xl">{s.user.avatar}</span>
+                        )}
+                        <div>
+                          <p className="font-medium">
+                            {s.user.alias || s.user.name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {s.user.email}
+                          </p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      {new Date(s.fecha).toLocaleDateString("es-ES", {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </TableCell>
-                    <TableCell>{s.motivo || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant="destructive">
-                        +{s.porcentajeAlMomento?.toFixed(1)}%
-                      </Badge>
+                      <div className="font-medium">
+                        {new Date(s.fecha).toLocaleDateString("es-ES", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                        })}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {new Date(s.createdAt).toLocaleDateString("es-ES")}
+                      {s.motivo ? (
+                        <span className="text-sm">{s.motivo}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground italic">
+                          Sin motivo especificado
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => aprobar(s.id)}>
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(s.createdAt).toLocaleDateString("es-ES", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => aprobar(s.id)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
                           Aprobar
                         </Button>
                         <Button
@@ -145,6 +188,7 @@ export default function PendientesPage() {
                           variant="destructive"
                           onClick={() => rechazar(s.id)}
                         >
+                          <XCircle className="w-4 h-4 mr-1" />
                           Rechazar
                         </Button>
                       </div>

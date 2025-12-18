@@ -22,10 +22,17 @@ model User {
   role          Role      @default(INTEGRANTE)
   emailVerified DateTime?
   image         String?
+  joinDate      DateTime? // Fecha de ingreso (para integrantes nuevos)
 
-  accounts    Account[]
-  sessions    Session[]
-  solicitudes Solicitud[]
+  accounts       Account[]
+  sessions       Session[]
+  solicitudes    Solicitud[] // Mantener para compatibilidad
+  rotativos      Rotativo[]
+  blocksAssigned Block[]     @relation("BlockAssignment")
+  waitingList    WaitingListEntry[]
+  licenses       License[]
+  balances       UserSeasonBalance[]
+  notifications  Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -79,7 +86,7 @@ model VerificationToken {
 }
 
 // ============================================
-// MODELOS DE NEGOCIO
+// MODELOS DE NEGOCIO - LEGACY (mantener para migracion)
 // ============================================
 
 model Solicitud {
@@ -104,6 +111,321 @@ model Solicitud {
 }
 
 // ============================================
+// MODELOS DE CONFIGURACION
+// ============================================
+
+model Season {
+  id          String   @id @default(cuid())
+  name        String   // "Temporada 2024"
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean  @default(false)
+  workingDays Int      @default(250) // Dias laborables en la temporada
+
+  events      Event[]
+  blocks      Block[]
+  licenses    License[]
+  waitingList WaitingListEntry[]
+  balances    UserSeasonBalance[]
+  titulos     Titulo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("seasons")
+}
+
+// ============================================
+// MODELOS DE TITULOS (PRODUCCIONES)
+// ============================================
+
+model Titulo {
+  id          String     @id @default(cuid())
+  name        String     // "La Traviata", "Concierto de Primavera"
+  type        TituloType
+  cupoEnsayo  Int        @default(2)  // Rotativos disponibles por ensayo
+  cupoFuncion Int        @default(4)  // Rotativos disponibles por funcion
+  seasonId    String
+  description String?
+  color       String?    // Color para mostrar en calendario (hex)
+
+  season  Season  @relation(fields: [seasonId], references: [id])
+  events  Event[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([seasonId])
+  @@map("titulos")
+}
+
+model RuleConfig {
+  id          String  @id @default(cuid())
+  key         String  @unique // "CUPO_DIARIO_OPERA", "MAX_PROYECTADO_ANUAL", etc.
+  value       String  // JSON stringified para flexibilidad
+  valueType   String  // "number", "boolean", "json"
+  enabled     Boolean @default(true)
+  description String?
+  category    String  // "cupo", "restriccion", "rotacion", "alerta"
+  priority    Int     @default(100) // Para jerarquia de reglas
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([enabled])
+  @@map("rule_configs")
+}
+
+// ============================================
+// MODELOS DE EVENTOS Y CALENDARIO
+// ============================================
+
+model Event {
+  id           String      @id @default(cuid())
+  title        String
+  description  String?
+  eventType    EventType
+  eventoType   EventoType? // ENSAYO o FUNCION (para titulos)
+  startTime    DateTime
+  endTime      DateTime
+  date         DateTime    @db.Date
+  seasonId     String
+  blockId      String?     // Si pertenece a un bloque
+  tituloId     String?     // Si pertenece a un titulo
+  units        Int         @default(1) // 2 para ensayo doble
+  cupoOverride Int?        // Override del cupo del titulo
+
+  season      Season    @relation(fields: [seasonId], references: [id])
+  block       Block?    @relation(fields: [blockId], references: [id])
+  titulo      Titulo?   @relation(fields: [tituloId], references: [id], onDelete: Cascade)
+  rotativos   Rotativo[]
+  waitingList WaitingListEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([seasonId])
+  @@index([eventType])
+  @@index([tituloId])
+  @@map("events")
+}
+
+// ============================================
+// MODELOS DE ROTATIVOS
+// ============================================
+
+model Rotativo {
+  id                String         @id @default(cuid())
+  userId            String
+  eventId           String
+  estado            RotativoEstado @default(PENDIENTE)
+  tipo              RotativoTipo   @default(VOLUNTARIO)
+  motivo            String?
+  aprobadoPor       String?
+  rechazadoPor      String?
+  asignadoPor       String?        // Para rotacion obligatoria
+  esParteDeBloqueId String?        // Si es parte de un bloque
+  contadorAlMomento Float?         // Rotativos tomados al momento de solicitar
+
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  bloque  Block? @relation(fields: [esParteDeBloqueId], references: [id])
+
+  validationResults Json? // Resultados de validacion de reglas
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, eventId])
+  @@index([userId, estado])
+  @@index([eventId])
+  @@index([estado])
+  @@map("rotativos")
+}
+
+// ============================================
+// MODELOS DE BLOQUES
+// ============================================
+
+model Block {
+  id        String      @id @default(cuid())
+  name      String      // "La Traviata", "Carmen", etc.
+  seasonId  String
+  startDate DateTime    @db.Date
+  endDate   DateTime    @db.Date
+
+  // Quien tiene asignado este bloque
+  assignedToId String?
+  assignedTo   User?       @relation("BlockAssignment", fields: [assignedToId], references: [id])
+  estado       BlockEstado @default(DISPONIBLE)
+
+  season    Season     @relation(fields: [seasonId], references: [id])
+  events    Event[]
+  rotativos Rotativo[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([seasonId])
+  @@index([assignedToId])
+  @@map("blocks")
+}
+
+// ============================================
+// LISTA DE ESPERA
+// ============================================
+
+model WaitingListEntry {
+  id       String @id @default(cuid())
+  userId   String
+  eventId  String
+  seasonId String
+  position Int    // Posicion en la cola FIFO
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  season Season @relation(fields: [seasonId], references: [id])
+
+  notifiedAt DateTime? // Cuando se notifico que hay cupo
+  expiresAt  DateTime? // Opcional: cuando expira la notificacion
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, eventId])
+  @@index([eventId, position])
+  @@map("waiting_list")
+}
+
+// ============================================
+// LICENCIAS
+// ============================================
+
+model License {
+  id          String      @id @default(cuid())
+  userId      String
+  seasonId    String
+  startDate   DateTime    @db.Date
+  endDate     DateTime    @db.Date
+  type        LicenseType
+  description String?
+
+  // Calculo de rotativos promedio durante la licencia
+  rotativosCalculados Float @default(0)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season Season @relation(fields: [seasonId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([seasonId])
+  @@map("licenses")
+}
+
+// ============================================
+// BALANCE DE USUARIO POR TEMPORADA
+// ============================================
+
+model UserSeasonBalance {
+  id String @id @default(cuid())
+
+  userId   String
+  seasonId String
+
+  rotativosTomados      Int   @default(0)
+  rotativosObligatorios Int   @default(0)
+  rotativosPorLicencia  Float @default(0)
+  maxProyectado         Float // Calculado segun formula
+  maxAjustadoManual     Float? // Override del admin
+
+  finesDeSemanaMes Json    @default("{}") // {"2024-01": 1, "2024-02": 0}
+  bloqueUsado      Boolean @default(false)
+
+  fechaIngreso DateTime? // Para integrantes nuevos
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season Season @relation(fields: [seasonId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, seasonId])
+  @@map("user_season_balances")
+}
+
+// ============================================
+// NOTIFICACIONES
+// ============================================
+
+model Notification {
+  id      String           @id @default(cuid())
+  userId  String
+  type    NotificationType
+  title   String
+  message String
+  data    Json?            // Metadata adicional
+  read    Boolean          @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================
+// LOGS DE AUDITORIA
+// ============================================
+
+model AuditLog {
+  id           String      @id @default(cuid())
+  action       AuditAction
+  entityType   String      // "Rotativo", "Block", "License", etc.
+  entityId     String
+  userId       String      // Quien realizo la accion
+  targetUserId String?     // A quien afecta (si aplica)
+  details      Json?       // Datos adicionales
+  ipAddress    String?
+
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================
+// CONSENSOS ADMIN
+// ============================================
+
+model AdminConsensus {
+  id               String          @id @default(cuid())
+  type             String          // "ROTACION_OBLIGATORIA", "COBERTURA"
+  eventId          String
+  status           ConsensusStatus @default(PENDIENTE)
+  deadline         DateTime        // Fecha limite para consenso
+  candidateUserIds Json            // Array de IDs candidatos
+  selectedUserId   String?         // Usuario seleccionado
+  isRandom         Boolean         @default(false) // Si se resolvio al azar
+
+  votes Json? // Votos de admins si aplica
+
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status])
+  @@index([deadline])
+  @@map("admin_consensus")
+}
+
+// ============================================
 // ENUMS
 // ============================================
 
@@ -117,4 +439,99 @@ enum EstadoSolicitud {
   APROBADA
   RECHAZADA
   CANCELADA
+}
+
+enum EventType {
+  OPERA
+  CONCIERTO
+  ENSAYO
+  ENSAYO_DOBLE
+  OTRO
+}
+
+enum TituloType {
+  OPERA
+  CONCIERTO
+  BALLET
+  RECITAL
+  OTRO
+}
+
+enum EventoType {
+  ENSAYO
+  FUNCION
+}
+
+enum RotativoEstado {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  CANCELADO
+  EN_ESPERA
+  ASIGNADO
+}
+
+enum RotativoTipo {
+  VOLUNTARIO
+  OBLIGATORIO
+  COBERTURA
+  LICENCIA
+}
+
+enum BlockEstado {
+  DISPONIBLE
+  SOLICITADO
+  APROBADO
+  EN_CURSO
+  COMPLETADO
+  CANCELADO
+}
+
+enum LicenseType {
+  MEDICA
+  PERSONAL
+  ESTUDIO
+  MATERNIDAD
+  PATERNIDAD
+  OTRO
+}
+
+enum NotificationType {
+  ROTATIVO_APROBADO
+  ROTATIVO_RECHAZADO
+  LISTA_ESPERA_CUPO
+  ROTACION_OBLIGATORIA
+  ALERTA_CERCANIA_MAXIMO
+  CONSENSO_PENDIENTE
+  BLOQUE_APROBADO
+  LICENCIA_REGISTRADA
+  SISTEMA
+}
+
+enum AuditAction {
+  ROTATIVO_CREADO
+  ROTATIVO_APROBADO
+  ROTATIVO_RECHAZADO
+  ROTATIVO_CANCELADO
+  ROTATIVO_ASIGNADO
+  BLOQUE_SOLICITADO
+  BLOQUE_APROBADO
+  BLOQUE_CANCELADO
+  LICENCIA_CREADA
+  LICENCIA_MODIFICADA
+  CONFIG_MODIFICADA
+  USUARIO_CREADO
+  USUARIO_MODIFICADO
+  BALANCE_AJUSTADO
+  LISTA_ESPERA_AGREGADO
+  LISTA_ESPERA_PROMOVIDO
+  CONSENSO_INICIADO
+  CONSENSO_RESUELTO
+}
+
+enum ConsensusStatus {
+  PENDIENTE
+  EN_PROGRESO
+  RESUELTO
+  EXPIRADO
 }

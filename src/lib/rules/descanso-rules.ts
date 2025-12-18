@@ -80,7 +80,7 @@ export async function calcularEstadisticasUsuario(
         : 0
 
   // Si el promedio es 0, siempre puede solicitar sin aprobación
-  // Si hay promedio, verificar que no supere el límite del 5%
+  // Si hay promedio, verificar que no supere el límite máximo
   const puedesolicitarSinAprobacion =
     promedioGrupo === 0 || descansosAprobados < limiteMaximo
   const descansosRestantesPermitidos =
@@ -123,7 +123,7 @@ export async function validarSolicitud(
       autoApprove: false,
       esCasoEspecial: true,
       porcentaje: nuevoPorcentaje,
-      mensaje: `Esta solicitud excede el limite del 5% (${nuevoPorcentaje.toFixed(1)}% sobre el promedio). Requiere aprobacion del administrador.`,
+      mensaje: "Esta solicitud excede tu límite anual. Requiere aprobación del administrador.",
     }
   }
 
