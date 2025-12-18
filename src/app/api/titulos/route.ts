@@ -13,12 +13,12 @@ export async function GET(req: NextRequest) {
   const seasonId = searchParams.get("seasonId")
 
   // Si no se especifica temporada, buscar la activa
-  let targetSeasonId = seasonId
+  let targetSeasonId: string | null = seasonId
   if (!targetSeasonId) {
     const activeSeason = await prisma.season.findFirst({
       where: { isActive: true },
     })
-    targetSeasonId = activeSeason?.id
+    targetSeasonId = activeSeason?.id ?? null
   }
 
   if (!targetSeasonId) {

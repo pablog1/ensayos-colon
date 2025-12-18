@@ -1,6 +1,18 @@
-import { PrismaClient } from "../../src/generated/prisma"
+import { PrismaClient, EventType, EventoType } from "../../src/generated/prisma"
 
 const prisma = new PrismaClient()
+
+// Helper para mapear TituloType a EventType
+function getEventType(tituloType: string): EventType {
+  switch (tituloType) {
+    case "OPERA":
+      return EventType.OPERA
+    case "CONCIERTO":
+      return EventType.CONCIERTO
+    default:
+      return EventType.OTRO
+  }
+}
 
 // Función para agregar días a una fecha
 function addDays(date: Date, days: number): Date {
@@ -27,8 +39,8 @@ async function crearEventos(
     eventos.push({
       title: `${tituloName} - Ensayo`,
       date: new Date(fecha),
-      eventoType: "ENSAYO" as const,
-      eventType: tituloType === "OPERA" ? "OPERA" : tituloType === "CONCIERTO" ? "CONCIERTO" : "OTRO" as const,
+      eventoType: EventoType.ENSAYO,
+      eventType: getEventType(tituloType),
       startTime: new Date(fecha.setHours(10, 0, 0, 0)),
       endTime: new Date(fecha.setHours(13, 0, 0, 0)),
       tituloId,
@@ -46,8 +58,8 @@ async function crearEventos(
     eventos.push({
       title: `${tituloName} - Función`,
       date: new Date(fecha),
-      eventoType: "FUNCION" as const,
-      eventType: tituloType === "OPERA" ? "OPERA" : tituloType === "CONCIERTO" ? "CONCIERTO" : "OTRO" as const,
+      eventoType: EventoType.FUNCION,
+      eventType: getEventType(tituloType),
       startTime: new Date(fecha.setHours(20, 0, 0, 0)),
       endTime: new Date(fecha.setHours(23, 0, 0, 0)),
       tituloId,
