@@ -79,7 +79,7 @@ export async function PUT(
 
   const { id } = await params
   const body = await req.json()
-  const { date, eventoType, cupoOverride, notes, startTime, endTime } = body
+  const { date, eventoType, ensayoTipo, cupoOverride, notes, startTime, endTime } = body
 
   const evento = await prisma.event.findUnique({
     where: { id },
@@ -138,7 +138,15 @@ export async function PUT(
     updateData.eventoType = eventoType
     // Actualizar titulo del evento
     if (evento.titulo) {
-      updateData.title = `${evento.titulo.name} - ${eventoType === "ENSAYO" ? "Ensayo" : "Funcion"}`
+      if (eventoType === "FUNCION") {
+        updateData.title = `${evento.titulo.name} - Función`
+      } else {
+        // Para ensayos, usar el subtipo
+        const ensayoLabel = ensayoTipo === "PRE_GENERAL" ? "Pre General"
+                          : ensayoTipo === "GENERAL" ? "Ensayo General"
+                          : "Ensayo"
+        updateData.title = `${evento.titulo.name} - ${ensayoLabel}`
+      }
     }
   }
 

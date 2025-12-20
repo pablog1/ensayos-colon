@@ -63,7 +63,7 @@ export async function POST(
 
   const { id: tituloId } = await params
   const body = await req.json()
-  const { date, eventoType, cupoOverride, notes, startTime, endTime } = body
+  const { date, eventoType, ensayoTipo, cupoOverride, notes, startTime, endTime } = body
 
   if (!date || !eventoType) {
     return NextResponse.json(
@@ -112,10 +112,22 @@ export async function POST(
     )
   }
 
+  // Generar título del evento
+  let eventTitle: string
+  if (eventoType === "FUNCION") {
+    eventTitle = `${titulo.name} - Función`
+  } else {
+    // Para ensayos, usar el subtipo
+    const ensayoLabel = ensayoTipo === "PRE_GENERAL" ? "Pre General"
+                      : ensayoTipo === "GENERAL" ? "Ensayo General"
+                      : "Ensayo"
+    eventTitle = `${titulo.name} - ${ensayoLabel}`
+  }
+
   // Crear evento
   const evento = await prisma.event.create({
     data: {
-      title: `${titulo.name} - ${eventoType === "ENSAYO" ? "Ensayo" : "Funcion"}`,
+      title: eventTitle,
       date: fechaEvento,
       eventoType,
       eventType: titulo.type === "OPERA" ? "OPERA" : titulo.type === "CONCIERTO" ? "CONCIERTO" : "OTRO",

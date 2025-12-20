@@ -126,7 +126,19 @@ export default function DashboardPage() {
   const [editingTitulo, setEditingTitulo] = useState<Titulo | null>(null)
   const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
   const [verSoloMios, setVerSoloMios] = useState(true)
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+
+  // Abrir sidebar por defecto solo en desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setRightSidebarOpen(true)
+      }
+    }
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
 
   // Form states
   const [tituloForm, setTituloForm] = useState({
@@ -142,12 +154,59 @@ export default function DashboardPage() {
   const [eventoForm, setEventoForm] = useState({
     tituloId: "",
     eventoType: "ENSAYO" as "ENSAYO" | "FUNCION",
+    ensayoTipo: "ENSAYO" as "ENSAYO" | "PRE_GENERAL" | "GENERAL",
     date: "",
-    startTime: "10:00",
-    endTime: "13:00",
+    startTime: "14:00",
+    endTime: "17:00",
   })
+  const [horarioCustom, setHorarioCustom] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
+
+  // Horarios predefinidos según tipo de evento
+  const getHorariosPredefinidos = (tipo: "ENSAYO" | "FUNCION", fecha?: string) => {
+    // Determinar día de la semana (0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab)
+    let dayOfWeek = -1
+    if (fecha) {
+      const date = new Date(fecha + "T12:00:00") // Usar mediodía para evitar problemas de timezone
+      dayOfWeek = date.getDay()
+    }
+
+    const esMartesSabado = dayOfWeek >= 2 && dayOfWeek <= 6
+    const esDomingo = dayOfWeek === 0
+
+    if (tipo === "FUNCION") {
+      if (esDomingo) {
+        return [{ start: "17:00", end: "20:00", label: "17:00" }]
+      }
+      if (esMartesSabado) {
+        return [{ start: "20:00", end: "23:00", label: "20:00" }]
+      }
+      // Lunes u otro día: sin horarios predefinidos
+      return []
+    }
+
+    // ENSAYO
+    if (esDomingo) {
+      // Domingos: solo Ensayo General a las 17:00
+      return [{ start: "17:00", end: "20:00", label: "17:00" }]
+    }
+    if (esMartesSabado) {
+      return [
+        { start: "14:00", end: "17:00", label: "14:00" },
+        { start: "20:00", end: "23:00", label: "20:00" },
+      ]
+    }
+    // Lunes u otro día: sin horarios predefinidos
+    return []
+  }
+
+  // Determina si es domingo basado en la fecha
+  const esDomingo = (fecha: string) => {
+    if (!fecha) return false
+    const date = new Date(fecha + "T12:00:00")
+    return date.getDay() === 0
+  }
 
   const fetchTitulos = useCallback(async () => {
     const res = await fetch("/api/titulos")
@@ -217,6 +276,21 @@ export default function DashboardPage() {
       return evento.tituloColor
     }
     return evento.eventoType === "ENSAYO" ? "#3b82f6" : "#f59e0b"
+  }
+
+  // Extrae la etiqueta del tipo de evento desde el título
+  const getEventTypeLabel = (evento: Evento) => {
+    if (evento.eventoType === "FUNCION") {
+      return "Función"
+    }
+    // Para ensayos, extraer del título
+    if (evento.title.includes("Pre General")) {
+      return "Pre General"
+    }
+    if (evento.title.includes("Ensayo General")) {
+      return "Ensayo General"
+    }
+    return "Ensayo"
   }
 
   const getDayBgColor = (date: Date) => {
@@ -333,6 +407,7 @@ export default function DashboardPage() {
       body: JSON.stringify({
         date: eventoForm.date,
         eventoType: eventoForm.eventoType,
+        ensayoTipo: eventoForm.eventoType === "ENSAYO" ? eventoForm.ensayoTipo : undefined,
         startTime: `${eventoForm.date}T${eventoForm.startTime}:00`,
         endTime: `${eventoForm.date}T${eventoForm.endTime}:00`,
       }),
@@ -359,6 +434,7 @@ export default function DashboardPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         eventoType: eventoForm.eventoType,
+        ensayoTipo: eventoForm.eventoType === "ENSAYO" ? eventoForm.ensayoTipo : undefined,
         date: eventoForm.date,
         startTime: `${eventoForm.date}T${eventoForm.startTime}:00`,
         endTime: `${eventoForm.date}T${eventoForm.endTime}:00`,
@@ -466,24 +542,49 @@ export default function DashboardPage() {
 
   const openEditEvento = (evento: Evento) => {
     setEditingEvento(evento)
+    const startTime = formatTime(evento.startTime) || "14:00"
+    const endTime = formatTime(evento.endTime) || "17:00"
+
+    // Determinar ensayoTipo basado en el título
+    let ensayoTipo: "ENSAYO" | "PRE_GENERAL" | "GENERAL" = "ENSAYO"
+    if (evento.title.includes("Pre General")) {
+      ensayoTipo = "PRE_GENERAL"
+    } else if (evento.title.includes("Ensayo General") || evento.title === "General") {
+      ensayoTipo = "GENERAL"
+    }
+
     setEventoForm({
       tituloId: evento.tituloId,
       eventoType: evento.eventoType,
+      ensayoTipo,
       date: evento.date.substring(0, 10),
-      startTime: formatTime(evento.startTime) || "10:00",
-      endTime: formatTime(evento.endTime) || "13:00",
+      startTime,
+      endTime,
     })
+    // Verificar si es un horario predefinido
+    const fechaEvento = evento.date.substring(0, 10)
+    const predefinidos = getHorariosPredefinidos(evento.eventoType, fechaEvento)
+    const esPredefinido = predefinidos.some(h => h.start === startTime)
+    setHorarioCustom(!esPredefinido || predefinidos.length === 0)
     setSidebarMode("editar-evento")
   }
 
   const openNuevoEvento = (date?: Date) => {
+    const fechaStr = date ? format(date, "yyyy-MM-dd") : ""
+    const horarios = getHorariosPredefinidos("ENSAYO", fechaStr)
+    const tieneHorariosPredefinidos = horarios.length > 0
+    // En domingos, forzar ensayoTipo a GENERAL
+    const ensayoTipoDefault = esDomingo(fechaStr) ? "GENERAL" : "ENSAYO"
+
     setEventoForm({
       tituloId: "",
       eventoType: "ENSAYO",
-      date: date ? format(date, "yyyy-MM-dd") : "",
-      startTime: "10:00",
-      endTime: "13:00",
+      ensayoTipo: ensayoTipoDefault,
+      date: fechaStr,
+      startTime: tieneHorariosPredefinidos ? horarios[0].start : "14:00",
+      endTime: tieneHorariosPredefinidos ? horarios[0].end : "17:00",
     })
+    setHorarioCustom(!tieneHorariosPredefinidos)
     setSidebarMode("nuevo-evento")
   }
 
@@ -560,7 +661,7 @@ export default function DashboardPage() {
                 >
                   <div className="flex items-center gap-1">
                     <span>{e.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
-                    <span>{formatTime(e.startTime)}</span>
+                    <span>{formatTime(e.startTime)} · {getEventTypeLabel(e)}</span>
                   </div>
                   <div className="line-clamp-2">{e.tituloName}</div>
                 </div>
@@ -658,7 +759,7 @@ export default function DashboardPage() {
               >
                 <p className="font-semibold text-sm leading-tight">{e.tituloName}</p>
                 <p className="text-xs opacity-90 mt-0.5">
-                  {formatTime(e.startTime)} · {e.rotativosUsados}/{e.cupoEfectivo} rotativos
+                  {getEventTypeLabel(e)} · {formatTime(e.startTime)} · {e.rotativosUsados}/{e.cupoEfectivo}
                 </p>
               </div>
 
@@ -947,7 +1048,7 @@ export default function DashboardPage() {
                                             </Badge>
                                           </div>
                                           <p className="text-sm text-muted-foreground">
-                                            {formatTime(evento.startTime)} - {formatTime(evento.endTime)}
+                                            {getEventTypeLabel(evento)} · {formatTime(evento.startTime)} - {formatTime(evento.endTime)}
                                           </p>
                                           {/* Nombres completos de rotativos en vista lista */}
                                           {evento.rotativos && evento.rotativos.length > 0 && (
@@ -1067,27 +1168,53 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Botón para abrir sidebar derecho cuando está cerrado */}
+        {/* Botón flotante para abrir sidebar en mobile */}
+        {!rightSidebarOpen && (
+          <Button
+            variant="default"
+            size="icon"
+            className="md:hidden fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-40"
+            onClick={() => setRightSidebarOpen(true)}
+          >
+            <PanelRightOpen className="h-6 w-6" />
+          </Button>
+        )}
+
+        {/* Botón para abrir sidebar derecho cuando está cerrado (desktop) */}
         {!rightSidebarOpen && (
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 flex-shrink-0 self-start sticky top-4"
+            className="hidden md:flex h-10 w-10 flex-shrink-0 self-start sticky top-4"
             onClick={() => setRightSidebarOpen(true)}
           >
             <PanelRightOpen className="h-4 w-4" />
           </Button>
         )}
 
+        {/* Overlay para mobile */}
+        {rightSidebarOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/50 z-40"
+            onClick={() => setRightSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar derecho */}
-        <div className={`transition-all duration-300 ${rightSidebarOpen ? "w-80 min-w-80" : "w-0 min-w-0 overflow-hidden"}`}>
+        <div className={`
+          ${rightSidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
+          ${rightSidebarOpen ? "md:w-80 md:min-w-80" : "md:w-0 md:min-w-0 md:overflow-hidden"}
+          fixed md:relative right-0 top-0 md:top-auto h-full md:h-auto w-[85vw] max-w-sm md:max-w-none
+          transition-all duration-300 z-50 md:z-auto
+        `}>
           {rightSidebarOpen && (
-          <Card className="sticky top-4">
+          <Card className="h-full md:h-auto md:sticky md:top-4 rounded-none md:rounded-lg overflow-y-auto">
             <CardHeader className="pb-3">
               {/* Botón cerrar sidebar */}
               <div className="flex justify-end -mt-2 -mr-2 mb-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setRightSidebarOpen(false)}>
-                  <PanelRightClose className="h-4 w-4" />
+                  <X className="h-4 w-4 md:hidden" />
+                  <PanelRightClose className="h-4 w-4 hidden md:block" />
                 </Button>
               </div>
               {/* Menu de navegación */}
@@ -1258,7 +1385,7 @@ export default function DashboardPage() {
                               <p className="font-medium text-sm">{evento.tituloName}</p>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {format(new Date(evento.date), "EEEE d MMM", { locale: es })} · {formatTime(evento.startTime)}
+                              {getEventTypeLabel(evento)} · {format(new Date(evento.date), "EEEE d MMM", { locale: es })} · {formatTime(evento.startTime)}
                             </p>
                           </div>
                           <Badge variant="outline" className="text-green-600 text-xs">
@@ -1316,6 +1443,7 @@ export default function DashboardPage() {
                                   <p className="font-medium text-sm">{evento.tituloName}</p>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span>{getEventTypeLabel(evento)}</span>
                                   <span className="flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
                                     {formatTime(evento.startTime)}
@@ -1402,7 +1530,7 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-semibold">{selectedEvento.tituloName}</p>
                         <p className="text-sm text-muted-foreground">
-                          {selectedEvento.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
+                          {getEventTypeLabel(selectedEvento)}
                         </p>
                       </div>
                     </div>
@@ -1562,7 +1690,6 @@ export default function DashboardPage() {
                         <SelectItem value="OPERA">Ópera</SelectItem>
                         <SelectItem value="BALLET">Ballet</SelectItem>
                         <SelectItem value="CONCIERTO">Concierto</SelectItem>
-                        <SelectItem value="RECITAL">Recital</SelectItem>
                         <SelectItem value="OTRO">Otro</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1635,7 +1762,6 @@ export default function DashboardPage() {
                         <SelectItem value="OPERA">Ópera</SelectItem>
                         <SelectItem value="BALLET">Ballet</SelectItem>
                         <SelectItem value="CONCIERTO">Concierto</SelectItem>
-                        <SelectItem value="RECITAL">Recital</SelectItem>
                         <SelectItem value="OTRO">Otro</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1702,10 +1828,13 @@ export default function DashboardPage() {
                         const tituloSigueValido = tituloActual?.startDate && tituloActual?.endDate &&
                           newDate >= tituloActual.startDate.substring(0, 10) &&
                           newDate <= tituloActual.endDate.substring(0, 10)
+                        // En domingos, forzar ensayoTipo a GENERAL
+                        const ensayoTipoNuevo = esDomingo(newDate) ? "GENERAL" : eventoForm.ensayoTipo
                         setEventoForm({
                           ...eventoForm,
                           date: newDate,
-                          tituloId: tituloSigueValido ? eventoForm.tituloId : ""
+                          tituloId: tituloSigueValido ? eventoForm.tituloId : "",
+                          ensayoTipo: ensayoTipoNuevo
                         })
                       }}
                       required
@@ -1757,7 +1886,17 @@ export default function DashboardPage() {
                       <Button
                         type="button"
                         variant={eventoForm.eventoType === "ENSAYO" ? "default" : "outline"}
-                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "ENSAYO" })}
+                        onClick={() => {
+                          const horarios = getHorariosPredefinidos("ENSAYO", eventoForm.date)
+                          // En domingos, forzar ensayoTipo a GENERAL
+                          const ensayoTipo = esDomingo(eventoForm.date) ? "GENERAL" : "ENSAYO"
+                          if (horarios.length > 0 && !horarioCustom) {
+                            setEventoForm({ ...eventoForm, eventoType: "ENSAYO", ensayoTipo, startTime: horarios[0].start, endTime: horarios[0].end })
+                          } else {
+                            setEventoForm({ ...eventoForm, eventoType: "ENSAYO", ensayoTipo })
+                            setHorarioCustom(horarios.length === 0)
+                          }
+                        }}
                         className="flex-1"
                       >
                         <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎵</span>
@@ -1766,33 +1905,138 @@ export default function DashboardPage() {
                       <Button
                         type="button"
                         variant={eventoForm.eventoType === "FUNCION" ? "default" : "outline"}
-                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "FUNCION" })}
+                        onClick={() => {
+                          const horarios = getHorariosPredefinidos("FUNCION", eventoForm.date)
+                          if (horarios.length > 0 && !horarioCustom) {
+                            setEventoForm({ ...eventoForm, eventoType: "FUNCION", startTime: horarios[0].start, endTime: horarios[0].end })
+                          } else {
+                            setEventoForm({ ...eventoForm, eventoType: "FUNCION" })
+                            setHorarioCustom(horarios.length === 0)
+                          }
+                        }}
                         className="flex-1"
                       >
                         <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎭</span>
                         Función
                       </Button>
                     </div>
+                    {eventoForm.eventoType === "ENSAYO" && (
+                      <div className="flex gap-1 mt-2">
+                        {/* En domingos solo Ensayo General */}
+                        {esDomingo(eventoForm.date) ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="default"
+                            className="flex-1 text-xs"
+                            disabled
+                          >
+                            Ensayo General (único en domingos)
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={eventoForm.ensayoTipo === "ENSAYO" ? "default" : "outline"}
+                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "ENSAYO" })}
+                              className="flex-1 text-xs"
+                            >
+                              Ensayo
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={eventoForm.ensayoTipo === "PRE_GENERAL" ? "default" : "outline"}
+                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "PRE_GENERAL" })}
+                              className="flex-1 text-xs"
+                            >
+                              Pre General
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={eventoForm.ensayoTipo === "GENERAL" ? "default" : "outline"}
+                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "GENERAL" })}
+                              className="flex-1 text-xs"
+                            >
+                              General
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Hora inicio</Label>
-                      <Input
-                        type="time"
-                        value={eventoForm.startTime}
-                        onChange={(e) => setEventoForm({ ...eventoForm, startTime: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Hora fin</Label>
-                      <Input
-                        type="time"
-                        value={eventoForm.endTime}
-                        onChange={(e) => setEventoForm({ ...eventoForm, endTime: e.target.value })}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Horario</Label>
+                    {(() => {
+                      const horariosPredefinidos = getHorariosPredefinidos(eventoForm.eventoType, eventoForm.date)
+                      const tieneHorarios = horariosPredefinidos.length > 0
+
+                      if (!horarioCustom && tieneHorarios) {
+                        return (
+                          <>
+                            <div className="flex gap-2">
+                              {horariosPredefinidos.map((h) => (
+                                <Button
+                                  key={h.start}
+                                  type="button"
+                                  variant={eventoForm.startTime === h.start ? "default" : "outline"}
+                                  className="flex-1"
+                                  onClick={() => setEventoForm({ ...eventoForm, startTime: h.start, endTime: h.end })}
+                                >
+                                  {h.label}
+                                </Button>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground hover:text-foreground underline"
+                              onClick={() => setHorarioCustom(true)}
+                            >
+                              Usar horario personalizado
+                            </button>
+                          </>
+                        )
+                      }
+
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Inicio</Label>
+                              <Input
+                                type="time"
+                                value={eventoForm.startTime}
+                                onChange={(e) => setEventoForm({ ...eventoForm, startTime: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Fin</Label>
+                              <Input
+                                type="time"
+                                value={eventoForm.endTime}
+                                onChange={(e) => setEventoForm({ ...eventoForm, endTime: e.target.value })}
+                                required
+                              />
+                            </div>
+                          </div>
+                          {tieneHorarios && (
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground hover:text-foreground underline"
+                              onClick={() => {
+                                setHorarioCustom(false)
+                                setEventoForm({ ...eventoForm, startTime: horariosPredefinidos[0].start, endTime: horariosPredefinidos[0].end })
+                              }}
+                            >
+                              Usar horario predefinido
+                            </button>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                   {eventoForm.tituloId && (
                     <div className="p-3 bg-muted/50 rounded-lg text-sm">
@@ -1831,7 +2075,17 @@ export default function DashboardPage() {
                       <Button
                         type="button"
                         variant={eventoForm.eventoType === "ENSAYO" ? "default" : "outline"}
-                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "ENSAYO" })}
+                        onClick={() => {
+                          const horarios = getHorariosPredefinidos("ENSAYO", eventoForm.date)
+                          // En domingos, forzar ensayoTipo a GENERAL
+                          const ensayoTipo = esDomingo(eventoForm.date) ? "GENERAL" : (eventoForm.ensayoTipo || "ENSAYO")
+                          if (horarios.length > 0 && !horarioCustom) {
+                            setEventoForm({ ...eventoForm, eventoType: "ENSAYO", ensayoTipo, startTime: horarios[0].start, endTime: horarios[0].end })
+                          } else {
+                            setEventoForm({ ...eventoForm, eventoType: "ENSAYO", ensayoTipo })
+                            setHorarioCustom(horarios.length === 0)
+                          }
+                        }}
                         className="flex-1"
                       >
                         <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎵</span>
@@ -1840,33 +2094,138 @@ export default function DashboardPage() {
                       <Button
                         type="button"
                         variant={eventoForm.eventoType === "FUNCION" ? "default" : "outline"}
-                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "FUNCION" })}
+                        onClick={() => {
+                          const horarios = getHorariosPredefinidos("FUNCION", eventoForm.date)
+                          if (horarios.length > 0 && !horarioCustom) {
+                            setEventoForm({ ...eventoForm, eventoType: "FUNCION", startTime: horarios[0].start, endTime: horarios[0].end })
+                          } else {
+                            setEventoForm({ ...eventoForm, eventoType: "FUNCION" })
+                            setHorarioCustom(horarios.length === 0)
+                          }
+                        }}
                         className="flex-1"
                       >
                         <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎭</span>
                         Función
                       </Button>
                     </div>
+                    {eventoForm.eventoType === "ENSAYO" && (
+                      <div className="flex gap-1 mt-2">
+                        {/* En domingos solo Ensayo General */}
+                        {esDomingo(eventoForm.date) ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="default"
+                            className="flex-1 text-xs"
+                            disabled
+                          >
+                            Ensayo General (único en domingos)
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={eventoForm.ensayoTipo === "ENSAYO" ? "default" : "outline"}
+                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "ENSAYO" })}
+                              className="flex-1 text-xs"
+                            >
+                              Ensayo
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={eventoForm.ensayoTipo === "PRE_GENERAL" ? "default" : "outline"}
+                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "PRE_GENERAL" })}
+                              className="flex-1 text-xs"
+                            >
+                              Pre General
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={eventoForm.ensayoTipo === "GENERAL" ? "default" : "outline"}
+                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "GENERAL" })}
+                              className="flex-1 text-xs"
+                            >
+                              General
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label>Hora inicio</Label>
-                      <Input
-                        type="time"
-                        value={eventoForm.startTime}
-                        onChange={(e) => setEventoForm({ ...eventoForm, startTime: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Hora fin</Label>
-                      <Input
-                        type="time"
-                        value={eventoForm.endTime}
-                        onChange={(e) => setEventoForm({ ...eventoForm, endTime: e.target.value })}
-                        required
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label>Horario</Label>
+                    {(() => {
+                      const horariosPredefinidos = getHorariosPredefinidos(eventoForm.eventoType, eventoForm.date)
+                      const tieneHorarios = horariosPredefinidos.length > 0
+
+                      if (!horarioCustom && tieneHorarios) {
+                        return (
+                          <>
+                            <div className="flex gap-2">
+                              {horariosPredefinidos.map((h) => (
+                                <Button
+                                  key={h.start}
+                                  type="button"
+                                  variant={eventoForm.startTime === h.start ? "default" : "outline"}
+                                  className="flex-1"
+                                  onClick={() => setEventoForm({ ...eventoForm, startTime: h.start, endTime: h.end })}
+                                >
+                                  {h.label}
+                                </Button>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground hover:text-foreground underline"
+                              onClick={() => setHorarioCustom(true)}
+                            >
+                              Usar horario personalizado
+                            </button>
+                          </>
+                        )
+                      }
+
+                      return (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Inicio</Label>
+                              <Input
+                                type="time"
+                                value={eventoForm.startTime}
+                                onChange={(e) => setEventoForm({ ...eventoForm, startTime: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Fin</Label>
+                              <Input
+                                type="time"
+                                value={eventoForm.endTime}
+                                onChange={(e) => setEventoForm({ ...eventoForm, endTime: e.target.value })}
+                                required
+                              />
+                            </div>
+                          </div>
+                          {tieneHorarios && (
+                            <button
+                              type="button"
+                              className="text-xs text-muted-foreground hover:text-foreground underline"
+                              onClick={() => {
+                                setHorarioCustom(false)
+                                setEventoForm({ ...eventoForm, startTime: horariosPredefinidos[0].start, endTime: horariosPredefinidos[0].end })
+                              }}
+                            >
+                              Usar horario predefinido
+                            </button>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("eventos")}>
