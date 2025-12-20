@@ -708,9 +708,45 @@ export default function DashboardPage() {
             <CardContent className="p-4">
               <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
                 {/* Header del calendario */}
-                <div className="flex items-center justify-between mb-4">
-                  {/* IZQUIERDA: Botones Mes/Semana/Hoy */}
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                  {/* Fila superior en mobile: navegación centrada */}
+                  <div className="flex items-center justify-center md:justify-start gap-2 order-1 md:order-2">
+                    <button
+                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                      onClick={() => vistaCalendario === "mes"
+                        ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))
+                        : navegarSemana(-1)
+                      }
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <h2 className="text-lg md:text-xl font-semibold min-w-[180px] md:min-w-[220px] text-center">
+                      {vistaCalendario === "mes"
+                        ? format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
+                        : (() => {
+                            const semana = getSemanaActual()
+                            const inicio = semana[0]
+                            const fin = semana[6]
+                            if (inicio.getMonth() === fin.getMonth()) {
+                              return `${inicio.getDate()} - ${fin.getDate()} ${format(fin, "MMMM yyyy", { locale: es })}`
+                            }
+                            return `${inicio.getDate()} ${format(inicio, "MMM", { locale: es })} - ${fin.getDate()} ${format(fin, "MMM yyyy", { locale: es })}`
+                          })()
+                      }
+                    </h2>
+                    <button
+                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                      onClick={() => vistaCalendario === "mes"
+                        ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))
+                        : navegarSemana(1)
+                      }
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Fila inferior en mobile: botones de vista */}
+                  <div className="flex items-center justify-center md:justify-start gap-1 order-2 md:order-1">
                     <Button
                       variant={vistaCalendario === "mes" ? "default" : "outline"}
                       size="sm"
@@ -738,44 +774,8 @@ export default function DashboardPage() {
                     </Button>
                   </div>
 
-                  {/* CENTRO: Navegación con flechas y título del mes */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
-                      onClick={() => vistaCalendario === "mes"
-                        ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))
-                        : navegarSemana(-1)
-                      }
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <h2 className="text-xl font-semibold min-w-[220px] text-center">
-                      {vistaCalendario === "mes"
-                        ? format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
-                        : (() => {
-                            const semana = getSemanaActual()
-                            const inicio = semana[0]
-                            const fin = semana[6]
-                            if (inicio.getMonth() === fin.getMonth()) {
-                              return `${inicio.getDate()} - ${fin.getDate()} ${format(fin, "MMMM yyyy", { locale: es })}`
-                            }
-                            return `${inicio.getDate()} ${format(inicio, "MMM", { locale: es })} - ${fin.getDate()} ${format(fin, "MMM yyyy", { locale: es })}`
-                          })()
-                      }
-                    </h2>
-                    <button
-                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
-                      onClick={() => vistaCalendario === "mes"
-                        ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))
-                        : navegarSemana(1)
-                      }
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-
-                  {/* DERECHA: Espacio vacío para balancear */}
-                  <div className="w-[180px]"></div>
+                  {/* Espacio para balancear en desktop */}
+                  <div className="hidden md:block w-[180px] order-3"></div>
                 </div>
 
                 {/* Grilla del calendario */}
@@ -840,8 +840,8 @@ export default function DashboardPage() {
                     </>
                   ) : (
                     <>
-                      {/* Vista de Semana */}
-                      <div className="grid grid-cols-7 border border-border">
+                      {/* Vista de Semana - vertical en mobile, horizontal en desktop */}
+                      <div className="grid grid-cols-1 md:grid-cols-7 border border-border">
                         {getSemanaActual().map((dia, idx) => {
                           const isToday = dia.toDateString() === new Date().toDateString()
                           const isSelected = selectedDate?.toDateString() === dia.toDateString()
@@ -849,7 +849,7 @@ export default function DashboardPage() {
                           return (
                             <div
                               key={idx}
-                              className={`min-h-[400px] border-r border-border last:border-r-0 overflow-hidden cursor-pointer transition-all ${
+                              className={`min-h-[120px] md:min-h-[400px] border-b md:border-b-0 md:border-r border-border last:border-b-0 md:last:border-r-0 overflow-hidden cursor-pointer transition-all ${
                                 getDayBgColor(dia)
                               } ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
                                 isSelected ? "ring-2 ring-inset ring-primary" : ""
