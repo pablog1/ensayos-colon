@@ -31,7 +31,14 @@ function getRangoMes(fecha: Date): { inicioMes: Date; finMes: Date } {
  * Obtiene todos los rotativos de un mes (ambos sistemas) de una sola vez
  * Más eficiente que hacer queries individuales por usuario
  */
-async function obtenerRotativosMes(inicioMes: Date, finMes: Date) {
+async function obtenerRotativosMes(mesStr: string) {
+  // mesStr formato: "2025-12"
+  const [year, month] = mesStr.split('-').map(Number)
+
+  // Crear fechas en UTC para evitar problemas de timezone
+  const inicioMes = new Date(Date.UTC(year, month - 1, 1))
+  const finMes = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+
   // Solicitudes antiguas aprobadas
   const solicitudes = await prisma.solicitud.findMany({
     where: {
@@ -41,7 +48,7 @@ async function obtenerRotativosMes(inicioMes: Date, finMes: Date) {
     select: { userId: true },
   })
 
-  // Rotativos nuevos - buscar por eventos del mes
+  // Rotativos nuevos - buscar TODOS y filtrar después
   const rotativos = await prisma.rotativo.findMany({
     where: {
       estado: "APROBADO",
@@ -54,10 +61,10 @@ async function obtenerRotativosMes(inicioMes: Date, finMes: Date) {
     },
   })
 
-  // Filtrar rotativos por fecha del evento (para evitar problemas de timezone)
+  // Filtrar rotativos por mes del evento usando string comparison (evita problemas de timezone)
   const rotativosFiltrados = rotativos.filter(r => {
-    const eventDate = new Date(r.event.date)
-    return eventDate >= inicioMes && eventDate <= finMes
+    const eventDateStr = r.event.date.toISOString().substring(0, 7) // YYYY-MM
+    return eventDateStr === mesStr
   })
 
   // Agrupar por userId
@@ -77,17 +84,24 @@ async function obtenerRotativosMes(inicioMes: Date, finMes: Date) {
 }
 
 /**
+ * Convierte una fecha a string YYYY-MM
+ */
+function fechaAMesStr(fecha: Date): string {
+  return `${fecha.getUTCFullYear()}-${String(fecha.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
  * Calcula el promedio de descansos del grupo para un mes especifico
  */
 export async function calcularPromedioGrupo(mes: Date): Promise<number> {
-  const { inicioMes, finMes } = getRangoMes(mes)
+  const mesStr = fechaAMesStr(mes)
 
   // Contar todos los usuarios (ADMIN e INTEGRANTE)
   const totalUsuarios = await prisma.user.count()
 
   if (totalUsuarios === 0) return 0
 
-  const { totalRotativos } = await obtenerRotativosMes(inicioMes, finMes)
+  const { totalRotativos } = await obtenerRotativosMes(mesStr)
 
   return totalRotativos / totalUsuarios
 }
@@ -99,10 +113,10 @@ export async function calcularEstadisticasUsuario(
   userId: string,
   mes: Date
 ): Promise<DescansoStats> {
-  const { inicioMes, finMes } = getRangoMes(mes)
+  const mesStr = fechaAMesStr(mes)
 
   // Obtener todos los rotativos del mes de una sola vez
-  const { porUsuario, totalRotativos } = await obtenerRotativosMes(inicioMes, finMes)
+  const { porUsuario, totalRotativos } = await obtenerRotativosMes(mesStr)
   const totalUsuarios = await prisma.user.count()
 
   const descansosAprobados = porUsuario[userId] || 0
@@ -174,9 +188,12 @@ export async function validarSolicitud(
 
 /**
  * Obtiene estadisticas generales del mes para todos los usuarios
+ * @param mesStr - Formato "YYYY-MM" (ej: "2025-12")
  */
-export async function obtenerEstadisticasGenerales(mes: Date) {
-  const { inicioMes, finMes } = getRangoMes(mes)
+export async function obtenerEstadisticasGenerales(mesStr: string) {
+  const [year, month] = mesStr.split('-').map(Number)
+  const inicioMes = new Date(Date.UTC(year, month - 1, 1))
+  const finMes = new Date(Date.UTC(year, month, 0, 23, 59, 59))
 
   // Obtener TODOS los usuarios (ADMIN e INTEGRANTE)
   const usuarios = await prisma.user.findMany({
@@ -191,7 +208,7 @@ export async function obtenerEstadisticasGenerales(mes: Date) {
   })
 
   // Obtener todos los rotativos del mes de una sola vez (optimizado)
-  const { porUsuario, totalRotativos } = await obtenerRotativosMes(inicioMes, finMes)
+  const { porUsuario, totalRotativos } = await obtenerRotativosMes(mesStr)
 
   const promedioGrupo = usuarios.length > 0 ? totalRotativos / usuarios.length : 0
   const limiteMaximo = promedioGrupo * 1.05
@@ -229,7 +246,7 @@ export async function obtenerEstadisticasGenerales(mes: Date) {
   estadisticasPorUsuario.sort((a, b) => b.descansosAprobados - a.descansosAprobados)
 
   return {
-    mes: mes.toISOString().slice(0, 7),
+    mes: mesStr,
     totalIntegrantes: usuarios.length,
     promedioDescansos: Math.round(promedioGrupo * 100) / 100,
     limiteMaximo: Math.round(limiteMaximo * 100) / 100,

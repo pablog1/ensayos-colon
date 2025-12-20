@@ -15,24 +15,28 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const mesParam = searchParams.get("mes")
 
-  // Usar mes actual si no se especifica
-  const mes = mesParam
-    ? new Date(mesParam + "-01")
-    : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  // Usar mes actual si no se especifica (formato YYYY-MM)
+  const mesStr = mesParam
+    ? mesParam
+    : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
 
   if (session.user.role === "ADMIN") {
     // Admin ve estadisticas de todos
-    const stats = await obtenerEstadisticasGenerales(mes)
+    const stats = await obtenerEstadisticasGenerales(mesStr)
     return NextResponse.json(stats)
   } else {
     // Integrante ve sus propias estadisticas y el promedio
+    // Crear fecha para la función existente
+    const [year, month] = mesStr.split('-').map(Number)
+    const mes = new Date(Date.UTC(year, month - 1, 1))
+
     const statsPersonales = await calcularEstadisticasUsuario(
       session.user.id,
       mes
     )
 
     return NextResponse.json({
-      mes: mes.toISOString().slice(0, 7),
+      mes: mesStr,
       personal: {
         descansosAprobados: statsPersonales.descansosAprobados,
         porcentajeVsPromedio:
