@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(solicitudes)
 }
 
-// POST /api/solicitudes - Crear solicitud
+// POST /api/solicitudes - Crear solicitud o rotativo
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
@@ -70,8 +70,85 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { fecha } = body
+  const { fecha, eventId } = body
 
+  // Si hay eventId, crear Rotativo vinculado al evento
+  if (eventId) {
+    // Verificar que el evento existe
+    const evento = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        titulo: true,
+        rotativos: true,
+      },
+    })
+
+    if (!evento) {
+      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 })
+    }
+
+    // Verificar que no exista ya un rotativo del usuario en este evento
+    const existente = await prisma.rotativo.findFirst({
+      where: {
+        userId: session.user.id,
+        eventId: eventId,
+      },
+    })
+
+    if (existente) {
+      return NextResponse.json(
+        { error: "Ya tienes un rotativo en este evento" },
+        { status: 400 }
+      )
+    }
+
+    // Calcular cupo efectivo
+    const cupoEfectivo = evento.cupoOverride ??
+      (evento.titulo
+        ? evento.eventoType === "ENSAYO"
+          ? evento.titulo.cupoEnsayo
+          : evento.titulo.cupoFuncion
+        : 2)
+
+    // Verificar cupo disponible
+    if (evento.rotativos.length >= cupoEfectivo) {
+      return NextResponse.json(
+        { error: "No hay cupo disponible en este evento" },
+        { status: 400 }
+      )
+    }
+
+    // Crear rotativo
+    const rotativo = await prisma.rotativo.create({
+      data: {
+        userId: session.user.id,
+        eventId: eventId,
+        estado: "APROBADO", // Auto-aprobado si hay cupo
+        tipo: "VOLUNTARIO",
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            alias: true,
+            avatar: true,
+          },
+        },
+        event: {
+          select: {
+            id: true,
+            title: true,
+            date: true,
+          },
+        },
+      },
+    })
+
+    return NextResponse.json(rotativo)
+  }
+
+  // Flujo original para solicitudes sin evento específico
   if (!fecha) {
     return NextResponse.json({ error: "Fecha es requerida" }, { status: 400 })
   }

@@ -92,7 +92,9 @@ export async function POST(
     )
   }
 
-  const fechaEvento = new Date(date)
+  // Parsear fecha como mediodía UTC para evitar problemas de timezone
+  const [year, month, day] = date.split('-').map(Number)
+  const fechaEvento = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
 
   // Verificar que la fecha este dentro de la temporada
   if (fechaEvento < titulo.season.startDate || fechaEvento > titulo.season.endDate) {

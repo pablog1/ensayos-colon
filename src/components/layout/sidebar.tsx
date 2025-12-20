@@ -13,7 +13,7 @@ import {
   BookOpen,
   Settings,
   Music,
-  CalendarDays,
+  Theater,
 } from "lucide-react"
 
 const navItems = [
@@ -40,18 +40,6 @@ const navItems = [
     label: "Reglas",
     icon: BookOpen,
     roles: ["ADMIN", "INTEGRANTE"],
-  },
-  {
-    href: "/admin/titulos",
-    label: "Títulos",
-    icon: Music,
-    roles: ["ADMIN"],
-  },
-  {
-    href: "/admin/calendario",
-    label: "Calendario Admin",
-    icon: CalendarDays,
-    roles: ["ADMIN"],
   },
   {
     href: "/admin/integrantes",

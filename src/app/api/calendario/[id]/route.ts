@@ -104,7 +104,9 @@ export async function PUT(
   } = {}
 
   if (date) {
-    updateData.date = new Date(date)
+    // Parsear fecha como mediodía UTC para evitar problemas de timezone
+    const [year, month, day] = date.split('-').map(Number)
+    updateData.date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
   }
 
   if (eventoType) {

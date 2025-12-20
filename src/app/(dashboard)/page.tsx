@@ -5,26 +5,62 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar } from "@/components/ui/calendar"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import Link from "next/link"
-import {
-  getArgentinaDateKey,
-  formatFullDate,
-  formatDayMonth,
-} from "@/lib/date-utils"
-import { es } from "date-fns/locale"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
 import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Music,
+  Theater,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Calendar,
+  Clock,
+  Users,
+} from "lucide-react"
+
+interface Evento {
+  id: string
+  title: string
+  date: string
+  startTime: string
+  endTime: string
+  eventoType: "ENSAYO" | "FUNCION"
+  tituloId: string
+  tituloName: string
+  tituloType: string
+  tituloColor: string | null
+  cupoEfectivo: number
+  rotativosUsados: number
+  cupoDisponible: number
+  rotativos: {
+    id: string
+    estado: string
+    user: {
+      id: string
+      name: string
+      alias: string | null
+      avatar: string | null
+    }
+  }[]
+}
 
 interface Solicitud {
   id: string
   fecha: string
   estado: string
-  esCasoEspecial: boolean
   user: {
     id: string
     name: string
@@ -33,295 +69,1536 @@ interface Solicitud {
   }
 }
 
-interface DescansosPorFecha {
-  [fecha: string]: Solicitud[]
+interface Titulo {
+  id: string
+  name: string
+  type: string
+  color: string | null
+  cupoEnsayo: number
+  cupoFuncion: number
 }
+
+type EventosPorFecha = Record<string, Evento[]>
+
+type SidebarMode =
+  | "rotativos"
+  | "eventos"
+  | "titulos"
+  | "nuevo-titulo"
+  | "editar-titulo"
+  | "nuevo-evento"
+  | "editar-evento"
+  | "detalle-evento"
+  | "solicitar-rotativo"
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "ADMIN"
+  const userId = session?.user?.id
+
+  const [eventos, setEventos] = useState<Evento[]>([])
+  const [eventosPorFecha, setEventosPorFecha] = useState<EventosPorFecha>({})
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
-  const [selectedMonth, setSelectedMonth] = useState(new Date())
+  const [titulos, setTitulos] = useState<Titulo[]>([])
   const [loading, setLoading] = useState(true)
-  const [popoverFecha, setPopoverFecha] = useState<string | null>(null)
+  const [mesActual, setMesActual] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null)
+  const [vistaCalendario, setVistaCalendario] = useState<"mes" | "semana">("mes")
+
+  // Sidebar state
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("rotativos")
+  const [editingTitulo, setEditingTitulo] = useState<Titulo | null>(null)
+  const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
   const [verSoloMios, setVerSoloMios] = useState(true)
 
-  // Filtrar solicitudes para la lista lateral
-  const solicitudesFiltradas = verSoloMios
-    ? solicitudes.filter((s) => s.user.id === session?.user?.id)
-    : solicitudes
+  // Form states
+  const [tituloForm, setTituloForm] = useState({
+    name: "",
+    type: "OPERA" as string,
+    color: "#3b82f6",
+    cupoEnsayo: 2,
+    cupoFuncion: 4,
+  })
 
-  const fetchSolicitudes = useCallback(async () => {
-    setLoading(true)
-    const mes = `${selectedMonth.getFullYear()}-${String(selectedMonth.getMonth() + 1).padStart(2, "0")}`
-    // todas=true para mostrar solicitudes de todos los integrantes en el calendario
-    const res = await fetch(`/api/solicitudes?mes=${mes}&todas=true`)
-    const data = await res.json()
-    setSolicitudes(data)
+  const [eventoForm, setEventoForm] = useState({
+    tituloId: "",
+    eventoType: "ENSAYO" as "ENSAYO" | "FUNCION",
+    date: "",
+    startTime: "10:00",
+    endTime: "13:00",
+  })
+
+  const [submitting, setSubmitting] = useState(false)
+
+  const fetchTitulos = useCallback(async () => {
+    const res = await fetch("/api/titulos")
+    if (res.ok) {
+      const data = await res.json()
+      setTitulos(data)
+    }
+  }, [])
+
+  const fetchSolicitudes = useCallback(async (mes: Date) => {
+    const mesStr = format(mes, "yyyy-MM")
+    const res = await fetch(`/api/solicitudes?mes=${mesStr}&todas=true`)
+    if (res.ok) {
+      const data = await res.json()
+      setSolicitudes(data)
+    }
+  }, [])
+
+  const fetchEventos = useCallback(async (mes: Date) => {
+    const mesStr = format(mes, "yyyy-MM")
+    const res = await fetch(`/api/calendario?mes=${mesStr}`)
+    if (res.ok) {
+      const data = await res.json()
+      setEventos(data)
+
+      const porFecha: EventosPorFecha = {}
+      for (const evento of data) {
+        const fechaKey = evento.date.substring(0, 10)
+        if (!porFecha[fechaKey]) {
+          porFecha[fechaKey] = []
+        }
+        porFecha[fechaKey].push(evento)
+      }
+      setEventosPorFecha(porFecha)
+    }
     setLoading(false)
-  }, [selectedMonth])
+  }, [])
 
   useEffect(() => {
-    fetchSolicitudes()
-  }, [fetchSolicitudes])
+    fetchTitulos()
+  }, [fetchTitulos])
 
-  // Agrupar solicitudes por fecha (usando timezone de Argentina)
-  const descansosPorFecha: DescansosPorFecha = solicitudes.reduce(
-    (acc, sol) => {
-      const fechaKey = getArgentinaDateKey(sol.fecha)
-      if (!acc[fechaKey]) {
-        acc[fechaKey] = []
-      }
-      acc[fechaKey].push(sol)
-      return acc
-    },
-    {} as DescansosPorFecha
-  )
+  useEffect(() => {
+    fetchEventos(mesActual)
+    fetchSolicitudes(mesActual)
+  }, [mesActual, fetchEventos, fetchSolicitudes])
 
-  const getDescansosDelDia = (date: Date): Solicitud[] => {
-    const fechaKey = getArgentinaDateKey(date)
-    return descansosPorFecha[fechaKey] || []
+  const getEventosDelDia = (date: Date): Evento[] => {
+    const fechaKey = format(date, "yyyy-MM-dd")
+    return eventosPorFecha[fechaKey] || []
   }
 
-  const renderDay = (date: Date) => {
-    const descansosDelDia = getDescansosDelDia(date)
-    const fechaKey = getArgentinaDateKey(date)
+  // Obtener solicitudes del día (sistema antiguo)
+  const getSolicitudesDelDia = (date: Date): Solicitud[] => {
+    const fechaKey = format(date, "yyyy-MM-dd")
+    return solicitudes.filter(s => {
+      const solicitudFecha = s.fecha.substring(0, 10)
+      return solicitudFecha === fechaKey
+    })
+  }
 
-    if (descansosDelDia.length === 0) {
-      return <span>{date.getDate()}</span>
+  const getEventColor = (evento: Evento) => {
+    if (evento.tituloColor) {
+      return evento.tituloColor
+    }
+    return evento.eventoType === "ENSAYO" ? "#3b82f6" : "#f59e0b"
+  }
+
+  const getDayBgColor = (date: Date) => {
+    const dayOfWeek = date.getDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return "bg-gray-100"
+    }
+    const weekNumber = Math.floor((date.getDate() - 1) / 7)
+    return weekNumber % 2 === 0 ? "bg-white" : "bg-gray-50"
+  }
+
+  const formatTime = (isoString: string) => {
+    if (!isoString) return ""
+    const date = new Date(isoString)
+    return format(date, "HH:mm")
+  }
+
+  // Verificar si el usuario ya tiene rotativo en este evento
+  const userHasRotativo = (evento: Evento) => {
+    return evento.rotativos?.some(r => r.user.id === userId)
+  }
+
+  // Handlers para títulos
+  const handleCreateTitulo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    const res = await fetch("/api/titulos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(tituloForm),
+    })
+
+    if (res.ok) {
+      toast.success("Título creado")
+      fetchTitulos()
+      setSidebarMode("titulos")
+      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4 })
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al crear título")
+    }
+    setSubmitting(false)
+  }
+
+  const handleUpdateTitulo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTitulo) return
+    setSubmitting(true)
+
+    const res = await fetch(`/api/titulos/${editingTitulo.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(tituloForm),
+    })
+
+    if (res.ok) {
+      toast.success("Título actualizado")
+      fetchTitulos()
+      fetchEventos(mesActual)
+      setSidebarMode("titulos")
+      setEditingTitulo(null)
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al actualizar")
+    }
+    setSubmitting(false)
+  }
+
+  const handleDeleteTitulo = async (titulo: Titulo) => {
+    if (!confirm(`¿Eliminar "${titulo.name}"? Se eliminarán todos sus eventos.`)) return
+
+    const res = await fetch(`/api/titulos/${titulo.id}`, { method: "DELETE" })
+
+    if (res.ok) {
+      toast.success("Título eliminado")
+      fetchTitulos()
+      fetchEventos(mesActual)
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al eliminar")
+    }
+  }
+
+  // Handlers para eventos
+  const handleCreateEvento = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!eventoForm.tituloId || !eventoForm.date) {
+      toast.error("Completa todos los campos")
+      return
+    }
+    setSubmitting(true)
+
+    const res = await fetch(`/api/titulos/${eventoForm.tituloId}/eventos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date: eventoForm.date,
+        eventoType: eventoForm.eventoType,
+        startTime: `${eventoForm.date}T${eventoForm.startTime}:00`,
+        endTime: `${eventoForm.date}T${eventoForm.endTime}:00`,
+      }),
+    })
+
+    if (res.ok) {
+      toast.success("Evento creado")
+      fetchEventos(mesActual)
+      setSidebarMode("eventos")
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al crear evento")
+    }
+    setSubmitting(false)
+  }
+
+  const handleUpdateEvento = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingEvento) return
+    setSubmitting(true)
+
+    const res = await fetch(`/api/calendario/${editingEvento.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventoType: eventoForm.eventoType,
+        date: eventoForm.date,
+        startTime: `${eventoForm.date}T${eventoForm.startTime}:00`,
+        endTime: `${eventoForm.date}T${eventoForm.endTime}:00`,
+      }),
+    })
+
+    if (res.ok) {
+      toast.success("Evento actualizado")
+      fetchEventos(mesActual)
+      setSidebarMode("eventos")
+      setEditingEvento(null)
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al actualizar")
+    }
+    setSubmitting(false)
+  }
+
+  const handleDeleteEvento = async (evento: Evento) => {
+    if (!confirm(`¿Eliminar este evento de "${evento.tituloName}"?`)) return
+
+    const res = await fetch(`/api/calendario/${evento.id}`, { method: "DELETE" })
+
+    if (res.ok) {
+      toast.success("Evento eliminado")
+      fetchEventos(mesActual)
+      setSelectedEvento(null)
+      setSidebarMode("eventos")
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al eliminar")
+    }
+  }
+
+  // Handler para solicitar rotativo
+  const handleSolicitarRotativo = async (evento: Evento) => {
+    if (userHasRotativo(evento)) {
+      toast.error("Ya tienes un rotativo en este evento")
+      return
     }
 
-    const aprobados = descansosDelDia.filter((d) => d.estado === "APROBADA")
-    const pendientes = descansosDelDia.filter((d) => d.estado === "PENDIENTE")
+    if (evento.cupoDisponible <= 0) {
+      toast.error("No hay cupo disponible")
+      return
+    }
+
+    setSubmitting(true)
+    const res = await fetch("/api/solicitudes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventId: evento.id,
+      }),
+    })
+
+    if (res.ok) {
+      toast.success("Rotativo solicitado")
+      await fetchEventos(mesActual)
+      setSidebarMode("rotativos")
+      setSelectedEvento(null)
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al solicitar")
+    }
+    setSubmitting(false)
+  }
+
+  // Handler para cancelar rotativo
+  const handleCancelarRotativo = async (evento: Evento) => {
+    const miRotativo = evento.rotativos?.find(r => r.user.id === userId)
+    if (!miRotativo) return
+
+    if (!confirm("¿Cancelar tu rotativo en este evento?")) return
+
+    setSubmitting(true)
+    const res = await fetch(`/api/solicitudes/${miRotativo.id}`, {
+      method: "DELETE",
+    })
+
+    if (res.ok) {
+      toast.success("Rotativo cancelado")
+      await fetchEventos(mesActual)
+      setSidebarMode("rotativos")
+      setSelectedEvento(null)
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al cancelar")
+    }
+    setSubmitting(false)
+  }
+
+  const openEditTitulo = (titulo: Titulo) => {
+    setEditingTitulo(titulo)
+    setTituloForm({
+      name: titulo.name,
+      type: titulo.type,
+      color: titulo.color || "#3b82f6",
+      cupoEnsayo: titulo.cupoEnsayo,
+      cupoFuncion: titulo.cupoFuncion,
+    })
+    setSidebarMode("editar-titulo")
+  }
+
+  const openEditEvento = (evento: Evento) => {
+    setEditingEvento(evento)
+    setEventoForm({
+      tituloId: evento.tituloId,
+      eventoType: evento.eventoType,
+      date: evento.date.substring(0, 10),
+      startTime: formatTime(evento.startTime) || "10:00",
+      endTime: formatTime(evento.endTime) || "13:00",
+    })
+    setSidebarMode("editar-evento")
+  }
+
+  const openNuevoEvento = (date?: Date) => {
+    setEventoForm({
+      tituloId: titulos[0]?.id || "",
+      eventoType: "ENSAYO",
+      date: date ? format(date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      startTime: "10:00",
+      endTime: "13:00",
+    })
+    setSidebarMode("nuevo-evento")
+  }
+
+  const openDetalleEvento = (evento: Evento) => {
+    setSelectedEvento(evento)
+    setSidebarMode("detalle-evento")
+  }
+
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date)
+    setSelectedEvento(null)
+    setSidebarMode("eventos")
+  }
+
+  // Obtener las fechas de la semana actual (lunes a domingo)
+  const getSemanaActual = () => {
+    const fechaBase = selectedDate || new Date()
+    const dayOfWeek = fechaBase.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Ajustar para que lunes sea el primer día
+    const lunes = new Date(fechaBase)
+    lunes.setDate(fechaBase.getDate() + diff)
+
+    const dias: Date[] = []
+    for (let i = 0; i < 7; i++) {
+      const dia = new Date(lunes)
+      dia.setDate(lunes.getDate() + i)
+      dias.push(dia)
+    }
+    return dias
+  }
+
+  const navegarSemana = (direccion: number) => {
+    const nuevaFecha = new Date(selectedDate || new Date())
+    nuevaFecha.setDate(nuevaFecha.getDate() + (direccion * 7))
+    setSelectedDate(nuevaFecha)
+    // Actualizar mes si cambia
+    if (nuevaFecha.getMonth() !== mesActual.getMonth() || nuevaFecha.getFullYear() !== mesActual.getFullYear()) {
+      setMesActual(new Date(nuevaFecha.getFullYear(), nuevaFecha.getMonth(), 1))
+    }
+  }
+
+  // Renderizado para vista de mes (compacto)
+  const renderDayContentMes = (date: Date) => {
+    const eventosDelDia = getEventosDelDia(date)
+    const solicitudesDelDia = getSolicitudesDelDia(date)
+
+    const tieneContenido = eventosDelDia.length > 0 || solicitudesDelDia.length > 0
 
     return (
-      <Popover
-        open={popoverFecha === fechaKey}
-        onOpenChange={(open) => setPopoverFecha(open ? fechaKey : null)}
-      >
-        <PopoverTrigger asChild>
-          <div className="relative w-full h-full flex flex-col items-center cursor-pointer py-1">
-            <span className="font-medium text-sm md:text-base">{date.getDate()}</span>
-            {/* Mobile: solo puntos */}
-            <div className="flex gap-0.5 mt-1 md:hidden">
-              {descansosDelDia.slice(0, 3).map((d, i) => (
+      <div className="relative w-full h-full flex flex-col py-1 overflow-hidden">
+        <span className="font-semibold text-base text-center">{date.getDate()}</span>
+        {tieneContenido && (
+          <div className="flex flex-col gap-1.5 mt-1 w-full px-1 overflow-y-auto flex-1">
+            {/* Eventos con sus rotativos */}
+            {eventosDelDia.map((e, i) => (
+              <div key={`evento-${i}`} className="flex flex-col">
+                {/* Evento */}
                 <div
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    d.estado === "APROBADA" ? "bg-green-500" : "bg-yellow-500"
-                  }`}
-                />
-              ))}
-              {descansosDelDia.length > 3 && (
-                <span className="text-[8px] text-muted-foreground">+{descansosDelDia.length - 3}</span>
-              )}
-            </div>
-            {/* Desktop: nombres con avatares */}
-            <div className="hidden md:flex flex-col gap-0.5 mt-1 w-full px-0.5">
-              {descansosDelDia.slice(0, 2).map((d, i) => (
-                <div
-                  key={i}
-                  className={`text-[9px] leading-tight truncate px-1 py-0.5 rounded flex items-center gap-0.5 ${
-                    d.estado === "APROBADA"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-yellow-100 text-yellow-800"
-                  }`}
+                  className="text-[11px] leading-snug px-1.5 py-1 rounded-t text-white font-medium"
+                  style={{ backgroundColor: getEventColor(e) }}
                 >
-                  {d.user.avatar && <span className="text-[10px]">{d.user.avatar}</span>}
-                  {d.user.alias || d.user.name.split(" ")[0]}
+                  <div className="flex items-center gap-1">
+                    <span>{e.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
+                    <span>{formatTime(e.startTime)}</span>
+                  </div>
+                  <div className="line-clamp-2">{e.tituloName}</div>
                 </div>
-              ))}
-              {descansosDelDia.length > 2 && (
-                <div className="text-[9px] text-muted-foreground text-center">
-                  +{descansosDelDia.length - 2} más
-                </div>
-              )}
-            </div>
-          </div>
-        </PopoverTrigger>
-        <PopoverContent className="w-72 p-4" align="center">
-          <div className="space-y-3">
-            <div>
-              <p className="font-semibold">
-                {formatFullDate(date)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {descansosDelDia.length} rotativo
-                {descansosDelDia.length > 1 ? "s" : ""}
-              </p>
-            </div>
-
-            {aprobados.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-green-700 mb-1">
-                  Aprobados ({aprobados.length})
-                </p>
-                <div className="space-y-1">
-                  {aprobados.map((d) => (
-                    <div
-                      key={d.id}
-                      className="flex items-center gap-2 text-sm bg-green-50 p-2 rounded"
-                    >
-                      {d.user.avatar ? (
-                        <span className="text-lg flex-shrink-0">{d.user.avatar}</span>
-                      ) : (
-                        <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">
-                          {d.user.alias || d.user.name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {/* Rotativos del evento */}
+                {e.rotativos && e.rotativos.length > 0 && (
+                  <div className="bg-gray-100 rounded-b px-1.5 py-1 flex flex-wrap gap-1">
+                    {e.rotativos.slice(0, 4).map((r, j) => (
+                      <span
+                        key={j}
+                        className={`text-[10px] px-1.5 py-0.5 rounded ${
+                          r.estado === "APROBADO" ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
+                        }`}
+                      >
+                        {r.user.avatar || ""}{r.user.alias || r.user.name.split(" ")[0]}
+                      </span>
+                    ))}
+                    {e.rotativos.length > 4 && (
+                      <span className="text-[10px] text-muted-foreground">+{e.rotativos.length - 4}</span>
+                    )}
+                  </div>
+                )}
+                {/* Cupo disponible */}
+                {e.cupoDisponible > 0 && (!e.rotativos || e.rotativos.length === 0) && (
+                  <div className="bg-gray-50 rounded-b px-1.5 py-0.5">
+                    <span className="text-[10px] text-muted-foreground">{e.cupoDisponible} disp.</span>
+                  </div>
+                )}
               </div>
-            )}
-
-            {pendientes.length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-yellow-700 mb-1">
-                  Pendientes ({pendientes.length})
-                </p>
-                <div className="space-y-1">
-                  {pendientes.map((d) => (
-                    <div
-                      key={d.id}
-                      className="flex items-center gap-2 text-sm bg-yellow-50 p-2 rounded"
-                    >
-                      {d.user.avatar ? (
-                        <span className="text-lg flex-shrink-0">{d.user.avatar}</span>
-                      ) : (
-                        <div className="w-2 h-2 rounded-full bg-yellow-500 flex-shrink-0" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">
-                          {d.user.alias || d.user.name}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            ))}
+            {/* Solicitudes (sistema antiguo) */}
+            {solicitudesDelDia.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {solicitudesDelDia.slice(0, 5).map((s, i) => (
+                  <span
+                    key={`sol-${i}`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      s.estado === "APROBADA" ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
+                    }`}
+                  >
+                    {s.user.avatar || ""}{s.user.alias || s.user.name.split(" ")[0]}
+                  </span>
+                ))}
+                {solicitudesDelDia.length > 5 && (
+                  <span className="text-[10px] text-muted-foreground">+{solicitudesDelDia.length - 5}</span>
+                )}
               </div>
             )}
           </div>
-        </PopoverContent>
-      </Popover>
+        )}
+      </div>
     )
   }
 
+  // Renderizado para vista de semana (expandido, más limpio)
+  const renderDayContentSemana = (date: Date) => {
+    const eventosDelDia = getEventosDelDia(date)
+    const solicitudesDelDia = getSolicitudesDelDia(date)
+
+    return (
+      <div className="relative w-full h-full flex flex-col overflow-hidden">
+        {/* Header del día */}
+        <div className="flex items-baseline gap-2 px-3 py-2 border-b bg-muted/30">
+          <span className="font-bold text-xl">{date.getDate()}</span>
+          <span className="text-sm text-muted-foreground capitalize">
+            {format(date, "EEEE", { locale: es })}
+          </span>
+        </div>
+
+        {/* Contenido */}
+        <div className="flex flex-col gap-3 p-3 overflow-y-auto flex-1">
+          {/* Eventos */}
+          {eventosDelDia.map((e, i) => (
+            <div
+              key={`evento-${i}`}
+              className="rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow border"
+              onClick={(ev) => { ev.stopPropagation(); openDetalleEvento(e) }}
+            >
+              {/* Header del evento */}
+              <div
+                className="px-3 py-2 text-white"
+                style={{ backgroundColor: getEventColor(e) }}
+              >
+                <p className="font-semibold text-sm leading-tight">{e.tituloName}</p>
+                <p className="text-xs opacity-90 mt-0.5">
+                  {formatTime(e.startTime)} · {e.rotativosUsados}/{e.cupoEfectivo} rotativos
+                </p>
+              </div>
+
+              {/* Rotativos asignados */}
+              {e.rotativos && e.rotativos.length > 0 && (
+                <div className="px-3 py-2 bg-white border-t">
+                  <div className="flex flex-wrap gap-1">
+                    {e.rotativos.map((r, j) => (
+                      <span
+                        key={j}
+                        className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800"
+                      >
+                        {r.user.avatar || ""} {r.user.alias || r.user.name.split(" ")[0]}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Indicador de cupo */}
+              {e.cupoDisponible > 0 && (
+                <div className="px-3 py-1.5 bg-green-50 text-green-700 text-xs border-t">
+                  {e.cupoDisponible} {e.cupoDisponible === 1 ? "lugar" : "lugares"} disponible{e.cupoDisponible > 1 ? "s" : ""}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Solicitudes (sistema antiguo) */}
+          {solicitudesDelDia.length > 0 && (
+            <div className="border rounded-lg p-3 bg-amber-50/50">
+              <p className="text-xs font-medium text-amber-800 mb-2">Rotativos (sin evento)</p>
+              <div className="flex flex-wrap gap-1">
+                {solicitudesDelDia.map((s, i) => (
+                  <span
+                    key={`sol-${i}`}
+                    className={`text-xs px-2 py-0.5 rounded-full ${
+                      s.estado === "APROBADA" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {s.user.avatar || ""} {s.user.alias || s.user.name.split(" ")[0]}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sin contenido */}
+          {eventosDelDia.length === 0 && solicitudesDelDia.length === 0 && (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">Sin eventos</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Eventos y solicitudes del día seleccionado
+  const eventosDelDiaSeleccionado = selectedDate ? getEventosDelDia(selectedDate) : []
+  const solicitudesDelDiaSeleccionado = selectedDate ? getSolicitudesDelDia(selectedDate) : []
+
+  // Obtener rotativos de eventos (nuevo sistema)
+  const rotativosDeEventos = eventos.flatMap(e =>
+    (e.rotativos || []).map(r => ({
+      id: r.id,
+      tipo: "evento" as const,
+      fecha: e.date,
+      estado: r.estado,
+      user: r.user,
+      evento: e,
+    }))
+  )
+
+  // Obtener solicitudes (sistema antiguo)
+  const solicitudesFormateadas = solicitudes.map(s => ({
+    id: s.id,
+    tipo: "solicitud" as const,
+    fecha: s.fecha,
+    estado: s.estado,
+    user: s.user,
+    evento: null as Evento | null,
+  }))
+
+  // Combinar y ordenar por fecha
+  const todosLosRotativos = [...rotativosDeEventos, ...solicitudesFormateadas]
+    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
+
+  // Filtrar rotativos según la vista
+  const rotativosFiltrados = verSoloMios
+    ? todosLosRotativos.filter(r => r.user.id === userId)
+    : todosLosRotativos
+
+  // Eventos con cupo disponible para solicitar
+  const eventosConCupo = eventos.filter(e => e.cupoDisponible > 0 && !userHasRotativo(e))
+
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <h1 className="text-xl md:text-2xl font-bold">Calendario de Rotativos</h1>
-        <Link href="/solicitudes/nueva">
-          <Button size="sm" className="w-full sm:w-auto">Solicitar Rotativo</Button>
-        </Link>
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <Calendar className="w-8 h-8 text-primary" />
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold">Calendario</h1>
+          <p className="text-sm text-muted-foreground">
+            Eventos, ensayos, funciones y rotativos
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <Card className="lg:col-span-2 overflow-hidden">
-          <CardContent className="p-2 md:p-6 pt-4 md:pt-6">
-            <Calendar
-              mode="multiple"
-              selected={[]}
-              month={selectedMonth}
-              onMonthChange={setSelectedMonth}
-              locale={es}
-              formatters={{
-                formatCaption: (date) => {
-                  const month = format(date, "LLLL", { locale: es })
-                  return `${month.charAt(0).toUpperCase()}${month.slice(1)} ${date.getFullYear()}`
-                },
-              }}
-              className="rounded-md border w-full [--cell-size:theme(spacing.12)] md:[--cell-size:theme(spacing.20)]"
-              components={{
-                DayButton: ({ day, ...props }) => (
-                  <button
-                    {...props}
-                    className={`${props.className} !h-auto min-h-12 md:min-h-20 w-full`}
-                  >
-                    {renderDay(day.date)}
-                  </button>
-                ),
-              }}
-            />
-            <div className="flex gap-4 mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-green-100 border border-green-300"></div>
-                <span>Aprobado</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-yellow-100 border border-yellow-300"></div>
-                <span>Pendiente</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Calendario - 2/3 del ancho */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardContent className="p-4">
+              <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
+                {/* Header con navegación y toggle de vista */}
+                <div className="flex items-center justify-between mb-4">
+                  {/* Toggle de vista */}
+                  <div className="flex gap-1">
+                    <Button
+                      variant={vistaCalendario === "mes" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setVistaCalendario("mes")}
+                    >
+                      Mes
+                    </Button>
+                    <Button
+                      variant={vistaCalendario === "semana" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setVistaCalendario("semana")}
+                    >
+                      Semana
+                    </Button>
+                  </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Rotativos del Mes</CardTitle>
-            <div className="flex gap-1 mt-2">
-              <Button
-                variant={verSoloMios ? "default" : "outline"}
-                size="sm"
-                onClick={() => setVerSoloMios(true)}
-              >
-                Mis rotativos
-              </Button>
-              <Button
-                variant={!verSoloMios ? "default" : "outline"}
-                size="sm"
-                onClick={() => setVerSoloMios(false)}
-              >
-                Todos
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-gray-500">Cargando...</p>
-            ) : solicitudesFiltradas.length === 0 ? (
-              <p className="text-gray-500">
-                {verSoloMios
-                  ? "No tienes rotativos este mes"
-                  : "No hay rotativos este mes"}
-              </p>
-            ) : (
-              <ul className="space-y-3 max-h-[500px] overflow-y-auto">
-                {solicitudesFiltradas.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                  {/* Navegación */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="p-1 hover:text-primary transition-colors"
+                      onClick={() => vistaCalendario === "mes"
+                        ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))
+                        : navegarSemana(-1)
+                      }
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </button>
+                    <h2 className="text-xl font-semibold min-w-[200px] text-center">
+                      {vistaCalendario === "mes"
+                        ? format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
+                        : (() => {
+                            const semana = getSemanaActual()
+                            const inicio = semana[0]
+                            const fin = semana[6]
+                            if (inicio.getMonth() === fin.getMonth()) {
+                              return `${inicio.getDate()} - ${fin.getDate()} ${format(fin, "MMMM yyyy", { locale: es })}`
+                            }
+                            return `${inicio.getDate()} ${format(inicio, "MMM", { locale: es })} - ${fin.getDate()} ${format(fin, "MMM yyyy", { locale: es })}`
+                          })()
+                      }
+                    </h2>
+                    <button
+                      className="p-1 hover:text-primary transition-colors"
+                      onClick={() => vistaCalendario === "mes"
+                        ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))
+                        : navegarSemana(1)
+                      }
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </button>
+                  </div>
+
+                  {/* Botón hoy */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const hoy = new Date()
+                      setSelectedDate(hoy)
+                      setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
+                    }}
                   >
-                    <div className="flex items-center gap-2">
-                      {s.user.avatar && (
-                        <span className="text-lg">{s.user.avatar}</span>
+                    Hoy
+                  </Button>
+                </div>
+
+                {/* Grilla del calendario */}
+                <div className="w-full">
+                  {vistaCalendario === "mes" ? (
+                    <>
+                      {/* Vista de Mes */}
+                      {/* Días de la semana */}
+                      <div className="grid grid-cols-7 border border-border">
+                        {["lu", "ma", "mi", "ju", "vi", "sá", "do"].map((dia) => (
+                          <div key={dia} className="text-muted-foreground font-medium text-sm py-2 text-center bg-muted/50 border-r border-border last:border-r-0">
+                            {dia}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Celdas del calendario */}
+                      <div className="grid grid-cols-7 border-l border-r border-b border-border">
+                        {(() => {
+                          const firstDay = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
+                          const lastDay = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
+                          const startDayOfWeek = (firstDay.getDay() + 6) % 7
+                          const daysInMonth = lastDay.getDate()
+                          const prevMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 0)
+                          const daysInPrevMonth = prevMonth.getDate()
+
+                          const cells: { date: Date; isOutside: boolean }[] = []
+
+                          for (let i = startDayOfWeek - 1; i >= 0; i--) {
+                            const day = daysInPrevMonth - i
+                            cells.push({ date: new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, day), isOutside: true })
+                          }
+
+                          for (let day = 1; day <= daysInMonth; day++) {
+                            cells.push({ date: new Date(mesActual.getFullYear(), mesActual.getMonth(), day), isOutside: false })
+                          }
+
+                          const remaining = 42 - cells.length
+                          for (let day = 1; day <= remaining; day++) {
+                            cells.push({ date: new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, day), isOutside: true })
+                          }
+
+                          return cells.map((cell, idx) => {
+                            const isToday = cell.date.toDateString() === new Date().toDateString()
+                            const isSelected = selectedDate?.toDateString() === cell.date.toDateString()
+
+                            return (
+                              <div
+                                key={idx}
+                                className={`h-36 border-b border-r border-border overflow-hidden cursor-pointer transition-all ${
+                                  cell.isOutside ? "bg-gray-100/50 text-muted-foreground/50" : getDayBgColor(cell.date)
+                                } ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
+                                  isSelected ? "ring-2 ring-inset ring-primary" : ""
+                                } hover:bg-muted/50`}
+                                onClick={() => handleDayClick(cell.date)}
+                              >
+                                {renderDayContentMes(cell.date)}
+                              </div>
+                            )
+                          })
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Vista de Semana */}
+                      <div className="grid grid-cols-7 border border-border">
+                        {getSemanaActual().map((dia, idx) => {
+                          const isToday = dia.toDateString() === new Date().toDateString()
+                          const isSelected = selectedDate?.toDateString() === dia.toDateString()
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`min-h-[400px] border-r border-border last:border-r-0 overflow-hidden cursor-pointer transition-all ${
+                                getDayBgColor(dia)
+                              } ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
+                                isSelected ? "ring-2 ring-inset ring-primary" : ""
+                              } hover:bg-muted/30`}
+                              onClick={() => handleDayClick(dia)}
+                            >
+                              {renderDayContentSemana(dia)}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar - 1/3 del ancho */}
+        <div className="lg:col-span-1">
+          <Card className="sticky top-4">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">
+                  {sidebarMode === "rotativos" && "Rotativos del Mes"}
+                  {sidebarMode === "titulos" && "Títulos"}
+                  {sidebarMode === "eventos" && (selectedDate ? format(selectedDate, "d 'de' MMMM", { locale: es }) : "Eventos del día")}
+                  {sidebarMode === "solicitar-rotativo" && "Solicitar Rotativo"}
+                  {sidebarMode === "nuevo-titulo" && "Nuevo Título"}
+                  {sidebarMode === "editar-titulo" && "Editar Título"}
+                  {sidebarMode === "nuevo-evento" && "Nuevo Evento"}
+                  {sidebarMode === "editar-evento" && "Editar Evento"}
+                  {sidebarMode === "detalle-evento" && selectedEvento?.tituloName}
+                </CardTitle>
+                {!["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    setSelectedEvento(null)
+                    setSidebarMode("rotativos")
+                  }}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              {/* Tabs */}
+              {["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Button
+                    variant={sidebarMode === "rotativos" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSidebarMode("rotativos")}
+                  >
+                    <Users className="w-4 h-4 mr-1" />
+                    Rotativos
+                  </Button>
+                  <Button
+                    variant={sidebarMode === "eventos" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSidebarMode("eventos")}
+                  >
+                    <Theater className="w-4 h-4 mr-1" />
+                    Eventos
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant={sidebarMode === "titulos" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSidebarMode("titulos")}
+                    >
+                      <Music className="w-4 h-4 mr-1" />
+                      Títulos
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardHeader>
+            <CardContent className="max-h-[600px] overflow-y-auto">
+              {/* Vista de rotativos del mes */}
+              {sidebarMode === "rotativos" && (
+                <div className="space-y-3">
+                  {/* Botón solicitar */}
+                  <Button
+                    className="w-full"
+                    onClick={() => setSidebarMode("solicitar-rotativo")}
+                    disabled={eventosConCupo.length === 0}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Solicitar Rotativo
+                  </Button>
+
+                  {/* Toggle mis rotativos / todos */}
+                  <div className="flex gap-1">
+                    <Button
+                      variant={verSoloMios ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setVerSoloMios(true)}
+                    >
+                      Mis rotativos
+                    </Button>
+                    <Button
+                      variant={!verSoloMios ? "default" : "outline"}
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => setVerSoloMios(false)}
+                    >
+                      Todos
+                    </Button>
+                  </div>
+
+                  {/* Lista de rotativos */}
+                  {rotativosFiltrados.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      {verSoloMios ? "No tienes rotativos este mes" : "No hay rotativos este mes"}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {rotativosFiltrados.map((r) => (
+                        <div
+                          key={r.id}
+                          className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors`}
+                          style={{
+                            borderLeftColor: r.evento ? getEventColor(r.evento) : (r.estado === "APROBADA" ? "#22c55e" : "#eab308"),
+                            borderLeftWidth: 4
+                          }}
+                          onClick={() => r.evento && openDetalleEvento(r.evento)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                {r.user.avatar && <span>{r.user.avatar}</span>}
+                                <span className="font-medium text-sm truncate">
+                                  {r.user.alias || r.user.name}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {format(new Date(r.fecha), "EEEE d MMM", { locale: es })}
+                                {r.evento && (
+                                  <> · {formatTime(r.evento.startTime)} · {r.evento.tituloName}</>
+                                )}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
+                              className="text-xs flex-shrink-0"
+                            >
+                              {r.estado === "APROBADA" ? "APROBADO" : r.estado}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Solicitar rotativo - lista de eventos disponibles */}
+              {sidebarMode === "solicitar-rotativo" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Selecciona un evento para solicitar rotativo:
+                  </p>
+                  {eventosConCupo.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      No hay eventos con cupo disponible
+                    </p>
+                  ) : (
+                    eventosConCupo.map((evento) => (
+                      <div
+                        key={evento.id}
+                        className="p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                        style={{ borderLeftColor: getEventColor(evento), borderLeftWidth: 4 }}
+                        onClick={() => handleSolicitarRotativo(evento)}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span>{evento.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
+                              <p className="font-medium text-sm">{evento.tituloName}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {format(new Date(evento.date), "EEEE d MMM", { locale: es })} · {formatTime(evento.startTime)}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-green-600 text-xs">
+                            {evento.cupoDisponible} disp.
+                          </Badge>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Detalle del día seleccionado */}
+              {sidebarMode === "eventos" && (
+                <div className="space-y-4">
+                  {!selectedDate ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      Selecciona un día del calendario
+                    </p>
+                  ) : (
+                    <>
+                      {/* Acciones del día */}
+                      <div className="flex gap-2">
+                        {isAdmin && (
+                          <Button className="flex-1" size="sm" onClick={() => openNuevoEvento(selectedDate)}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            Evento
+                          </Button>
+                        )}
+                        {eventosDelDiaSeleccionado.some(e => e.cupoDisponible > 0 && !userHasRotativo(e)) && (
+                          <Button variant="outline" className="flex-1" size="sm" onClick={() => setSidebarMode("solicitar-rotativo")}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            Rotativo
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Eventos del día */}
+                      {eventosDelDiaSeleccionado.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <Theater className="w-4 h-4" />
+                            Eventos ({eventosDelDiaSeleccionado.length})
+                          </h4>
+                          <div className="space-y-2">
+                            {eventosDelDiaSeleccionado.map((evento) => (
+                              <div
+                                key={evento.id}
+                                className="p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                                style={{ borderLeftColor: getEventColor(evento), borderLeftWidth: 4 }}
+                                onClick={() => openDetalleEvento(evento)}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span>{evento.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
+                                  <p className="font-medium text-sm">{evento.tituloName}</p>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {formatTime(evento.startTime)}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Users className="w-3 h-3" />
+                                    {evento.rotativosUsados}/{evento.cupoEfectivo}
+                                  </span>
+                                </div>
+                                {/* Rotativos del evento */}
+                                {evento.rotativos && evento.rotativos.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {evento.rotativos.map((r) => (
+                                      <span
+                                        key={r.id}
+                                        className={`text-xs px-2 py-0.5 rounded ${
+                                          r.estado === "APROBADO" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                                        }`}
+                                      >
+                                        {r.user.avatar || ""} {r.user.alias || r.user.name.split(" ")[0]}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                {/* Mostrar cupo disponible */}
+                                {evento.cupoDisponible > 0 && (
+                                  <p className="text-xs text-green-600 mt-1">
+                                    {evento.cupoDisponible} {evento.cupoDisponible === 1 ? "lugar disponible" : "lugares disponibles"}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
+
+                      {/* Solicitudes del día (sistema antiguo) */}
+                      {solicitudesDelDiaSeleccionado.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                            <Users className="w-4 h-4" />
+                            Rotativos ({solicitudesDelDiaSeleccionado.length})
+                          </h4>
+                          <div className="space-y-1">
+                            {solicitudesDelDiaSeleccionado.map((s) => (
+                              <div
+                                key={s.id}
+                                className={`flex items-center justify-between p-2 rounded ${
+                                  s.estado === "APROBADA" ? "bg-green-50" : "bg-yellow-50"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {s.user.avatar && <span>{s.user.avatar}</span>}
+                                  <span className="text-sm font-medium">
+                                    {s.user.alias || s.user.name}
+                                  </span>
+                                </div>
+                                <Badge variant={s.estado === "APROBADA" ? "default" : "secondary"} className="text-xs">
+                                  {s.estado === "APROBADA" ? "APROBADO" : s.estado}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mensaje si no hay nada */}
+                      {eventosDelDiaSeleccionado.length === 0 && solicitudesDelDiaSeleccionado.length === 0 && (
+                        <p className="text-muted-foreground text-sm text-center py-4">
+                          No hay eventos ni rotativos este día
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Detalle de evento */}
+              {sidebarMode === "detalle-evento" && selectedEvento && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: getEventColor(selectedEvento) + "20" }}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">{selectedEvento.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
                       <div>
-                        <p className="font-medium">{formatDayMonth(s.fecha)}</p>
-                        <p className="text-sm text-gray-500">
-                          {s.user.alias || s.user.name}
+                        <p className="font-semibold">{selectedEvento.tituloName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {selectedEvento.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
                         </p>
                       </div>
                     </div>
-                    <Badge
-                      variant={
-                        s.estado === "APROBADA"
-                          ? "default"
-                          : s.estado === "PENDIENTE"
-                            ? "secondary"
-                            : "destructive"
-                      }
-                    >
-                      {s.estado}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="w-4 h-4" />
+                      <span>{formatTime(selectedEvento.startTime)} - {formatTime(selectedEvento.endTime)}</span>
+                    </div>
+                  </div>
+
+                  {/* Cupo y rotativos */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-medium flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Rotativos ({selectedEvento.rotativosUsados}/{selectedEvento.cupoEfectivo})
+                      </p>
+                      {selectedEvento.cupoDisponible > 0 && (
+                        <Badge variant="outline" className="text-green-600">
+                          {selectedEvento.cupoDisponible} disponibles
+                        </Badge>
+                      )}
+                    </div>
+
+                    {selectedEvento.rotativos && selectedEvento.rotativos.length > 0 ? (
+                      <div className="space-y-1">
+                        {selectedEvento.rotativos.map((r) => (
+                          <div
+                            key={r.id}
+                            className={`flex items-center justify-between p-2 rounded ${
+                              r.estado === "APROBADO" ? "bg-green-50" : "bg-yellow-50"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {r.user.avatar && <span>{r.user.avatar}</span>}
+                              <span className="text-sm font-medium">
+                                {r.user.alias || r.user.name}
+                              </span>
+                            </div>
+                            <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className="text-xs">
+                              {r.estado}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Sin rotativos asignados</p>
+                    )}
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="space-y-2 pt-2 border-t">
+                    {!userHasRotativo(selectedEvento) && selectedEvento.cupoDisponible > 0 && (
+                      <Button
+                        className="w-full"
+                        onClick={() => handleSolicitarRotativo(selectedEvento)}
+                        disabled={submitting}
+                      >
+                        {submitting ? "Solicitando..." : "Solicitar Rotativo"}
+                      </Button>
+                    )}
+                    {userHasRotativo(selectedEvento) && (
+                      <Button
+                        variant="destructive"
+                        className="w-full"
+                        onClick={() => handleCancelarRotativo(selectedEvento)}
+                        disabled={submitting}
+                      >
+                        {submitting ? "Cancelando..." : "Cancelar mi Rotativo"}
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" className="flex-1" onClick={() => openEditEvento(selectedEvento)}>
+                          <Pencil className="w-4 h-4 mr-1" />
+                          Editar
+                        </Button>
+                        <Button variant="destructive" className="flex-1" onClick={() => handleDeleteEvento(selectedEvento)}>
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Eliminar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de títulos */}
+              {sidebarMode === "titulos" && isAdmin && (
+                <div className="space-y-2">
+                  <Button
+                    className="w-full mb-3"
+                    onClick={() => {
+                      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4 })
+                      setSidebarMode("nuevo-titulo")
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nuevo Título
+                  </Button>
+                  {titulos.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      No hay títulos creados
+                    </p>
+                  ) : (
+                    titulos.map((titulo) => (
+                      <div
+                        key={titulo.id}
+                        className="flex items-center justify-between p-3 rounded-lg border"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="w-4 h-4 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: titulo.color || "#6b7280" }}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{titulo.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              E: {titulo.cupoEnsayo} | F: {titulo.cupoFuncion}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Formulario nuevo título */}
+              {sidebarMode === "nuevo-titulo" && isAdmin && (
+                <form onSubmit={handleCreateTitulo} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nombre</Label>
+                    <Input
+                      value={tituloForm.name}
+                      onChange={(e) => setTituloForm({ ...tituloForm, name: e.target.value })}
+                      placeholder="Ej: La Traviata"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={tituloForm.type} onValueChange={(v) => setTituloForm({ ...tituloForm, type: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="OPERA">Ópera</SelectItem>
+                        <SelectItem value="BALLET">Ballet</SelectItem>
+                        <SelectItem value="CONCIERTO">Concierto</SelectItem>
+                        <SelectItem value="RECITAL">Recital</SelectItem>
+                        <SelectItem value="OTRO">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <Input
+                      type="color"
+                      value={tituloForm.color}
+                      onChange={(e) => setTituloForm({ ...tituloForm, color: e.target.value })}
+                      className="h-10 w-full"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>Cupo Ensayo</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={tituloForm.cupoEnsayo}
+                        onChange={(e) => setTituloForm({ ...tituloForm, cupoEnsayo: parseInt(e.target.value) || 1 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cupo Función</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={tituloForm.cupoFuncion}
+                        onChange={(e) => setTituloForm({ ...tituloForm, cupoFuncion: parseInt(e.target.value) || 1 })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("titulos")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting}>
+                      {submitting ? "Creando..." : "Crear"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Formulario editar título */}
+              {sidebarMode === "editar-titulo" && isAdmin && editingTitulo && (
+                <form onSubmit={handleUpdateTitulo} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nombre</Label>
+                    <Input
+                      value={tituloForm.name}
+                      onChange={(e) => setTituloForm({ ...tituloForm, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={tituloForm.type} onValueChange={(v) => setTituloForm({ ...tituloForm, type: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="OPERA">Ópera</SelectItem>
+                        <SelectItem value="BALLET">Ballet</SelectItem>
+                        <SelectItem value="CONCIERTO">Concierto</SelectItem>
+                        <SelectItem value="RECITAL">Recital</SelectItem>
+                        <SelectItem value="OTRO">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <Input
+                      type="color"
+                      value={tituloForm.color}
+                      onChange={(e) => setTituloForm({ ...tituloForm, color: e.target.value })}
+                      className="h-10 w-full"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>Cupo Ensayo</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={tituloForm.cupoEnsayo}
+                        onChange={(e) => setTituloForm({ ...tituloForm, cupoEnsayo: parseInt(e.target.value) || 1 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cupo Función</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={tituloForm.cupoFuncion}
+                        onChange={(e) => setTituloForm({ ...tituloForm, cupoFuncion: parseInt(e.target.value) || 1 })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("titulos")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting}>
+                      {submitting ? "Guardando..." : "Guardar"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Formulario nuevo evento */}
+              {sidebarMode === "nuevo-evento" && isAdmin && (
+                <form onSubmit={handleCreateEvento} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input
+                      type="date"
+                      value={eventoForm.date}
+                      onChange={(e) => setEventoForm({ ...eventoForm, date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Título</Label>
+                    <Select value={eventoForm.tituloId} onValueChange={(v) => setEventoForm({ ...eventoForm, tituloId: v })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un título" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {titulos.map((titulo) => (
+                          <SelectItem key={titulo.id} value={titulo.id}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: titulo.color || "#6b7280" }} />
+                              {titulo.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={eventoForm.eventoType === "ENSAYO" ? "default" : "outline"}
+                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "ENSAYO" })}
+                        className="flex-1"
+                      >
+                        🎵 Ensayo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={eventoForm.eventoType === "FUNCION" ? "default" : "outline"}
+                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "FUNCION" })}
+                        className="flex-1"
+                      >
+                        🎭 Función
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>Hora inicio</Label>
+                      <Input
+                        type="time"
+                        value={eventoForm.startTime}
+                        onChange={(e) => setEventoForm({ ...eventoForm, startTime: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hora fin</Label>
+                      <Input
+                        type="time"
+                        value={eventoForm.endTime}
+                        onChange={(e) => setEventoForm({ ...eventoForm, endTime: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  {eventoForm.tituloId && (
+                    <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                      Cupo: {titulos.find((t) => t.id === eventoForm.tituloId)?.[eventoForm.eventoType === "ENSAYO" ? "cupoEnsayo" : "cupoFuncion"] || 0} rotativos
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("eventos")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting || !eventoForm.tituloId}>
+                      {submitting ? "Creando..." : "Crear"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Formulario editar evento */}
+              {sidebarMode === "editar-evento" && isAdmin && editingEvento && (
+                <form onSubmit={handleUpdateEvento} className="space-y-4">
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="font-medium">{editingEvento.tituloName}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input
+                      type="date"
+                      value={eventoForm.date}
+                      onChange={(e) => setEventoForm({ ...eventoForm, date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={eventoForm.eventoType === "ENSAYO" ? "default" : "outline"}
+                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "ENSAYO" })}
+                        className="flex-1"
+                      >
+                        🎵 Ensayo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={eventoForm.eventoType === "FUNCION" ? "default" : "outline"}
+                        onClick={() => setEventoForm({ ...eventoForm, eventoType: "FUNCION" })}
+                        className="flex-1"
+                      >
+                        🎭 Función
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-2">
+                      <Label>Hora inicio</Label>
+                      <Input
+                        type="time"
+                        value={eventoForm.startTime}
+                        onChange={(e) => setEventoForm({ ...eventoForm, startTime: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Hora fin</Label>
+                      <Input
+                        type="time"
+                        value={eventoForm.endTime}
+                        onChange={(e) => setEventoForm({ ...eventoForm, endTime: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("eventos")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting}>
+                      {submitting ? "Guardando..." : "Guardar"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

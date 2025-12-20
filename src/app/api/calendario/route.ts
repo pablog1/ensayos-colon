@@ -58,11 +58,22 @@ export async function GET(req: NextRequest) {
           color: true,
         },
       },
-      _count: {
-        select: { rotativos: true },
+      rotativos: {
+        select: {
+          id: true,
+          estado: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              alias: true,
+              avatar: true,
+            },
+          },
+        },
       },
     },
-    orderBy: { date: "asc" },
+    orderBy: [{ date: "asc" }, { startTime: "asc" }],
   })
 
   // Formatear eventos para el calendario
@@ -87,8 +98,9 @@ export async function GET(req: NextRequest) {
       tituloType: evento.titulo?.type,
       tituloColor: evento.titulo?.color,
       cupoEfectivo,
-      rotativosUsados: evento._count.rotativos,
-      cupoDisponible: cupoEfectivo - evento._count.rotativos,
+      rotativosUsados: evento.rotativos.length,
+      cupoDisponible: cupoEfectivo - evento.rotativos.length,
+      rotativos: evento.rotativos,
     }
   })
 
