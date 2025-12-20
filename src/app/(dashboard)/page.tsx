@@ -735,10 +735,10 @@ export default function DashboardPage() {
           </div>
         )}
         {/* Header del día */}
-        <div className="relative flex items-baseline gap-2 px-3 py-2 border-b bg-muted/30">
-          <span className="font-bold text-xl">{date.getDate()}</span>
-          <span className="text-sm text-muted-foreground capitalize">
-            {format(date, "EEEE", { locale: es })}
+        <div className="relative flex items-baseline gap-1 px-2 py-1.5 border-b bg-muted/30">
+          <span className="font-semibold text-base">{date.getDate()}</span>
+          <span className="text-sm text-muted-foreground">
+            {format(date, "EEE", { locale: es }).toLowerCase()}
           </span>
         </div>
 
@@ -882,12 +882,12 @@ export default function DashboardPage() {
         {/* Calendario - flexible */}
         <div className="flex-1 min-w-0">
           <Card>
-            <CardContent className="p-4">
+            <CardContent className="p-2 pt-1.5 md:p-4">
               <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
                 {/* Header del calendario - Compacto en móvil */}
-                <div className="flex flex-col gap-2 mb-3 md:mb-4">
+                <div className="flex flex-col gap-1.5 mb-2 md:gap-2 md:mb-4">
                   {/* Navegación de fecha */}
-                  <div className="flex items-center justify-between md:justify-center gap-1">
+                  <div className="flex items-center justify-center gap-1">
                     <button
                       className="p-1 hover:bg-muted rounded-md transition-colors"
                       onClick={() => vistaCalendario === "mes"
@@ -941,10 +941,8 @@ export default function DashboardPage() {
                       >
                         Semana
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
+                      <button
+                        className="text-xs md:text-sm text-primary hover:underline font-medium px-1"
                         onClick={() => {
                           const hoy = new Date()
                           setSelectedDate(hoy)
@@ -952,7 +950,7 @@ export default function DashboardPage() {
                         }}
                       >
                         Hoy
-                      </Button>
+                      </button>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs md:text-sm">
                       <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
@@ -967,7 +965,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Grilla del calendario */}
-                <div className="w-full">
+                <div className="w-full mt-3 md:mt-4">
                   {modoLista ? (
                     <>
                       {/* Vista de Lista - un día por fila */}
@@ -1025,10 +1023,10 @@ export default function DashboardPage() {
                                       ))}
                                     </div>
                                   )}
-                                  <div className="relative flex items-baseline gap-2">
-                                    <span className="font-bold text-lg">{date.getDate()}</span>
-                                    <span className="text-muted-foreground capitalize">
-                                      {format(date, "EEEE", { locale: es })}
+                                  <div className="relative flex items-baseline gap-1">
+                                    <span className="font-semibold text-base">{date.getDate()}</span>
+                                    <span className="text-sm text-muted-foreground">
+                                      {format(date, "EEE", { locale: es }).toLowerCase()}
                                     </span>
                                     {tituloColors.length > 0 && (
                                       <span className="text-xs text-muted-foreground ml-auto">
@@ -1150,12 +1148,17 @@ export default function DashboardPage() {
                     </>
                   ) : (
                     <>
-                      {/* Vista de Semana - Grilla: 7 columnas igual que mes */}
-                      <div className={`border border-border ${
-                        modoLista
-                          ? "grid grid-cols-1"
-                          : "grid grid-cols-7"
-                      }`}>
+                      {/* Vista de Semana - Igual que mes pero sin límite de altura */}
+                      {/* Días de la semana */}
+                      <div className="grid grid-cols-7 border border-border">
+                        {["lu", "ma", "mi", "ju", "vi", "sá", "do"].map((dia) => (
+                          <div key={dia} className="text-muted-foreground font-medium text-sm py-2 text-center bg-muted/50 border-r border-border last:border-r-0">
+                            {dia}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Celdas de la semana */}
+                      <div className="grid grid-cols-7 border-l border-r border-b border-border">
                         {getSemanaActual().map((dia, idx) => {
                           const isToday = dia.toDateString() === new Date().toDateString()
                           const isSelected = selectedDate?.toDateString() === dia.toDateString()
@@ -1163,16 +1166,14 @@ export default function DashboardPage() {
                           return (
                             <div
                               key={idx}
-                              className={`overflow-hidden cursor-pointer transition-all ${
-                                modoLista
-                                  ? "min-h-[120px] border-b border-border last:border-b-0"
-                                  : "min-h-[200px] md:min-h-[400px] border-r border-border last:border-r-0"
-                              } ${getDayBgColor(dia)} ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
+                              className={`min-h-[120px] border-b border-r border-border overflow-hidden cursor-pointer transition-all ${
+                                getDayBgColor(dia)
+                              } ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
                                 isSelected ? "ring-2 ring-inset ring-primary" : ""
-                              } hover:bg-muted/30`}
+                              } hover:bg-muted/50`}
                               onClick={() => handleDayClick(dia)}
                             >
-                              {renderDayContentSemana(dia)}
+                              {renderDayContentMes(dia)}
                             </div>
                           )
                         })}
