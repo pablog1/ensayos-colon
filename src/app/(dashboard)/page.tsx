@@ -128,16 +128,15 @@ export default function DashboardPage() {
   const [verSoloMios, setVerSoloMios] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
 
-  // Abrir sidebar por defecto solo en desktop
+  // Configuración por defecto según dispositivo
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setRightSidebarOpen(true)
-      }
+    const isMobile = window.innerWidth < 768
+    // En móvil, vista lista por defecto
+    if (isMobile) {
+      setModoLista(true)
+    } else {
+      setRightSidebarOpen(true)
     }
-    handleResize()
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
   }, [])
 
   // Form states
@@ -860,12 +859,23 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Calendar className="w-8 h-8 text-primary" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl md:text-2xl font-bold">Calendario</h1>
           <p className="text-sm text-muted-foreground">
             Eventos, ensayos, funciones y rotativos
           </p>
         </div>
+        {/* Botón para abrir sidebar en móvil */}
+        {!rightSidebarOpen && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setRightSidebarOpen(true)}
+          >
+            <PanelRightOpen className="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
       <div className="flex gap-4">
@@ -874,20 +884,20 @@ export default function DashboardPage() {
           <Card>
             <CardContent className="p-4">
               <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
-                {/* Header del calendario */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                  {/* Fila superior en mobile: navegación centrada */}
-                  <div className="flex items-center justify-center md:justify-start gap-2 order-1 md:order-2">
+                {/* Header del calendario - Compacto en móvil */}
+                <div className="flex flex-col gap-2 mb-3 md:mb-4">
+                  {/* Navegación de fecha */}
+                  <div className="flex items-center justify-between md:justify-center gap-1">
                     <button
-                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                      className="p-1 hover:bg-muted rounded-md transition-colors"
                       onClick={() => vistaCalendario === "mes"
                         ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))
                         : navegarSemana(-1)
                       }
                     >
-                      <ChevronLeft className="h-5 w-5" />
+                      <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
                     </button>
-                    <h2 className="text-lg md:text-xl font-semibold min-w-[180px] md:min-w-[220px] text-center">
+                    <h2 className="text-sm md:text-xl font-semibold text-center">
                       {vistaCalendario === "mes"
                         ? format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
                         : (() => {
@@ -902,22 +912,23 @@ export default function DashboardPage() {
                       }
                     </h2>
                     <button
-                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
+                      className="p-1 hover:bg-muted rounded-md transition-colors"
                       onClick={() => vistaCalendario === "mes"
                         ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))
                         : navegarSemana(1)
                       }
                     >
-                      <ChevronRight className="h-5 w-5" />
+                      <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
                     </button>
                   </div>
 
-                  {/* Fila inferior en mobile: botones de vista */}
-                  <div className="flex flex-col items-center md:items-start gap-2 order-2 md:order-1">
+                  {/* Controles: botones de vista y toggle en una fila */}
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
                     <div className="flex items-center gap-1">
                       <Button
                         variant={vistaCalendario === "mes" ? "default" : "outline"}
                         size="sm"
+                        className="h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
                         onClick={() => setVistaCalendario("mes")}
                       >
                         Mes
@@ -925,6 +936,7 @@ export default function DashboardPage() {
                       <Button
                         variant={vistaCalendario === "semana" ? "default" : "outline"}
                         size="sm"
+                        className="h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
                         onClick={() => setVistaCalendario("semana")}
                       >
                         Semana
@@ -932,6 +944,7 @@ export default function DashboardPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
                         onClick={() => {
                           const hoy = new Date()
                           setSelectedDate(hoy)
@@ -941,18 +954,16 @@ export default function DashboardPage() {
                         Hoy
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-1.5 text-xs md:text-sm">
                       <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
                       <Switch
                         checked={modoLista}
                         onCheckedChange={setModoLista}
+                        className="scale-75 md:scale-100"
                       />
                       <span className={modoLista ? "font-medium" : "text-muted-foreground"}>Lista</span>
                     </div>
                   </div>
-
-                  {/* Espacio para balancear en desktop */}
-                  <div className="hidden md:block w-[180px] order-3"></div>
                 </div>
 
                 {/* Grilla del calendario */}
@@ -1139,8 +1150,12 @@ export default function DashboardPage() {
                     </>
                   ) : (
                     <>
-                      {/* Vista de Semana - vertical en mobile, horizontal en desktop */}
-                      <div className="grid grid-cols-1 md:grid-cols-7 border border-border">
+                      {/* Vista de Semana - Grilla: 7 columnas igual que mes */}
+                      <div className={`border border-border ${
+                        modoLista
+                          ? "grid grid-cols-1"
+                          : "grid grid-cols-7"
+                      }`}>
                         {getSemanaActual().map((dia, idx) => {
                           const isToday = dia.toDateString() === new Date().toDateString()
                           const isSelected = selectedDate?.toDateString() === dia.toDateString()
@@ -1148,9 +1163,11 @@ export default function DashboardPage() {
                           return (
                             <div
                               key={idx}
-                              className={`min-h-[120px] md:min-h-[400px] border-b md:border-b-0 md:border-r border-border last:border-b-0 md:last:border-r-0 overflow-hidden cursor-pointer transition-all ${
-                                getDayBgColor(dia)
-                              } ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
+                              className={`overflow-hidden cursor-pointer transition-all ${
+                                modoLista
+                                  ? "min-h-[120px] border-b border-border last:border-b-0"
+                                  : "min-h-[200px] md:min-h-[400px] border-r border-border last:border-r-0"
+                              } ${getDayBgColor(dia)} ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
                                 isSelected ? "ring-2 ring-inset ring-primary" : ""
                               } hover:bg-muted/30`}
                               onClick={() => handleDayClick(dia)}
@@ -1168,17 +1185,6 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Botón flotante para abrir sidebar en mobile */}
-        {!rightSidebarOpen && (
-          <Button
-            variant="default"
-            size="icon"
-            className="md:hidden fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-lg z-40"
-            onClick={() => setRightSidebarOpen(true)}
-          >
-            <PanelRightOpen className="h-6 w-6" />
-          </Button>
-        )}
 
         {/* Botón para abrir sidebar derecho cuando está cerrado (desktop) */}
         {!rightSidebarOpen && (
