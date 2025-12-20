@@ -133,6 +133,13 @@ async function main() {
 
   let totalEventos2025 = 0
   for (const t of titulos2025) {
+    // Calculate startDate and endDate based on fechaInicio and number of events
+    const startDate = new Date(t.fechaInicio)
+    // Estimate ~2 days per event for duration
+    const durationDays = (t.ensayos + t.funciones) * 2
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + durationDays)
+
     const titulo = await prisma.titulo.create({
       data: {
         name: t.name,
@@ -140,6 +147,8 @@ async function main() {
         cupoEnsayo: t.cupoEnsayo,
         cupoFuncion: t.cupoFuncion,
         seasonId: season2025.id,
+        startDate,
+        endDate,
       },
     })
 
@@ -186,6 +195,13 @@ async function main() {
 
   let totalEventos2026 = 0
   for (const t of titulos2026) {
+    // Calculate startDate and endDate based on fechaInicio and number of events
+    const startDate = new Date(t.fechaInicio)
+    // Estimate ~2 days per event for duration
+    const durationDays = (t.ensayos + t.funciones) * 2
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + durationDays)
+
     const titulo = await prisma.titulo.create({
       data: {
         name: t.name,
@@ -193,6 +209,8 @@ async function main() {
         cupoEnsayo: t.cupoEnsayo,
         cupoFuncion: t.cupoFuncion,
         seasonId: season2026.id,
+        startDate,
+        endDate,
       },
     })
 

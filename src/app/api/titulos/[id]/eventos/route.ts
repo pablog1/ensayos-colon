@@ -96,10 +96,18 @@ export async function POST(
   const [year, month, day] = date.split('-').map(Number)
   const fechaEvento = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
 
-  // Verificar que la fecha este dentro de la temporada
-  if (fechaEvento < titulo.season.startDate || fechaEvento > titulo.season.endDate) {
+  // Verificar que la fecha este dentro del rango del título
+  const tituloStart = new Date(titulo.startDate)
+  const tituloEnd = new Date(titulo.endDate)
+
+  // Normalizar a solo fecha para comparación
+  const fechaEventoStr = fechaEvento.toISOString().split('T')[0]
+  const tituloStartStr = tituloStart.toISOString().split('T')[0]
+  const tituloEndStr = tituloEnd.toISOString().split('T')[0]
+
+  if (fechaEventoStr < tituloStartStr || fechaEventoStr > tituloEndStr) {
     return NextResponse.json(
-      { error: "La fecha debe estar dentro de la temporada" },
+      { error: `La fecha debe estar dentro del rango del título (${tituloStartStr} - ${tituloEndStr})` },
       { status: 400 }
     )
   }

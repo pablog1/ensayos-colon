@@ -88,10 +88,17 @@ export async function PUT(
 
   const { id } = await params
   const body = await req.json()
-  const { name, type, cupoEnsayo, cupoFuncion, description, color } = body
+  const { name, type, cupoEnsayo, cupoFuncion, description, color, startDate, endDate } = body
 
   const titulo = await prisma.titulo.findUnique({
     where: { id },
+    include: {
+      season: true,
+      events: {
+        select: { date: true },
+        orderBy: { date: "asc" },
+      },
+    },
   })
 
   if (!titulo) {
@@ -112,6 +119,67 @@ export async function PUT(
     }
   }
 
+  // Parsear y validar fechas si se proporcionan
+  let newStartDate: Date | undefined
+  let newEndDate: Date | undefined
+
+  if (startDate !== undefined) {
+    newStartDate = new Date(startDate)
+    if (isNaN(newStartDate.getTime())) {
+      return NextResponse.json(
+        { error: "Formato de fecha de inicio invalido" },
+        { status: 400 }
+      )
+    }
+  }
+
+  if (endDate !== undefined) {
+    newEndDate = new Date(endDate)
+    if (isNaN(newEndDate.getTime())) {
+      return NextResponse.json(
+        { error: "Formato de fecha de fin invalido" },
+        { status: 400 }
+      )
+    }
+  }
+
+  // Usar fechas nuevas o existentes para validaciones
+  const effectiveStart = newStartDate ?? titulo.startDate
+  const effectiveEnd = newEndDate ?? titulo.endDate
+
+  // Validar que start <= end
+  if (effectiveStart > effectiveEnd) {
+    return NextResponse.json(
+      { error: "La fecha de inicio debe ser anterior o igual a la fecha de fin" },
+      { status: 400 }
+    )
+  }
+
+  // Validar que las fechas estén dentro de la temporada
+  const seasonStart = new Date(titulo.season.startDate)
+  const seasonEnd = new Date(titulo.season.endDate)
+
+  if (effectiveStart < seasonStart || effectiveEnd > seasonEnd) {
+    return NextResponse.json(
+      { error: `Las fechas deben estar dentro de la temporada (${seasonStart.toISOString().split('T')[0]} - ${seasonEnd.toISOString().split('T')[0]})` },
+      { status: 400 }
+    )
+  }
+
+  // Validar que eventos existentes estén dentro del nuevo rango
+  if (titulo.events.length > 0) {
+    const eventDates = titulo.events.map(e => new Date(e.date))
+    const minEventDate = eventDates[0]
+    const maxEventDate = eventDates[eventDates.length - 1]
+
+    if (minEventDate < effectiveStart || maxEventDate > effectiveEnd) {
+      return NextResponse.json(
+        { error: `El titulo tiene eventos fuera del nuevo rango de fechas. Eventos van de ${minEventDate.toISOString().split('T')[0]} a ${maxEventDate.toISOString().split('T')[0]}` },
+        { status: 400 }
+      )
+    }
+  }
+
   const updateData: {
     name?: string
     type?: "OPERA" | "CONCIERTO" | "BALLET" | "RECITAL" | "OTRO"
@@ -119,6 +187,8 @@ export async function PUT(
     cupoFuncion?: number
     description?: string | null
     color?: string | null
+    startDate?: Date
+    endDate?: Date
   } = {}
 
   if (name) updateData.name = name
@@ -127,6 +197,8 @@ export async function PUT(
   if (cupoFuncion !== undefined) updateData.cupoFuncion = cupoFuncion
   if (description !== undefined) updateData.description = description || null
   if (color !== undefined) updateData.color = color || null
+  if (newStartDate) updateData.startDate = newStartDate
+  if (newEndDate) updateData.endDate = newEndDate
 
   const updated = await prisma.titulo.update({
     where: { id },

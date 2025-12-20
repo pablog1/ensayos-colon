@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -29,6 +30,8 @@ import {
   Calendar,
   Clock,
   Users,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react"
 
 interface Evento {
@@ -76,6 +79,16 @@ interface Titulo {
   color: string | null
   cupoEnsayo: number
   cupoFuncion: number
+  startDate?: string
+  endDate?: string
+}
+
+interface TituloRange {
+  id: string
+  name: string
+  color: string | null
+  startDate: string
+  endDate: string
 }
 
 type EventosPorFecha = Record<string, Evento[]>
@@ -105,12 +118,15 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null)
   const [vistaCalendario, setVistaCalendario] = useState<"mes" | "semana">("mes")
+  const [modoLista, setModoLista] = useState(false)
+  const [tituloRanges, setTituloRanges] = useState<TituloRange[]>([])
 
   // Sidebar state
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>("rotativos")
   const [editingTitulo, setEditingTitulo] = useState<Titulo | null>(null)
   const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
   const [verSoloMios, setVerSoloMios] = useState(true)
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
 
   // Form states
   const [tituloForm, setTituloForm] = useState({
@@ -119,6 +135,8 @@ export default function DashboardPage() {
     color: "#3b82f6",
     cupoEnsayo: 2,
     cupoFuncion: 4,
+    startDate: "",
+    endDate: "",
   })
 
   const [eventoForm, setEventoForm] = useState({
@@ -153,10 +171,13 @@ export default function DashboardPage() {
     const res = await fetch(`/api/calendario?mes=${mesStr}`)
     if (res.ok) {
       const data = await res.json()
-      setEventos(data)
+      // Handle new API response format (object with eventos and titulos)
+      const eventosData = data.eventos || data
+      setEventos(eventosData)
+      setTituloRanges(data.titulos || [])
 
       const porFecha: EventosPorFecha = {}
-      for (const evento of data) {
+      for (const evento of eventosData) {
         const fechaKey = evento.date.substring(0, 10)
         if (!porFecha[fechaKey]) {
           porFecha[fechaKey] = []
@@ -218,9 +239,21 @@ export default function DashboardPage() {
     return evento.rotativos?.some(r => r.user.id === userId)
   }
 
+  // Helper para obtener colores de títulos para una fecha
+  const getTituloColorsForDate = (date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd")
+    return tituloRanges.filter(t =>
+      dateStr >= t.startDate && dateStr <= t.endDate
+    )
+  }
+
   // Handlers para títulos
   const handleCreateTitulo = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!tituloForm.startDate || !tituloForm.endDate) {
+      toast.error("Las fechas de inicio y fin son requeridas")
+      return
+    }
     setSubmitting(true)
 
     const res = await fetch("/api/titulos", {
@@ -232,8 +265,9 @@ export default function DashboardPage() {
     if (res.ok) {
       toast.success("Título creado")
       fetchTitulos()
+      fetchEventos(mesActual)
       setSidebarMode("titulos")
-      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4 })
+      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4, startDate: "", endDate: "" })
     } else {
       const error = await res.json()
       toast.error(error.error || "Error al crear título")
@@ -244,6 +278,10 @@ export default function DashboardPage() {
   const handleUpdateTitulo = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingTitulo) return
+    if (!tituloForm.startDate || !tituloForm.endDate) {
+      toast.error("Las fechas de inicio y fin son requeridas")
+      return
+    }
     setSubmitting(true)
 
     const res = await fetch(`/api/titulos/${editingTitulo.id}`, {
@@ -420,6 +458,8 @@ export default function DashboardPage() {
       color: titulo.color || "#3b82f6",
       cupoEnsayo: titulo.cupoEnsayo,
       cupoFuncion: titulo.cupoFuncion,
+      startDate: titulo.startDate?.substring(0, 10) || "",
+      endDate: titulo.endDate?.substring(0, 10) || "",
     })
     setSidebarMode("editar-titulo")
   }
@@ -438,9 +478,9 @@ export default function DashboardPage() {
 
   const openNuevoEvento = (date?: Date) => {
     setEventoForm({
-      tituloId: titulos[0]?.id || "",
+      tituloId: "",
       eventoType: "ENSAYO",
-      date: date ? format(date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
+      date: date ? format(date, "yyyy-MM-dd") : "",
       startTime: "10:00",
       endTime: "13:00",
     })
@@ -489,12 +529,25 @@ export default function DashboardPage() {
   const renderDayContentMes = (date: Date) => {
     const eventosDelDia = getEventosDelDia(date)
     const solicitudesDelDia = getSolicitudesDelDia(date)
+    const tituloColors = getTituloColorsForDate(date)
 
     const tieneContenido = eventosDelDia.length > 0 || solicitudesDelDia.length > 0
 
     return (
       <div className="relative w-full h-full flex flex-col py-1 overflow-hidden">
-        <span className="font-semibold text-base text-center">{date.getDate()}</span>
+        {/* Fondo con colores de títulos (transparente) */}
+        {tituloColors.length > 0 && (
+          <div className="absolute inset-0 flex pointer-events-none">
+            {tituloColors.map(t => (
+              <div
+                key={t.id}
+                className="flex-1"
+                style={{ backgroundColor: t.color || "#6b7280", opacity: 0.12 }}
+              />
+            ))}
+          </div>
+        )}
+        <span className="relative font-semibold text-base text-center">{date.getDate()}</span>
         {tieneContenido && (
           <div className="flex flex-col gap-1.5 mt-1 w-full px-1 overflow-y-auto flex-1">
             {/* Eventos con sus rotativos */}
@@ -565,11 +618,24 @@ export default function DashboardPage() {
   const renderDayContentSemana = (date: Date) => {
     const eventosDelDia = getEventosDelDia(date)
     const solicitudesDelDia = getSolicitudesDelDia(date)
+    const tituloColors = getTituloColorsForDate(date)
 
     return (
       <div className="relative w-full h-full flex flex-col overflow-hidden">
+        {/* Fondo con colores de títulos (transparente) */}
+        {tituloColors.length > 0 && (
+          <div className="absolute inset-0 flex pointer-events-none">
+            {tituloColors.map(t => (
+              <div
+                key={t.id}
+                className="flex-1"
+                style={{ backgroundColor: t.color || "#6b7280", opacity: 0.10 }}
+              />
+            ))}
+          </div>
+        )}
         {/* Header del día */}
-        <div className="flex items-baseline gap-2 px-3 py-2 border-b bg-muted/30">
+        <div className="relative flex items-baseline gap-2 px-3 py-2 border-b bg-muted/30">
           <span className="font-bold text-xl">{date.getDate()}</span>
           <span className="text-sm text-muted-foreground capitalize">
             {format(date, "EEEE", { locale: es })}
@@ -701,9 +767,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Calendario - 2/3 del ancho */}
-        <div className="lg:col-span-2">
+      <div className="flex gap-4">
+        {/* Calendario - flexible */}
+        <div className="flex-1 min-w-0">
           <Card>
             <CardContent className="p-4">
               <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
@@ -746,32 +812,42 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Fila inferior en mobile: botones de vista */}
-                  <div className="flex items-center justify-center md:justify-start gap-1 order-2 md:order-1">
-                    <Button
-                      variant={vistaCalendario === "mes" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setVistaCalendario("mes")}
-                    >
-                      Mes
-                    </Button>
-                    <Button
-                      variant={vistaCalendario === "semana" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setVistaCalendario("semana")}
-                    >
-                      Semana
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const hoy = new Date()
-                        setSelectedDate(hoy)
-                        setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
-                      }}
-                    >
-                      Hoy
-                    </Button>
+                  <div className="flex flex-col items-center md:items-start gap-2 order-2 md:order-1">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant={vistaCalendario === "mes" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setVistaCalendario("mes")}
+                      >
+                        Mes
+                      </Button>
+                      <Button
+                        variant={vistaCalendario === "semana" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setVistaCalendario("semana")}
+                      >
+                        Semana
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const hoy = new Date()
+                          setSelectedDate(hoy)
+                          setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
+                        }}
+                      >
+                        Hoy
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
+                      <Switch
+                        checked={modoLista}
+                        onCheckedChange={setModoLista}
+                      />
+                      <span className={modoLista ? "font-medium" : "text-muted-foreground"}>Lista</span>
+                    </div>
                   </div>
 
                   {/* Espacio para balancear en desktop */}
@@ -780,7 +856,129 @@ export default function DashboardPage() {
 
                 {/* Grilla del calendario */}
                 <div className="w-full">
-                  {vistaCalendario === "mes" ? (
+                  {modoLista ? (
+                    <>
+                      {/* Vista de Lista - un día por fila */}
+                      <div className="space-y-2">
+                        {(() => {
+                          // Obtener días según la vista (mes o semana)
+                          const diasAMostrar: Date[] = []
+
+                          if (vistaCalendario === "mes") {
+                            const firstDay = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
+                            const lastDay = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
+                            for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
+                              diasAMostrar.push(new Date(d))
+                            }
+                          } else {
+                            // Semana
+                            for (const dia of getSemanaActual()) {
+                              diasAMostrar.push(dia)
+                            }
+                          }
+
+                          const diasConEventos = diasAMostrar
+                            .map(date => ({ date, eventos: getEventosDelDia(date) }))
+                            .filter(({ eventos }) => eventos.length > 0)
+
+                          if (diasConEventos.length === 0) {
+                            return (
+                              <div className="text-center py-8 text-muted-foreground">
+                                No hay eventos {vistaCalendario === "mes" ? "este mes" : "esta semana"}
+                              </div>
+                            )
+                          }
+
+                          return diasConEventos.map(({ date, eventos }) => {
+                            const isToday = date.toDateString() === new Date().toDateString()
+                            const tituloColors = getTituloColorsForDate(date)
+
+                            return (
+                              <div
+                                key={date.toISOString()}
+                                className={`border rounded-lg overflow-hidden ${
+                                  isToday ? "ring-2 ring-amber-400" : ""
+                                }`}
+                              >
+                                {/* Header con fecha y bandas de color de títulos */}
+                                <div className="relative bg-muted/50 px-4 py-2 border-b">
+                                  {tituloColors.length > 0 && (
+                                    <div className="absolute inset-0 flex">
+                                      {tituloColors.map(t => (
+                                        <div
+                                          key={t.id}
+                                          className="flex-1"
+                                          style={{ backgroundColor: t.color || "#6b7280", opacity: 0.15 }}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                  <div className="relative flex items-baseline gap-2">
+                                    <span className="font-bold text-lg">{date.getDate()}</span>
+                                    <span className="text-muted-foreground capitalize">
+                                      {format(date, "EEEE", { locale: es })}
+                                    </span>
+                                    {tituloColors.length > 0 && (
+                                      <span className="text-xs text-muted-foreground ml-auto">
+                                        {tituloColors.map(t => t.name).join(", ")}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {/* Lista de eventos */}
+                                <div className="divide-y">
+                                  {eventos.map(evento => (
+                                    <div
+                                      key={evento.id}
+                                      className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                                      onClick={() => openDetalleEvento(evento)}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div
+                                          className="w-1 self-stretch rounded"
+                                          style={{ backgroundColor: getEventColor(evento) }}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span>{evento.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
+                                            <p className="font-medium truncate">{evento.tituloName}</p>
+                                            <Badge variant={evento.cupoDisponible > 0 ? "outline" : "secondary"} className="ml-auto">
+                                              {evento.rotativosUsados}/{evento.cupoEfectivo}
+                                            </Badge>
+                                          </div>
+                                          <p className="text-sm text-muted-foreground">
+                                            {formatTime(evento.startTime)} - {formatTime(evento.endTime)}
+                                          </p>
+                                          {/* Nombres completos de rotativos en vista lista */}
+                                          {evento.rotativos && evento.rotativos.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                              {evento.rotativos.map((r) => (
+                                                <span
+                                                  key={r.id}
+                                                  className={`text-xs px-2 py-1 rounded-full ${
+                                                    r.estado === "APROBADO"
+                                                      ? "bg-green-100 text-green-800"
+                                                      : "bg-yellow-100 text-yellow-800"
+                                                  }`}
+                                                >
+                                                  {r.user.avatar && <span className="mr-1">{r.user.avatar}</span>}
+                                                  {r.user.alias || r.user.name.split(" ")[0]}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          })
+                        })()}
+                      </div>
+                    </>
+                  ) : vistaCalendario === "mes" ? (
                     <>
                       {/* Vista de Mes */}
                       {/* Días de la semana */}
@@ -869,10 +1067,29 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Sidebar - 1/3 del ancho */}
-        <div className="lg:col-span-1">
+        {/* Botón para abrir sidebar derecho cuando está cerrado */}
+        {!rightSidebarOpen && (
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-10 w-10 flex-shrink-0 self-start sticky top-4"
+            onClick={() => setRightSidebarOpen(true)}
+          >
+            <PanelRightOpen className="h-4 w-4" />
+          </Button>
+        )}
+
+        {/* Sidebar derecho */}
+        <div className={`transition-all duration-300 ${rightSidebarOpen ? "w-80 min-w-80" : "w-0 min-w-0 overflow-hidden"}`}>
+          {rightSidebarOpen && (
           <Card className="sticky top-4">
             <CardHeader className="pb-3">
+              {/* Botón cerrar sidebar */}
+              <div className="flex justify-end -mt-2 -mr-2 mb-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setRightSidebarOpen(false)}>
+                  <PanelRightClose className="h-4 w-4" />
+                </Button>
+              </div>
               {/* Menu de navegación */}
               {["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
                 <nav className="flex gap-4 mb-3 border-b">
@@ -1278,7 +1495,7 @@ export default function DashboardPage() {
                   <Button
                     className="w-full mb-3"
                     onClick={() => {
-                      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4 })
+                      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4, startDate: "", endDate: "" })
                       setSidebarMode("nuevo-titulo")
                     }}
                   >
@@ -1302,9 +1519,11 @@ export default function DashboardPage() {
                           />
                           <div className="min-w-0">
                             <p className="font-medium truncate">{titulo.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              E: {titulo.cupoEnsayo} | F: {titulo.cupoFuncion}
-                            </p>
+                            {titulo.startDate && titulo.endDate && (
+                              <p className="text-xs text-muted-foreground">
+                                {titulo.startDate.substring(0, 10)} → {titulo.endDate.substring(0, 10)}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-1">
@@ -1350,30 +1569,37 @@ export default function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Color</Label>
-                    <Input
-                      type="color"
-                      value={tituloForm.color}
-                      onChange={(e) => setTituloForm({ ...tituloForm, color: e.target.value })}
-                      className="h-10 w-full"
-                    />
+                    <div className="grid grid-cols-8 gap-2">
+                      {["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981", "#14b8a6",
+                        "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899"
+                      ].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${tituloForm.color === color ? "border-foreground ring-2 ring-offset-2 ring-foreground" : "border-transparent"}`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setTituloForm({ ...tituloForm, color })}
+                        />
+                      ))}
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-2">
-                      <Label>Cupo Ensayo</Label>
+                      <Label>Fecha inicio</Label>
                       <Input
-                        type="number"
-                        min={1}
-                        value={tituloForm.cupoEnsayo}
-                        onChange={(e) => setTituloForm({ ...tituloForm, cupoEnsayo: parseInt(e.target.value) || 1 })}
+                        type="date"
+                        value={tituloForm.startDate}
+                        onChange={(e) => setTituloForm({ ...tituloForm, startDate: e.target.value })}
+                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Cupo Función</Label>
+                      <Label>Fecha fin</Label>
                       <Input
-                        type="number"
-                        min={1}
-                        value={tituloForm.cupoFuncion}
-                        onChange={(e) => setTituloForm({ ...tituloForm, cupoFuncion: parseInt(e.target.value) || 1 })}
+                        type="date"
+                        value={tituloForm.endDate}
+                        onChange={(e) => setTituloForm({ ...tituloForm, endDate: e.target.value })}
+                        required
                       />
                     </div>
                   </div>
@@ -1416,30 +1642,37 @@ export default function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Color</Label>
-                    <Input
-                      type="color"
-                      value={tituloForm.color}
-                      onChange={(e) => setTituloForm({ ...tituloForm, color: e.target.value })}
-                      className="h-10 w-full"
-                    />
+                    <div className="grid grid-cols-8 gap-2">
+                      {["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981", "#14b8a6",
+                        "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899"
+                      ].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${tituloForm.color === color ? "border-foreground ring-2 ring-offset-2 ring-foreground" : "border-transparent"}`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setTituloForm({ ...tituloForm, color })}
+                        />
+                      ))}
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-2">
-                      <Label>Cupo Ensayo</Label>
+                      <Label>Fecha inicio</Label>
                       <Input
-                        type="number"
-                        min={1}
-                        value={tituloForm.cupoEnsayo}
-                        onChange={(e) => setTituloForm({ ...tituloForm, cupoEnsayo: parseInt(e.target.value) || 1 })}
+                        type="date"
+                        value={tituloForm.startDate}
+                        onChange={(e) => setTituloForm({ ...tituloForm, startDate: e.target.value })}
+                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>Cupo Función</Label>
+                      <Label>Fecha fin</Label>
                       <Input
-                        type="number"
-                        min={1}
-                        value={tituloForm.cupoFuncion}
-                        onChange={(e) => setTituloForm({ ...tituloForm, cupoFuncion: parseInt(e.target.value) || 1 })}
+                        type="date"
+                        value={tituloForm.endDate}
+                        onChange={(e) => setTituloForm({ ...tituloForm, endDate: e.target.value })}
+                        required
                       />
                     </div>
                   </div>
@@ -1462,27 +1695,61 @@ export default function DashboardPage() {
                     <Input
                       type="date"
                       value={eventoForm.date}
-                      onChange={(e) => setEventoForm({ ...eventoForm, date: e.target.value })}
+                      onChange={(e) => {
+                        const newDate = e.target.value
+                        // Verificar si el título actual sigue siendo válido para la nueva fecha
+                        const tituloActual = titulos.find((t) => t.id === eventoForm.tituloId)
+                        const tituloSigueValido = tituloActual?.startDate && tituloActual?.endDate &&
+                          newDate >= tituloActual.startDate.substring(0, 10) &&
+                          newDate <= tituloActual.endDate.substring(0, 10)
+                        setEventoForm({
+                          ...eventoForm,
+                          date: newDate,
+                          tituloId: tituloSigueValido ? eventoForm.tituloId : ""
+                        })
+                      }}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Título</Label>
-                    <Select value={eventoForm.tituloId} onValueChange={(v) => setEventoForm({ ...eventoForm, tituloId: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un título" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {titulos.map((titulo) => (
-                          <SelectItem key={titulo.id} value={titulo.id}>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: titulo.color || "#6b7280" }} />
-                              {titulo.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {(() => {
+                      const titulosDisponibles = eventoForm.date
+                        ? titulos.filter((t) => {
+                            if (!t.startDate || !t.endDate) return false
+                            const fecha = eventoForm.date
+                            const start = t.startDate.substring(0, 10)
+                            const end = t.endDate.substring(0, 10)
+                            return fecha >= start && fecha <= end
+                          })
+                        : []
+                      return (
+                        <>
+                          <Select
+                            value={eventoForm.tituloId}
+                            onValueChange={(v) => setEventoForm({ ...eventoForm, tituloId: v })}
+                            disabled={!eventoForm.date}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={eventoForm.date ? "Selecciona un título" : "Primero selecciona fecha"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {titulosDisponibles.map((titulo) => (
+                                <SelectItem key={titulo.id} value={titulo.id}>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: titulo.color || "#6b7280" }} />
+                                    {titulo.name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {eventoForm.date && titulosDisponibles.length === 0 && (
+                            <p className="text-sm text-muted-foreground">No hay títulos disponibles para esta fecha</p>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                   <div className="space-y-2">
                     <Label>Tipo</Label>
@@ -1493,7 +1760,8 @@ export default function DashboardPage() {
                         onClick={() => setEventoForm({ ...eventoForm, eventoType: "ENSAYO" })}
                         className="flex-1"
                       >
-                        🎵 Ensayo
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎵</span>
+                        Ensayo
                       </Button>
                       <Button
                         type="button"
@@ -1501,7 +1769,8 @@ export default function DashboardPage() {
                         onClick={() => setEventoForm({ ...eventoForm, eventoType: "FUNCION" })}
                         className="flex-1"
                       >
-                        🎭 Función
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎭</span>
+                        Función
                       </Button>
                     </div>
                   </div>
@@ -1565,7 +1834,8 @@ export default function DashboardPage() {
                         onClick={() => setEventoForm({ ...eventoForm, eventoType: "ENSAYO" })}
                         className="flex-1"
                       >
-                        🎵 Ensayo
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎵</span>
+                        Ensayo
                       </Button>
                       <Button
                         type="button"
@@ -1573,7 +1843,8 @@ export default function DashboardPage() {
                         onClick={() => setEventoForm({ ...eventoForm, eventoType: "FUNCION" })}
                         className="flex-1"
                       >
-                        🎭 Función
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm">🎭</span>
+                        Función
                       </Button>
                     </div>
                   </div>
@@ -1609,6 +1880,7 @@ export default function DashboardPage() {
               )}
             </CardContent>
           </Card>
+          )}
         </div>
       </div>
     </div>

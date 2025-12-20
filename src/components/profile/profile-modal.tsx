@@ -22,6 +22,7 @@ const AVATARS = [
 ]
 
 interface ProfileData {
+  name: string
   alias: string | null
   avatar: string | null
 }
@@ -31,6 +32,7 @@ export function ProfileModal() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<ProfileData>({
+    name: "",
     alias: "",
     avatar: null,
   })
@@ -46,6 +48,7 @@ export function ProfileModal() {
     const data = await res.json()
     if (data.user) {
       setProfile({
+        name: data.user.name || "",
         alias: data.user.alias || "",
         avatar: data.user.avatar || null,
       })
@@ -107,6 +110,18 @@ export function ProfileModal() {
           <DialogTitle>Mi Perfil</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nombre completo</Label>
+            <Input
+              id="name"
+              value={profile.name}
+              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+              placeholder="Tu nombre completo"
+              required
+              minLength={2}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="alias">Alias (nombre corto)</Label>
             <Input

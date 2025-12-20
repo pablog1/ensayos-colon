@@ -106,7 +106,26 @@ export async function PUT(
   if (date) {
     // Parsear fecha como mediodía UTC para evitar problemas de timezone
     const [year, month, day] = date.split('-').map(Number)
-    updateData.date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+    const newDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+
+    // Si el evento pertenece a un título, validar que la nueva fecha esté dentro del rango
+    if (evento.titulo) {
+      const tituloStart = new Date(evento.titulo.startDate)
+      const tituloEnd = new Date(evento.titulo.endDate)
+
+      const newDateStr = newDate.toISOString().split('T')[0]
+      const tituloStartStr = tituloStart.toISOString().split('T')[0]
+      const tituloEndStr = tituloEnd.toISOString().split('T')[0]
+
+      if (newDateStr < tituloStartStr || newDateStr > tituloEndStr) {
+        return NextResponse.json(
+          { error: `La fecha debe estar dentro del rango del título (${tituloStartStr} - ${tituloEndStr})` },
+          { status: 400 }
+        )
+      }
+    }
+
+    updateData.date = newDate
   }
 
   if (eventoType) {

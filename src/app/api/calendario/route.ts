@@ -13,19 +13,21 @@ export async function GET(req: NextRequest) {
   const mes = searchParams.get("mes") // formato: "2024-12"
   const tituloId = searchParams.get("tituloId")
 
-  // Calcular rango de fechas
+  // Calcular rango de fechas (usando UTC para evitar problemas de timezone)
   let startDate: Date
   let endDate: Date
 
   if (mes) {
     const [year, month] = mes.split("-").map(Number)
-    startDate = new Date(year, month - 1, 1)
-    endDate = new Date(year, month, 0)
+    // Usar UTC para evitar problemas de timezone
+    startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0))
+    // Último día del mes: día 0 del mes siguiente
+    endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59))
   } else {
     // Por defecto, mostrar mes actual
     const now = new Date()
-    startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-    endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    startDate = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1, 0, 0, 0))
+    endDate = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59))
   }
 
   const whereClause: {
@@ -104,5 +106,30 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  return NextResponse.json(eventosFormateados)
+  // Obtener títulos que se superponen con el mes para mostrar rangos de color
+  const titulos = await prisma.titulo.findMany({
+    where: {
+      startDate: { lte: endDate },
+      endDate: { gte: startDate },
+    },
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      startDate: true,
+      endDate: true,
+    },
+    orderBy: { startDate: "asc" },
+  })
+
+  return NextResponse.json({
+    eventos: eventosFormateados,
+    titulos: titulos.map((t) => ({
+      id: t.id,
+      name: t.name,
+      color: t.color,
+      startDate: t.startDate.toISOString().split("T")[0],
+      endDate: t.endDate.toISOString().split("T")[0],
+    })),
+  })
 }

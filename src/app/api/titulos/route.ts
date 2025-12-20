@@ -69,6 +69,8 @@ export async function GET(req: NextRequest) {
       cupoFuncion: titulo.cupoFuncion,
       description: titulo.description,
       color: titulo.color,
+      startDate: titulo.startDate,
+      endDate: titulo.endDate,
       seasonId: titulo.seasonId,
       createdAt: titulo.createdAt,
       updatedAt: titulo.updatedAt,
@@ -94,11 +96,18 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { name, type, cupoEnsayo, cupoFuncion, description, color, seasonId } = body
+  const { name, type, cupoEnsayo, cupoFuncion, description, color, seasonId, startDate, endDate } = body
 
   if (!name || !type) {
     return NextResponse.json(
       { error: "Nombre y tipo son requeridos" },
+      { status: 400 }
+    )
+  }
+
+  if (!startDate || !endDate) {
+    return NextResponse.json(
+      { error: "Fecha de inicio y fin son requeridas" },
       { status: 400 }
     )
   }
@@ -112,19 +121,59 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Parsear y validar fechas
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return NextResponse.json(
+      { error: "Formato de fecha invalido" },
+      { status: 400 }
+    )
+  }
+
+  if (start > end) {
+    return NextResponse.json(
+      { error: "La fecha de inicio debe ser anterior o igual a la fecha de fin" },
+      { status: 400 }
+    )
+  }
+
   // Si no se especifica temporada, usar la activa
   let targetSeasonId = seasonId
+  let season
   if (!targetSeasonId) {
-    const activeSeason = await prisma.season.findFirst({
+    season = await prisma.season.findFirst({
       where: { isActive: true },
     })
-    if (!activeSeason) {
+    if (!season) {
       return NextResponse.json(
         { error: "No hay temporada activa" },
         { status: 404 }
       )
     }
-    targetSeasonId = activeSeason.id
+    targetSeasonId = season.id
+  } else {
+    season = await prisma.season.findUnique({
+      where: { id: targetSeasonId },
+    })
+    if (!season) {
+      return NextResponse.json(
+        { error: "Temporada no encontrada" },
+        { status: 404 }
+      )
+    }
+  }
+
+  // Validar que las fechas estén dentro de la temporada
+  const seasonStart = new Date(season.startDate)
+  const seasonEnd = new Date(season.endDate)
+
+  if (start < seasonStart || end > seasonEnd) {
+    return NextResponse.json(
+      { error: `Las fechas deben estar dentro de la temporada (${seasonStart.toISOString().split('T')[0]} - ${seasonEnd.toISOString().split('T')[0]})` },
+      { status: 400 }
+    )
   }
 
   const titulo = await prisma.titulo.create({
@@ -136,6 +185,8 @@ export async function POST(req: NextRequest) {
       description: description || null,
       color: color || null,
       seasonId: targetSeasonId,
+      startDate: start,
+      endDate: end,
     },
   })
 

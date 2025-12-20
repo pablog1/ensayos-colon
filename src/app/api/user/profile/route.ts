@@ -45,7 +45,15 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { alias, avatar } = body
+  const { alias, avatar, name } = body
+
+  // Validar nombre (mínimo 2 caracteres si se proporciona)
+  if (name !== undefined && name.trim().length < 2) {
+    return NextResponse.json(
+      { error: "El nombre debe tener al menos 2 caracteres" },
+      { status: 400 }
+    )
+  }
 
   // Validar alias (máximo 15 caracteres)
   if (alias && alias.length > 15) {
@@ -63,12 +71,15 @@ export async function PATCH(request: Request) {
     )
   }
 
+  const updateData: { alias?: string | null; avatar?: string | null; name?: string } = {}
+
+  if (alias !== undefined) updateData.alias = alias || null
+  if (avatar !== undefined) updateData.avatar = avatar || null
+  if (name !== undefined && name.trim().length >= 2) updateData.name = name.trim()
+
   const updatedUser = await prisma.user.update({
     where: { id: session.user.id },
-    data: {
-      alias: alias || null,
-      avatar: avatar || null,
-    },
+    data: updateData,
     select: {
       id: true,
       name: true,
