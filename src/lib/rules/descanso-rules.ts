@@ -28,28 +28,68 @@ function getRangoMes(fecha: Date): { inicioMes: Date; finMes: Date } {
 }
 
 /**
+ * Obtiene todos los rotativos de un mes (ambos sistemas) de una sola vez
+ * Más eficiente que hacer queries individuales por usuario
+ */
+async function obtenerRotativosMes(inicioMes: Date, finMes: Date) {
+  // Solicitudes antiguas aprobadas
+  const solicitudes = await prisma.solicitud.findMany({
+    where: {
+      fecha: { gte: inicioMes, lte: finMes },
+      estado: "APROBADA",
+    },
+    select: { userId: true },
+  })
+
+  // Rotativos nuevos - buscar por eventos del mes
+  const rotativos = await prisma.rotativo.findMany({
+    where: {
+      estado: "APROBADO",
+    },
+    select: {
+      userId: true,
+      event: {
+        select: { date: true },
+      },
+    },
+  })
+
+  // Filtrar rotativos por fecha del evento (para evitar problemas de timezone)
+  const rotativosFiltrados = rotativos.filter(r => {
+    const eventDate = new Date(r.event.date)
+    return eventDate >= inicioMes && eventDate <= finMes
+  })
+
+  // Agrupar por userId
+  const porUsuario: Record<string, number> = {}
+
+  for (const s of solicitudes) {
+    porUsuario[s.userId] = (porUsuario[s.userId] || 0) + 1
+  }
+
+  for (const r of rotativosFiltrados) {
+    porUsuario[r.userId] = (porUsuario[r.userId] || 0) + 1
+  }
+
+  const totalRotativos = solicitudes.length + rotativosFiltrados.length
+
+  return { porUsuario, totalRotativos }
+}
+
+/**
  * Calcula el promedio de descansos del grupo para un mes especifico
  */
 export async function calcularPromedioGrupo(mes: Date): Promise<number> {
   const { inicioMes, finMes } = getRangoMes(mes)
 
-  const totalIntegrantes = await prisma.user.count({
-    where: { role: "INTEGRANTE" },
-  })
+  // Contar todos los usuarios (ADMIN e INTEGRANTE)
+  const totalUsuarios = await prisma.user.count()
 
-  if (totalIntegrantes === 0) return 0
+  if (totalUsuarios === 0) return 0
 
-  const totalDescansos = await prisma.solicitud.count({
-    where: {
-      fecha: {
-        gte: inicioMes,
-        lte: finMes,
-      },
-      estado: "APROBADA",
-    },
-  })
+  const { totalRotativos } = await obtenerRotativosMes(inicioMes, finMes)
 
-  return totalDescansos / totalIntegrantes
+  return totalRotativos / totalUsuarios
 }
 
 /**
@@ -61,15 +101,12 @@ export async function calcularEstadisticasUsuario(
 ): Promise<DescansoStats> {
   const { inicioMes, finMes } = getRangoMes(mes)
 
-  const descansosAprobados = await prisma.solicitud.count({
-    where: {
-      userId,
-      fecha: { gte: inicioMes, lte: finMes },
-      estado: "APROBADA",
-    },
-  })
+  // Obtener todos los rotativos del mes de una sola vez
+  const { porUsuario, totalRotativos } = await obtenerRotativosMes(inicioMes, finMes)
+  const totalUsuarios = await prisma.user.count()
 
-  const promedioGrupo = await calcularPromedioGrupo(mes)
+  const descansosAprobados = porUsuario[userId] || 0
+  const promedioGrupo = totalUsuarios > 0 ? totalRotativos / totalUsuarios : 0
   const limiteMaximo = promedioGrupo * 1.05
 
   const porcentajeVsPromedio =
@@ -136,23 +173,30 @@ export async function validarSolicitud(
 }
 
 /**
- * Obtiene estadisticas generales del mes para todos los integrantes
+ * Obtiene estadisticas generales del mes para todos los usuarios
  */
 export async function obtenerEstadisticasGenerales(mes: Date) {
   const { inicioMes, finMes } = getRangoMes(mes)
 
-  const integrantes = await prisma.user.findMany({
-    where: { role: "INTEGRANTE" },
+  // Obtener TODOS los usuarios (ADMIN e INTEGRANTE)
+  const usuarios = await prisma.user.findMany({
     select: {
       id: true,
       name: true,
       email: true,
+      alias: true,
+      role: true,
     },
+    orderBy: { name: "asc" },
   })
 
-  const promedioGrupo = await calcularPromedioGrupo(mes)
+  // Obtener todos los rotativos del mes de una sola vez (optimizado)
+  const { porUsuario, totalRotativos } = await obtenerRotativosMes(inicioMes, finMes)
+
+  const promedioGrupo = usuarios.length > 0 ? totalRotativos / usuarios.length : 0
   const limiteMaximo = promedioGrupo * 1.05
 
+  // Contar solicitudes pendientes (sistema antiguo)
   const solicitudesPendientes = await prisma.solicitud.count({
     where: {
       fecha: { gte: inicioMes, lte: finMes },
@@ -161,38 +205,35 @@ export async function obtenerEstadisticasGenerales(mes: Date) {
     },
   })
 
-  const estadisticasPorIntegrante = await Promise.all(
-    integrantes.map(async (integrante) => {
-      const descansosAprobados = await prisma.solicitud.count({
-        where: {
-          userId: integrante.id,
-          fecha: { gte: inicioMes, lte: finMes },
-          estado: "APROBADA",
-        },
-      })
+  // Mapear usuarios con sus estadísticas (sin queries adicionales)
+  const estadisticasPorUsuario = usuarios.map((usuario) => {
+    const descansosAprobados = porUsuario[usuario.id] || 0
 
-      const porcentajeVsPromedio =
-        promedioGrupo > 0
-          ? ((descansosAprobados - promedioGrupo) / promedioGrupo) * 100
-          : 0
+    const porcentajeVsPromedio =
+      promedioGrupo > 0
+        ? ((descansosAprobados - promedioGrupo) / promedioGrupo) * 100
+        : 0
 
-      return {
-        id: integrante.id,
-        nombre: integrante.name,
-        email: integrante.email,
-        descansosAprobados,
-        porcentajeVsPromedio: Math.round(porcentajeVsPromedio * 100) / 100,
-        puedesolicitarMas: descansosAprobados < limiteMaximo,
-      }
-    })
-  )
+    return {
+      id: usuario.id,
+      nombre: usuario.alias || usuario.name,
+      email: usuario.email,
+      role: usuario.role,
+      descansosAprobados,
+      porcentajeVsPromedio: Math.round(porcentajeVsPromedio * 100) / 100,
+      puedesolicitarMas: descansosAprobados < limiteMaximo,
+    }
+  })
+
+  // Ordenar por rotativos (mayor a menor)
+  estadisticasPorUsuario.sort((a, b) => b.descansosAprobados - a.descansosAprobados)
 
   return {
     mes: mes.toISOString().slice(0, 7),
-    totalIntegrantes: integrantes.length,
+    totalIntegrantes: usuarios.length,
     promedioDescansos: Math.round(promedioGrupo * 100) / 100,
     limiteMaximo: Math.round(limiteMaximo * 100) / 100,
     solicitudesPendientes,
-    integrantes: estadisticasPorIntegrante,
+    integrantes: estadisticasPorUsuario,
   }
 }

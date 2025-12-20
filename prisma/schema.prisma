@@ -242,6 +242,7 @@ model Rotativo {
   @@index([userId, estado])
   @@index([eventId])
   @@index([estado])
+  @@index([estado, userId]) // Para consultas de estadísticas
   @@map("rotativos")
 }
 

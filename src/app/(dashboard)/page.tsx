@@ -707,10 +707,10 @@ export default function DashboardPage() {
           <Card>
             <CardContent className="p-4">
               <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
-                {/* Header con navegación y toggle de vista */}
+                {/* Header del calendario */}
                 <div className="flex items-center justify-between mb-4">
-                  {/* Toggle de vista */}
-                  <div className="flex gap-1">
+                  {/* IZQUIERDA: Botones Mes/Semana/Hoy */}
+                  <div className="flex items-center gap-1">
                     <Button
                       variant={vistaCalendario === "mes" ? "default" : "outline"}
                       size="sm"
@@ -725,20 +725,31 @@ export default function DashboardPage() {
                     >
                       Semana
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const hoy = new Date()
+                        setSelectedDate(hoy)
+                        setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
+                      }}
+                    >
+                      Hoy
+                    </Button>
                   </div>
 
-                  {/* Navegación */}
+                  {/* CENTRO: Navegación con flechas y título del mes */}
                   <div className="flex items-center gap-2">
                     <button
-                      className="p-1 hover:text-primary transition-colors"
+                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
                       onClick={() => vistaCalendario === "mes"
                         ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))
                         : navegarSemana(-1)
                       }
                     >
-                      <ChevronLeft className="h-6 w-6" />
+                      <ChevronLeft className="h-5 w-5" />
                     </button>
-                    <h2 className="text-xl font-semibold min-w-[200px] text-center">
+                    <h2 className="text-xl font-semibold min-w-[220px] text-center">
                       {vistaCalendario === "mes"
                         ? format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
                         : (() => {
@@ -753,28 +764,18 @@ export default function DashboardPage() {
                       }
                     </h2>
                     <button
-                      className="p-1 hover:text-primary transition-colors"
+                      className="p-1.5 hover:bg-muted rounded-md transition-colors"
                       onClick={() => vistaCalendario === "mes"
                         ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))
                         : navegarSemana(1)
                       }
                     >
-                      <ChevronRight className="h-6 w-6" />
+                      <ChevronRight className="h-5 w-5" />
                     </button>
                   </div>
 
-                  {/* Botón hoy */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const hoy = new Date()
-                      setSelectedDate(hoy)
-                      setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
-                    }}
-                  >
-                    Hoy
-                  </Button>
+                  {/* DERECHA: Espacio vacío para balancear */}
+                  <div className="w-[180px]"></div>
                 </div>
 
                 {/* Grilla del calendario */}
@@ -872,6 +873,47 @@ export default function DashboardPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-4">
             <CardHeader className="pb-3">
+              {/* Menu de navegación */}
+              {["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
+                <nav className="flex gap-4 mb-3 border-b">
+                  <button
+                    className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                      sidebarMode === "rotativos"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                    onClick={() => setSidebarMode("rotativos")}
+                  >
+                    <Users className="w-4 h-4" />
+                    Rotativos
+                  </button>
+                  <button
+                    className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                      sidebarMode === "eventos"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                    onClick={() => setSidebarMode("eventos")}
+                  >
+                    <Theater className="w-4 h-4" />
+                    Eventos
+                  </button>
+                  {isAdmin && (
+                    <button
+                      className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                        sidebarMode === "titulos"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={() => setSidebarMode("titulos")}
+                    >
+                      <Music className="w-4 h-4" />
+                      Títulos
+                    </button>
+                  )}
+                </nav>
+              )}
+              {/* Título ABAJO */}
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
                   {sidebarMode === "rotativos" && "Rotativos del Mes"}
@@ -893,37 +935,6 @@ export default function DashboardPage() {
                   </Button>
                 )}
               </div>
-              {/* Tabs */}
-              {["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  <Button
-                    variant={sidebarMode === "rotativos" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSidebarMode("rotativos")}
-                  >
-                    <Users className="w-4 h-4 mr-1" />
-                    Rotativos
-                  </Button>
-                  <Button
-                    variant={sidebarMode === "eventos" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSidebarMode("eventos")}
-                  >
-                    <Theater className="w-4 h-4 mr-1" />
-                    Eventos
-                  </Button>
-                  {isAdmin && (
-                    <Button
-                      variant={sidebarMode === "titulos" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSidebarMode("titulos")}
-                    >
-                      <Music className="w-4 h-4 mr-1" />
-                      Títulos
-                    </Button>
-                  )}
-                </div>
-              )}
             </CardHeader>
             <CardContent className="max-h-[600px] overflow-y-auto">
               {/* Vista de rotativos del mes */}
