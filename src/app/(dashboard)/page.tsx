@@ -648,7 +648,7 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-        <span className="relative font-semibold text-base text-center">{date.getDate()}</span>
+        <span className="relative font-semibold text-base pl-1.5">{date.getDate()}</span>
         {tieneContenido && (
           <div className="flex flex-col gap-1.5 mt-1 w-full px-1 overflow-y-auto flex-1">
             {/* Eventos con sus rotativos */}
