@@ -4,14 +4,6 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { toast } from "sonner"
 import { Clock, CheckCircle, XCircle } from "lucide-react"
 
@@ -116,76 +108,73 @@ export default function PendientesPage() {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Integrante</TableHead>
-                  <TableHead>Fecha del rotativo</TableHead>
-                  <TableHead>Solicitado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {solicitudes.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {s.user.avatar && (
-                          <span className="text-xl">{s.user.avatar}</span>
-                        )}
-                        <div>
-                          <p className="font-medium">
-                            {s.user.alias || s.user.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {s.user.email}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">
+            <div className="space-y-3">
+              {solicitudes.map((s) => (
+                <div
+                  key={s.id}
+                  className="border rounded-lg p-4 space-y-3"
+                >
+                  {/* Header: Usuario */}
+                  <div className="flex items-center gap-3">
+                    {s.user.avatar && (
+                      <span className="text-2xl">{s.user.avatar}</span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {s.user.alias || s.user.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {s.user.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Info: Fechas */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Rotativo: </span>
+                      <span className="font-medium">
                         {new Date(s.fecha).toLocaleDateString("es-ES", {
-                          weekday: "long",
+                          weekday: "short",
                           day: "numeric",
-                          month: "long",
+                          month: "short",
                         })}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm text-muted-foreground">
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Solicitado: </span>
+                      <span>
                         {new Date(s.createdAt).toLocaleDateString("es-ES", {
                           day: "numeric",
                           month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
                         })}
                       </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                          onClick={() => aprobar(s.id)}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Aprobar
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => rechazar(s.id)}
-                        >
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Rechazar
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => aprobar(s.id)}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Aprobar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => rechazar(s.id)}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Rechazar
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>
