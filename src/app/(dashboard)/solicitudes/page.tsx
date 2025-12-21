@@ -92,56 +92,98 @@ export default function SolicitudesPage() {
           ) : solicitudes.length === 0 ? (
             <p className="text-gray-500">No tienes solicitudes</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Evento</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Vista mobile: Cards */}
+              <div className="md:hidden space-y-3">
                 {solicitudes.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell>
-                      {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {s.tituloName || s.eventoTitle}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
+                  <div key={s.id} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium">{s.tituloName || s.eventoTitle}</p>
+                        <p className="text-sm text-muted-foreground">
                           {s.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
-                        </span>
+                        </p>
                       </div>
-                    </TableCell>
-                    <TableCell>
                       <Badge variant={estadoBadgeVariant(s.estado)}>
                         {s.estado}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {(s.estado === "PENDIENTE" || s.estado === "APROBADO") &&
-                        new Date(s.fecha) >= new Date() && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => cancelarSolicitud(s.id)}
-                          >
-                            Cancelar
-                          </Button>
-                        )}
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}
+                    </div>
+                    {(s.estado === "PENDIENTE" || s.estado === "APROBADO") &&
+                      new Date(s.fecha) >= new Date() && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => cancelarSolicitud(s.id)}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+
+              {/* Vista desktop: Table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Evento</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {solicitudes.map((s) => (
+                      <TableRow key={s.id}>
+                        <TableCell>
+                          {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">
+                              {s.tituloName || s.eventoTitle}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {s.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={estadoBadgeVariant(s.estado)}>
+                            {s.estado}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {(s.estado === "PENDIENTE" || s.estado === "APROBADO") &&
+                            new Date(s.fecha) >= new Date() && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => cancelarSolicitud(s.id)}
+                              >
+                                Cancelar
+                              </Button>
+                            )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
