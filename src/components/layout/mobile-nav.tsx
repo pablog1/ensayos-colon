@@ -98,7 +98,7 @@ export function MobileNav() {
       >
         <SheetHeader className="p-6 border-b border-white/10">
           <SheetTitle className="flex items-center gap-3 text-white">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[var(--gold)]">
+            <div className="w-10 h-10 shrink-0 aspect-square rounded-full overflow-hidden border-2 border-[var(--gold)]">
               <img
                 src="/teatro-colon.jpg"
                 alt="Teatro Colón"
