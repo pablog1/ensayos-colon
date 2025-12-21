@@ -6,14 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -270,12 +262,12 @@ export default function IntegrantesPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100 rounded-lg shrink-0">
                 <Shield className="w-5 h-5 text-purple-600" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-2xl font-bold">{admins.length}</p>
-                <p className="text-sm text-muted-foreground">Administradores</p>
+                <p className="text-sm text-muted-foreground truncate">Admins</p>
               </div>
             </div>
           </CardContent>
@@ -283,12 +275,12 @@ export default function IntegrantesPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2 bg-blue-100 rounded-lg shrink-0">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-2xl font-bold">{miembros.length}</p>
-                <p className="text-sm text-muted-foreground">Integrantes</p>
+                <p className="text-sm text-muted-foreground truncate">Integrantes</p>
               </div>
             </div>
           </CardContent>
@@ -309,83 +301,79 @@ export default function IntegrantesPage() {
               No hay usuarios registrados
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead className="text-center">Rotativos</TableHead>
-                  <TableHead>Fecha Registro</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {integrantes.map((i) => {
-                  const isCurrentUser = i.id === session?.user?.id
+            <div className="space-y-3">
+              {integrantes.map((i) => {
+                const isCurrentUser = i.id === session?.user?.id
 
-                  return (
-                    <TableRow key={i.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {i.name}
-                          {isCurrentUser && (
-                            <Badge variant="outline" className="text-xs">
-                              Vos
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {i.email}
-                      </TableCell>
-                      <TableCell>
-                        {i.role === "ADMIN" ? (
-                          <Badge className="bg-purple-100 text-purple-800">
-                            <Shield className="w-3 h-3 mr-1" />
-                            Admin
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">
-                            <User className="w-3 h-3 mr-1" />
-                            Integrante
+                return (
+                  <div
+                    key={i.id}
+                    className="border rounded-lg p-4 space-y-3"
+                  >
+                    {/* Header: Nombre y Rol */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium truncate">{i.name}</span>
+                        {isCurrentUser && (
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            Vos
                           </Badge>
                         )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {i._count.solicitudes}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(i.createdAt).toLocaleDateString("es-ES")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-2 justify-end">
-                          {!isCurrentUser && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEditDialog(i)}
-                            >
-                              <Pencil className="w-3 h-3 mr-1" />
-                              Editar rol
-                            </Button>
-                          )}
-                          {!isCurrentUser && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDelete(i.id, i.name)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                      </div>
+                      {i.role === "ADMIN" ? (
+                        <Badge className="bg-purple-100 text-purple-800 shrink-0">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Admin
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="shrink-0">
+                          <User className="w-3 h-3 mr-1" />
+                          Integrante
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="text-sm text-muted-foreground truncate">
+                      {i.email}
+                    </div>
+
+                    {/* Stats */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Rotativos: </span>
+                        <span className="font-medium">{i._count.solicitudes}</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Registro: </span>
+                        <span>{new Date(i.createdAt).toLocaleDateString("es-ES")}</span>
+                      </div>
+                    </div>
+
+                    {/* Acciones */}
+                    {!isCurrentUser && (
+                      <div className="flex gap-2 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(i)}
+                        >
+                          <Pencil className="w-3 h-3 mr-1" />
+                          Editar rol
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(i.id, i.name)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
