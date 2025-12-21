@@ -886,19 +886,19 @@ export default function DashboardPage() {
             <CardContent className="p-2 pt-1.5 md:p-4">
               <div className={`transition-opacity duration-200 ${loading ? "opacity-60" : ""}`}>
                 {/* Header del calendario - Compacto en móvil */}
-                <div className="flex flex-col gap-1.5 mb-2 md:gap-2 md:mb-4">
+                <div className="flex flex-col gap-3 mb-3 md:gap-2 md:mb-4">
                   {/* Navegación de fecha */}
-                  <div className="flex items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-3">
                     <button
-                      className="p-1 hover:bg-muted rounded-md transition-colors"
+                      className="p-2.5 hover:bg-muted rounded-lg transition-colors active:bg-muted/80"
                       onClick={() => vistaCalendario === "mes"
                         ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))
                         : navegarSemana(-1)
                       }
                     >
-                      <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
+                      <ChevronLeft className="h-5 w-5 md:h-5 md:w-5" />
                     </button>
-                    <h2 className="text-sm md:text-xl font-semibold text-center">
+                    <h2 className="text-base md:text-xl font-semibold text-center min-w-[160px]">
                       {vistaCalendario === "mes"
                         ? format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
                         : (() => {
@@ -913,23 +913,23 @@ export default function DashboardPage() {
                       }
                     </h2>
                     <button
-                      className="p-1 hover:bg-muted rounded-md transition-colors"
+                      className="p-2.5 hover:bg-muted rounded-lg transition-colors active:bg-muted/80"
                       onClick={() => vistaCalendario === "mes"
                         ? setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))
                         : navegarSemana(1)
                       }
                     >
-                      <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
+                      <ChevronRight className="h-5 w-5 md:h-5 md:w-5" />
                     </button>
                   </div>
 
                   {/* Controles: botones de vista y toggle en una fila */}
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-1.5">
                       <Button
                         variant={vistaCalendario === "mes" ? "default" : "outline"}
                         size="sm"
-                        className="h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
+                        className="h-8 px-3 text-xs md:h-9 md:px-3 md:text-sm"
                         onClick={() => setVistaCalendario("mes")}
                       >
                         Mes
@@ -937,13 +937,13 @@ export default function DashboardPage() {
                       <Button
                         variant={vistaCalendario === "semana" ? "default" : "outline"}
                         size="sm"
-                        className="h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
+                        className="h-8 px-3 text-xs md:h-9 md:px-3 md:text-sm"
                         onClick={() => setVistaCalendario("semana")}
                       >
                         Semana
                       </Button>
                       <button
-                        className="text-xs md:text-sm text-primary hover:underline font-medium px-1"
+                        className="text-xs md:text-sm text-primary hover:underline font-medium px-2 py-1"
                         onClick={() => {
                           const hoy = new Date()
                           setSelectedDate(hoy)
@@ -953,12 +953,11 @@ export default function DashboardPage() {
                         Hoy
                       </button>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs md:text-sm ml-4 md:ml-6">
+                    <div className="flex items-center gap-2 text-xs md:text-sm">
                       <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
                       <Switch
                         checked={modoLista}
                         onCheckedChange={setModoLista}
-                        className="scale-75 md:scale-100"
                       />
                       <span className={modoLista ? "font-medium" : "text-muted-foreground"}>Lista</span>
                     </div>
