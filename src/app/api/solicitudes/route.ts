@@ -115,8 +115,7 @@ export async function POST(req: NextRequest) {
   // Calcular cupo efectivo usando reglas
   const cupoDeReglas = await getCupoParaEvento(
     evento.eventoType,
-    evento.titulo?.type ?? null,
-    evento.units > 1
+    evento.titulo?.type ?? null
   )
   const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 

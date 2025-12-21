@@ -65,11 +65,10 @@ const ruleUIConfig: Record<string, {
         OPERA: "Ópera",
         CONCIERTO: "Concierto",
         ENSAYO: "Ensayo",
-        ENSAYO_DOBLE: "Ensayo doble",
-        OTRO: "Otro",
+        BALLET: "Ballet",
       }
       return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {Object.entries(cupos).map(([tipo, cantidad]) => (
             <div key={tipo} className="text-center p-3 bg-muted/50 rounded-lg">
               <div className="text-2xl font-bold text-primary">{cantidad}</div>
@@ -86,11 +85,10 @@ const ruleUIConfig: Record<string, {
         OPERA: "Ópera",
         CONCIERTO: "Concierto",
         ENSAYO: "Ensayo",
-        ENSAYO_DOBLE: "Ensayo doble",
-        OTRO: "Otro",
+        BALLET: "Ballet",
       }
       return (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {Object.entries(cupos).map(([tipo, cantidad]) => (
             <div key={tipo} className="space-y-2">
               <Label className="text-sm">{labels[tipo] || tipo}</Label>
@@ -163,9 +161,9 @@ const ruleUIConfig: Record<string, {
   },
   BLOQUE_EXCLUSIVO: {
     icon: Music,
-    friendlyName: "Bloques de producción",
-    shortDescription: "Configuración para ausencias en producciones completas",
-    explanation: "Un bloque permite ausentarse durante toda una producción (ej: \"La Traviata\"). Cada músico puede tomar un bloque por año. Una vez que comienza el bloque, no se puede cancelar para garantizar la planificación.",
+    friendlyName: "Títulos completos",
+    shortDescription: "Configuración para ausencias en títulos completos",
+    explanation: "Permite ausentarse durante todo un título (ej: \"La Traviata\"). Cada músico puede tomar un título por año. Una vez iniciado, no se puede cancelar para garantizar la planificación.",
     editable: false,
     renderValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -174,7 +172,7 @@ const ruleUIConfig: Record<string, {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-base px-3 py-1">
-              {config.maxPorPersona} bloque por año
+              {config.maxPorPersona} título por año
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -624,6 +622,15 @@ export default function ConfiguracionPage() {
                                 }}
                               >
                                 Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={saveChanges}
+                                disabled={saving}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <Save className="w-4 h-4 mr-1" />
+                                {saving ? "Guardando..." : "Guardar"}
                               </Button>
                             </div>
                           </div>

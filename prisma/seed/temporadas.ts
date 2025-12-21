@@ -10,7 +10,7 @@ function getEventType(tituloType: string): EventType {
     case "CONCIERTO":
       return EventType.CONCIERTO
     default:
-      return EventType.OTRO
+      return EventType.BALLET
   }
 }
 

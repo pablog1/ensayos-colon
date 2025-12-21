@@ -83,26 +83,25 @@ export async function GET(req: NextRequest) {
   // Helper para obtener cupo según tipo de evento
   const getCupoParaEvento = (
     eventoType: string | null,
-    tituloType: string | null,
-    isDoble: boolean = false
+    tituloType: string | null
   ): number => {
     // Si es ensayo, usar cupo de ENSAYO
     if (eventoType === "ENSAYO") {
-      return isDoble ? cuposReglas.ENSAYO_DOBLE : cuposReglas.ENSAYO
+      return cuposReglas.ENSAYO
     }
     // Si es función, usar cupo según tipo de título
     if (eventoType === "FUNCION" && tituloType) {
       const tipoMap: Record<string, string> = {
         OPERA: "OPERA",
         CONCIERTO: "CONCIERTO",
-        BALLET: "OPERA", // Ballet usa mismo cupo que ópera
+        BALLET: "BALLET",
         RECITAL: "CONCIERTO", // Recital usa mismo cupo que concierto
-        OTRO: "OTRO",
+        OTRO: "BALLET", // Fallback a Ballet
       }
-      const cupoKey = tipoMap[tituloType] || "OTRO"
-      return cuposReglas[cupoKey] ?? cuposReglas.OTRO
+      const cupoKey = tipoMap[tituloType] || "BALLET"
+      return cuposReglas[cupoKey] ?? cuposReglas.BALLET
     }
-    return cuposReglas.OTRO
+    return cuposReglas.BALLET
   }
 
   // Formatear eventos para el calendario
@@ -112,8 +111,7 @@ export async function GET(req: NextRequest) {
       evento.cupoOverride ??
       getCupoParaEvento(
         evento.eventoType,
-        evento.titulo?.type ?? null,
-        evento.units > 1 // isDoble si tiene más de 1 unidad
+        evento.titulo?.type ?? null
       )
 
     // Convertir fecha a string ISO para evitar problemas de timezone

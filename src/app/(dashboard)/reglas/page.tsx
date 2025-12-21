@@ -54,11 +54,10 @@ const friendlyRules: Record<string, {
         OPERA: "Ópera",
         CONCIERTO: "Concierto",
         ENSAYO: "Ensayo",
-        ENSAYO_DOBLE: "Ensayo doble",
-        OTRO: "Otro",
+        BALLET: "Ballet",
       }
       return (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
           {Object.entries(cupos).map(([tipo, cantidad]) => (
             <div key={tipo} className="text-center p-2 bg-blue-50 rounded-lg">
               <div className="text-xl font-bold text-blue-700">{cantidad}</div>
@@ -110,12 +109,11 @@ const friendlyRules: Record<string, {
   },
   BLOQUE_EXCLUSIVO: {
     icon: Music,
-    title: "Bloques de producción",
-    summary: "Podés ausentarte durante una producción completa",
+    title: "Títulos completos",
+    summary: "Podés ausentarte durante un título completo",
     details: [
-      "Un bloque por persona por temporada",
+      "Un título por persona por temporada",
       "Una vez iniciado, no se puede cancelar",
-      "Ideal para compromisos que abarcan varios días seguidos",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -124,7 +122,7 @@ const friendlyRules: Record<string, {
         <div className="flex items-center gap-3 mt-3">
           <div className="text-center p-3 bg-orange-50 rounded-lg">
             <div className="text-2xl font-bold text-orange-700">{config.maxPorPersona}</div>
-            <div className="text-xs text-orange-600">bloque por año</div>
+            <div className="text-xs text-orange-600">título por año</div>
           </div>
         </div>
       )
@@ -373,7 +371,7 @@ export default function ReglasPage() {
               <span className="text-sm text-muted-foreground">Día libre asignado dentro del sistema</span>
             </div>
             <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">Bloque</Badge>
+              <Badge variant="outline" className="shrink-0">Título</Badge>
               <span className="text-sm text-muted-foreground">Producción completa (ej: una ópera entera)</span>
             </div>
             <div className="flex items-start gap-2">

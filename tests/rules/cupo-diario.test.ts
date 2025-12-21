@@ -6,9 +6,8 @@ describe("R1: Cupo Diario", () => {
   const defaultCupos = {
     OPERA: 4,
     CONCIERTO: 2,
-    ENSAYO: 2,
-    ENSAYO_DOBLE: 2,
-    OTRO: 2,
+    ENSAYO: 4,
+    BALLET: 4,
   }
 
   describe("Opera (4 cupos)", () => {
@@ -114,8 +113,8 @@ describe("R1: Cupo Diario", () => {
 
     it("debe usar valor por defecto si no hay configuracion", async () => {
       const context = createMockContext({
-        eventType: "OTRO",
-        eventData: { currentApproved: 0, cupoTotal: 2, waitingListLength: 0 },
+        eventType: "BALLET",
+        eventData: { currentApproved: 0, cupoTotal: 4, waitingListLength: 0 },
       })
       const config = createMockConfig(null)
 

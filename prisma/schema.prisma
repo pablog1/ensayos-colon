@@ -450,8 +450,7 @@ enum EventType {
   OPERA
   CONCIERTO
   ENSAYO
-  ENSAYO_DOBLE
-  OTRO
+  BALLET
 }
 
 enum TituloType {

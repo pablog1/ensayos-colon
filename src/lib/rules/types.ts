@@ -84,8 +84,8 @@ export interface CupoDiarioConfig {
   OPERA: number
   CONCIERTO: number
   ENSAYO: number
-  ENSAYO_DOBLE: number
-  OTRO: number
+  BALLET: number
+  [key: string]: number
 }
 
 export interface MaxProyectadoConfig {

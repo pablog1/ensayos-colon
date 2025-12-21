@@ -41,8 +41,7 @@ export async function GET(
     eventos.map(async (evento) => {
       const cupoDeReglas = await getCupoParaEvento(
         evento.eventoType,
-        titulo.type,
-        evento.units > 1
+        titulo.type
       )
       return {
         ...evento,
@@ -138,7 +137,7 @@ export async function POST(
       title: eventTitle,
       date: fechaEvento,
       eventoType,
-      eventType: titulo.type === "OPERA" ? "OPERA" : titulo.type === "CONCIERTO" ? "CONCIERTO" : "OTRO",
+      eventType: titulo.type === "OPERA" ? "OPERA" : titulo.type === "CONCIERTO" ? "CONCIERTO" : "BALLET",
       startTime: startTime ? new Date(startTime) : fechaEvento,
       endTime: endTime ? new Date(endTime) : new Date(fechaEvento.getTime() + 3 * 60 * 60 * 1000), // 3 horas por defecto
       tituloId,

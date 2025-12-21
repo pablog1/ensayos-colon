@@ -50,8 +50,7 @@ export async function GET(
   // Obtener cupo de reglas
   const cupoDeReglas = await getCupoParaEvento(
     evento.eventoType,
-    evento.titulo?.type ?? null,
-    evento.units > 1
+    evento.titulo?.type ?? null
   )
   const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 

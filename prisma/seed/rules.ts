@@ -8,13 +8,12 @@ const ruleConfigs = [
     value: JSON.stringify({
       OPERA: 4,
       CONCIERTO: 2,
-      ENSAYO: 2,
-      ENSAYO_DOBLE: 2,
-      OTRO: 2,
+      ENSAYO: 4,
+      BALLET: 4,
     }),
     valueType: "json",
     description:
-      "Cupos diarios por tipo de evento. Ópera: 4 cupos, Concierto: 2 cupos.",
+      "Cupos diarios por tipo de evento. Ópera: 4 cupos, Concierto: 2 cupos, Ensayo: 4 cupos, Ballet: 4 cupos.",
     category: "cupo",
     priority: 10,
   },

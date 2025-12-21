@@ -9,9 +9,8 @@ import type {
 const DEFAULT_CUPOS: CupoDiarioConfig = {
   OPERA: 4,
   CONCIERTO: 2,
-  ENSAYO: 2,
-  ENSAYO_DOBLE: 2,
-  OTRO: 2,
+  ENSAYO: 4,
+  BALLET: 4,
 }
 
 export const cupoDiarioRule: RuleDefinition = {

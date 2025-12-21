@@ -4,17 +4,15 @@ export type CupoDiarioConfig = {
   OPERA: number
   CONCIERTO: number
   ENSAYO: number
-  ENSAYO_DOBLE: number
-  OTRO: number
+  BALLET: number
   [key: string]: number
 }
 
 const DEFAULT_CUPOS: CupoDiarioConfig = {
   OPERA: 4,
   CONCIERTO: 2,
-  ENSAYO: 2,
-  ENSAYO_DOBLE: 2,
-  OTRO: 2,
+  ENSAYO: 4,
+  BALLET: 4,
 }
 
 // Cache para no hacer query cada vez
@@ -56,18 +54,16 @@ export async function getCuposFromRules(): Promise<CupoDiarioConfig> {
  * Obtiene el cupo para un evento específico
  * @param eventoType - ENSAYO o FUNCION
  * @param tituloType - OPERA, CONCIERTO, BALLET, RECITAL, OTRO
- * @param isDoble - Si es ensayo doble
  */
 export async function getCupoParaEvento(
   eventoType: "ENSAYO" | "FUNCION" | null,
-  tituloType: string | null,
-  isDoble: boolean = false
+  tituloType: string | null
 ): Promise<number> {
   const cupos = await getCuposFromRules()
 
-  // Si es ensayo, usar cupo de ENSAYO o ENSAYO_DOBLE
+  // Si es ensayo, usar cupo de ENSAYO
   if (eventoType === "ENSAYO") {
-    return isDoble ? cupos.ENSAYO_DOBLE : cupos.ENSAYO
+    return cupos.ENSAYO
   }
 
   // Si es función, usar cupo según tipo de título
@@ -76,16 +72,16 @@ export async function getCupoParaEvento(
     const tipoMap: Record<string, string> = {
       OPERA: "OPERA",
       CONCIERTO: "CONCIERTO",
-      BALLET: "OPERA", // Ballet usa mismo cupo que ópera
+      BALLET: "BALLET",
       RECITAL: "CONCIERTO", // Recital usa mismo cupo que concierto
-      OTRO: "OTRO",
+      OTRO: "BALLET", // Fallback a Ballet
     }
-    const cupoKey = tipoMap[tituloType] || "OTRO"
-    return cupos[cupoKey] ?? cupos.OTRO
+    const cupoKey = tipoMap[tituloType] || "BALLET"
+    return cupos[cupoKey] ?? cupos.BALLET
   }
 
   // Default
-  return cupos.OTRO
+  return cupos.BALLET
 }
 
 /**

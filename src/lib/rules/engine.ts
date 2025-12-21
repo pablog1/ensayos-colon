@@ -185,9 +185,8 @@ export async function buildValidationContext(
   const cupos = (cupoConfig?.value as Record<string, number>) ?? {
     OPERA: 4,
     CONCIERTO: 2,
-    ENSAYO: 2,
-    ENSAYO_DOBLE: 2,
-    OTRO: 2,
+    ENSAYO: 4,
+    BALLET: 4,
   }
 
   // Calcular estadisticas de temporada
