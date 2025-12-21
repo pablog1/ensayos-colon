@@ -238,11 +238,9 @@ export default function TitulosPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="OPERA">Opera</SelectItem>
+                    <SelectItem value="OPERA">Ópera</SelectItem>
                     <SelectItem value="CONCIERTO">Concierto</SelectItem>
                     <SelectItem value="BALLET">Ballet</SelectItem>
-                    <SelectItem value="RECITAL">Recital</SelectItem>
-                    <SelectItem value="OTRO">Otro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

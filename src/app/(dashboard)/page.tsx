@@ -1698,7 +1698,6 @@ export default function DashboardPage() {
                         <SelectItem value="OPERA">Ópera</SelectItem>
                         <SelectItem value="BALLET">Ballet</SelectItem>
                         <SelectItem value="CONCIERTO">Concierto</SelectItem>
-                        <SelectItem value="OTRO">Otro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1770,7 +1769,6 @@ export default function DashboardPage() {
                         <SelectItem value="OPERA">Ópera</SelectItem>
                         <SelectItem value="BALLET">Ballet</SelectItem>
                         <SelectItem value="CONCIERTO">Concierto</SelectItem>
-                        <SelectItem value="OTRO">Otro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

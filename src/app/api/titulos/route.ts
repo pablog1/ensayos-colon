@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Validar tipo
-  const validTypes = ["OPERA", "CONCIERTO", "BALLET", "RECITAL", "OTRO"]
+  const validTypes = ["OPERA", "CONCIERTO", "BALLET"]
   if (!validTypes.includes(type)) {
     return NextResponse.json(
       { error: "Tipo de titulo invalido" },
