@@ -40,9 +40,10 @@ export async function getCuposFromRules(): Promise<CupoDiarioConfig> {
 
     if (config?.value) {
       const parsed = JSON.parse(config.value)
-      cuposCache = { ...DEFAULT_CUPOS, ...parsed }
+      const result: CupoDiarioConfig = { ...DEFAULT_CUPOS, ...parsed }
+      cuposCache = result
       cacheTimestamp = now
-      return cuposCache
+      return result
     }
   } catch (error) {
     console.error("Error obteniendo cupos de reglas:", error)

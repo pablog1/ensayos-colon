@@ -2,6 +2,8 @@
 
 Sistema web para administrar rotativos de integrantes de una orquesta, con regla automatica del 5% sobre el promedio mensual.
 
+**Produccion:** https://ensayos-colon-production.up.railway.app
+
 ## Stack Tecnologico
 
 - **Next.js 16** (App Router)
