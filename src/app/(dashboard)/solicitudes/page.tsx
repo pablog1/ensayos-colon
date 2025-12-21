@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import Link from "next/link"
 import { toast } from "sonner"
 
 interface Solicitud {
@@ -73,9 +72,9 @@ export default function SolicitudesPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Mis Solicitudes</h1>
-        <Link href="/solicitudes/nueva">
-          <Button>Nueva Solicitud</Button>
-        </Link>
+        <p className="text-sm text-muted-foreground">
+          Para solicitar un rotativo, seleccioná un evento en el calendario
+        </p>
       </div>
 
       <Card>

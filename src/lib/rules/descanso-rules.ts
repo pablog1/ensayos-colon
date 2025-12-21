@@ -11,21 +11,6 @@ export interface DescansoStats {
   descansosRestantesPermitidos: number
 }
 
-export interface ValidacionResult {
-  autoApprove: boolean
-  esCasoEspecial: boolean
-  porcentaje: number
-  mensaje: string
-}
-
-/**
- * Obtiene el inicio y fin de un mes
- */
-function getRangoMes(fecha: Date): { inicioMes: Date; finMes: Date } {
-  const inicioMes = new Date(fecha.getFullYear(), fecha.getMonth(), 1)
-  const finMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0)
-  return { inicioMes, finMes }
-}
 
 /**
  * Obtiene todos los rotativos de un mes (ambos sistemas) de una sola vez
@@ -91,22 +76,6 @@ function fechaAMesStr(fecha: Date): string {
 }
 
 /**
- * Calcula el promedio de descansos del grupo para un mes especifico
- */
-export async function calcularPromedioGrupo(mes: Date): Promise<number> {
-  const mesStr = fechaAMesStr(mes)
-
-  // Contar todos los usuarios (ADMIN e INTEGRANTE)
-  const totalUsuarios = await prisma.user.count()
-
-  if (totalUsuarios === 0) return 0
-
-  const { totalRotativos } = await obtenerRotativosMes(mesStr)
-
-  return totalRotativos / totalUsuarios
-}
-
-/**
  * Calcula estadisticas de descanso para un usuario
  */
 export async function calcularEstadisticasUsuario(
@@ -148,41 +117,6 @@ export async function calcularEstadisticasUsuario(
     porcentajeVsPromedio,
     puedesolicitarSinAprobacion,
     descansosRestantesPermitidos,
-  }
-}
-
-/**
- * Valida si una solicitud puede ser aprobada automaticamente
- */
-export async function validarSolicitud(
-  userId: string,
-  fecha: Date
-): Promise<ValidacionResult> {
-  const mes = new Date(fecha.getFullYear(), fecha.getMonth(), 1)
-  const stats = await calcularEstadisticasUsuario(userId, mes)
-
-  const descansosConNuevo = stats.descansosAprobados + 1
-  const superaLimite = descansosConNuevo > stats.limiteMaximo
-
-  const nuevoPorcentaje =
-    stats.promedioGrupo > 0
-      ? ((descansosConNuevo - stats.promedioGrupo) / stats.promedioGrupo) * 100
-      : 100
-
-  if (superaLimite) {
-    return {
-      autoApprove: false,
-      esCasoEspecial: true,
-      porcentaje: nuevoPorcentaje,
-      mensaje: "Esta solicitud excede tu límite anual. Requiere aprobación del administrador.",
-    }
-  }
-
-  return {
-    autoApprove: true,
-    esCasoEspecial: false,
-    porcentaje: nuevoPorcentaje,
-    mensaje: "Solicitud dentro del limite permitido. Aprobada automaticamente.",
   }
 }
 
