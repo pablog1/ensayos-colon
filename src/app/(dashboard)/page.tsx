@@ -581,12 +581,20 @@ export default function DashboardPage() {
   const openDetalleEvento = (evento: Evento) => {
     setSelectedEvento(evento)
     setSidebarMode("detalle-evento")
+    // En mobile, abrir el sidebar automáticamente
+    if (window.innerWidth < 768) {
+      setRightSidebarOpen(true)
+    }
   }
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date)
     setSelectedEvento(null)
     setSidebarMode("eventos")
+    // En mobile, abrir el sidebar automáticamente
+    if (window.innerWidth < 768) {
+      setRightSidebarOpen(true)
+    }
   }
 
   // Obtener las fechas de la semana actual (lunes a domingo)
@@ -642,7 +650,11 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-1.5 mt-1 w-full px-1 overflow-y-auto flex-1">
             {/* Eventos con sus rotativos */}
             {eventosDelDia.map((e, i) => (
-              <div key={`evento-${i}`} className="flex flex-col">
+              <div
+                key={`evento-${i}`}
+                className="flex flex-col cursor-pointer"
+                onClick={(ev) => { ev.stopPropagation(); openDetalleEvento(e) }}
+              >
                 {/* Evento */}
                 <div
                   className="text-[11px] leading-snug px-1.5 py-1 rounded-t text-white font-medium"
@@ -951,9 +963,12 @@ export default function DashboardPage() {
                                 }`}
                               >
                                 {/* Header con fecha y bandas de color de títulos */}
-                                <div className="relative bg-muted/50 px-4 py-2 border-b">
+                                <div
+                                  className="relative bg-muted/50 px-4 py-2 border-b cursor-pointer hover:bg-muted/70 transition-colors"
+                                  onClick={() => handleDayClick(date)}
+                                >
                                   {tituloColors.length > 0 && (
-                                    <div className="absolute inset-0 flex">
+                                    <div className="absolute inset-0 flex pointer-events-none">
                                       {tituloColors.map(t => (
                                         <div
                                           key={t.id}
@@ -1209,7 +1224,7 @@ export default function DashboardPage() {
                 <CardTitle className="text-lg">
                   {sidebarMode === "rotativos" && "Rotativos del Mes"}
                   {sidebarMode === "titulos" && "Títulos"}
-                  {sidebarMode === "eventos" && (selectedDate ? format(selectedDate, "d 'de' MMMM", { locale: es }) : "Eventos del día")}
+                  {sidebarMode === "eventos" && (selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Eventos del día")}
                   {sidebarMode === "solicitar-rotativo" && "Solicitar Rotativo"}
                   {sidebarMode === "nuevo-titulo" && "Nuevo Título"}
                   {sidebarMode === "editar-titulo" && "Editar Título"}
@@ -1450,6 +1465,10 @@ export default function DashboardPage() {
                           {getEventTypeLabel(selectedEvento)}
                         </p>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4" />
+                      <span className="capitalize">{format(new Date(selectedEvento.date + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Clock className="w-4 h-4" />

@@ -339,15 +339,9 @@ export default function IntegrantesPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Rotativos: </span>
-                        <span className="font-medium">{i._count.solicitudes}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Registro: </span>
-                        <span>{new Date(i.createdAt).toLocaleDateString("es-ES")}</span>
-                      </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Registro: </span>
+                      <span>{new Date(i.createdAt).toLocaleDateString("es-ES")}</span>
                     </div>
 
                     {/* Acciones */}
