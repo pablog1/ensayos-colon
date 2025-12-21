@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 
-// GET /api/solicitudes - Lista solicitudes
+// GET /api/solicitudes - Lista rotativos del usuario
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
@@ -15,22 +15,24 @@ export async function GET(req: NextRequest) {
   const userId = searchParams.get("userId")
   const verTodas = searchParams.get("todas") === "true"
 
+  // Construir filtro de fecha basado en la fecha del evento
   let fechaFilter = {}
   if (mes) {
     const [year, month] = mes.split("-").map(Number)
-    // Usar UTC para evitar problemas de timezone
     const inicioMes = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0))
     const finMes = new Date(Date.UTC(year, month, 0, 23, 59, 59))
     fechaFilter = {
-      fecha: {
-        gte: inicioMes,
-        lte: finMes,
+      event: {
+        date: {
+          gte: inicioMes,
+          lte: finMes,
+        },
       },
     }
   }
 
-  // Si todas=true, mostrar todas las solicitudes (para calendario general)
-  // Si no, admin puede ver todas, integrante solo las suyas
+  // Si todas=true, mostrar todos los rotativos (para calendario general)
+  // Si no, admin puede ver todos, integrante solo los suyos
   let userFilter = {}
   if (!verTodas) {
     userFilter =
@@ -41,7 +43,7 @@ export async function GET(req: NextRequest) {
         : { userId: session.user.id }
   }
 
-  const solicitudes = await prisma.solicitud.findMany({
+  const rotativos = await prisma.rotativo.findMany({
     where: {
       ...fechaFilter,
       ...userFilter,
@@ -56,15 +58,39 @@ export async function GET(req: NextRequest) {
           avatar: true,
         },
       },
+      event: {
+        select: {
+          id: true,
+          title: true,
+          date: true,
+          eventoType: true,
+          titulo: {
+            select: {
+              name: true,
+              color: true,
+            },
+          },
+        },
+      },
     },
-    orderBy: { fecha: "desc" },
+    orderBy: { createdAt: "desc" },
   })
 
-  // Formatear fechas usando UTC para evitar problemas de timezone
-  // (igual que en /api/calendario)
-  const solicitudesFormateadas = solicitudes.map(s => ({
-    ...s,
-    fecha: `${s.fecha.getUTCFullYear()}-${String(s.fecha.getUTCMonth() + 1).padStart(2, '0')}-${String(s.fecha.getUTCDate()).padStart(2, '0')}`,
+  // Formatear para compatibilidad con el frontend
+  const solicitudesFormateadas = rotativos.map(r => ({
+    id: r.id,
+    fecha: `${r.event.date.getUTCFullYear()}-${String(r.event.date.getUTCMonth() + 1).padStart(2, '0')}-${String(r.event.date.getUTCDate()).padStart(2, '0')}`,
+    estado: r.estado,
+    esCasoEspecial: false,
+    porcentajeAlMomento: r.contadorAlMomento,
+    createdAt: r.createdAt,
+    user: r.user,
+    // Datos adicionales del evento
+    eventoId: r.event.id,
+    eventoTitle: r.event.title,
+    eventoType: r.event.eventoType,
+    tituloName: r.event.titulo?.name,
+    tituloColor: r.event.titulo?.color,
   }))
 
   return NextResponse.json(solicitudesFormateadas)

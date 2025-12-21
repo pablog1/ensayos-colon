@@ -208,8 +208,9 @@ export default function DashboardPage() {
     return date.getDay() === 0
   }
 
-  const fetchTitulos = useCallback(async () => {
-    const res = await fetch("/api/titulos")
+  const fetchTitulos = useCallback(async (mes: Date) => {
+    const year = mes.getFullYear()
+    const res = await fetch(`/api/titulos?year=${year}`)
     if (res.ok) {
       const data = await res.json()
       setTitulos(data)
@@ -249,27 +250,16 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    fetchTitulos()
-  }, [fetchTitulos])
-
-  useEffect(() => {
     fetchEventos(mesActual)
     fetchSolicitudes(mesActual)
-  }, [mesActual, fetchEventos, fetchSolicitudes])
+    fetchTitulos(mesActual)
+  }, [mesActual, fetchEventos, fetchSolicitudes, fetchTitulos])
 
   const getEventosDelDia = (date: Date): Evento[] => {
     const fechaKey = format(date, "yyyy-MM-dd")
     return eventosPorFecha[fechaKey] || []
   }
 
-  // Obtener solicitudes del día (sistema antiguo)
-  const getSolicitudesDelDia = (date: Date): Solicitud[] => {
-    const fechaKey = format(date, "yyyy-MM-dd")
-    return solicitudes.filter(s => {
-      const solicitudFecha = s.fecha.substring(0, 10)
-      return solicitudFecha === fechaKey
-    })
-  }
 
   const getEventColor = (evento: Evento) => {
     if (evento.tituloColor) {
@@ -338,7 +328,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título creado")
-      fetchTitulos()
+      fetchTitulos(mesActual)
       fetchEventos(mesActual)
       setSidebarMode("titulos")
       setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4, startDate: "", endDate: "" })
@@ -366,7 +356,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título actualizado")
-      fetchTitulos()
+      fetchTitulos(mesActual)
       fetchEventos(mesActual)
       setSidebarMode("titulos")
       setEditingTitulo(null)
@@ -384,7 +374,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título eliminado")
-      fetchTitulos()
+      fetchTitulos(mesActual)
       fetchEventos(mesActual)
     } else {
       const error = await res.json()
@@ -629,10 +619,9 @@ export default function DashboardPage() {
   // Renderizado para vista de mes (compacto)
   const renderDayContentMes = (date: Date) => {
     const eventosDelDia = getEventosDelDia(date)
-    const solicitudesDelDia = getSolicitudesDelDia(date)
     const tituloColors = getTituloColorsForDate(date)
 
-    const tieneContenido = eventosDelDia.length > 0 || solicitudesDelDia.length > 0
+    const tieneContenido = eventosDelDia.length > 0
 
     return (
       <div className="relative w-full h-full flex flex-col py-1 overflow-hidden">
@@ -691,24 +680,6 @@ export default function DashboardPage() {
                 )}
               </div>
             ))}
-            {/* Solicitudes (sistema antiguo) */}
-            {solicitudesDelDia.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {solicitudesDelDia.slice(0, 5).map((s, i) => (
-                  <span
-                    key={`sol-${i}`}
-                    className={`text-[10px] px-1.5 py-0.5 rounded ${
-                      s.estado === "APROBADA" ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
-                    }`}
-                  >
-                    {s.user.avatar || ""}{s.user.alias || s.user.name.split(" ")[0]}
-                  </span>
-                ))}
-                {solicitudesDelDia.length > 5 && (
-                  <span className="text-[10px] text-muted-foreground">+{solicitudesDelDia.length - 5}</span>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -718,7 +689,6 @@ export default function DashboardPage() {
   // Renderizado para vista de semana (expandido, más limpio)
   const renderDayContentSemana = (date: Date) => {
     const eventosDelDia = getEventosDelDia(date)
-    const solicitudesDelDia = getSolicitudesDelDia(date)
     const tituloColors = getTituloColorsForDate(date)
 
     return (
@@ -788,27 +758,8 @@ export default function DashboardPage() {
             </div>
           ))}
 
-          {/* Solicitudes (sistema antiguo) */}
-          {solicitudesDelDia.length > 0 && (
-            <div className="border rounded-lg p-3 bg-amber-50/50">
-              <p className="text-xs font-medium text-amber-800 mb-2">Rotativos (sin evento)</p>
-              <div className="flex flex-wrap gap-1">
-                {solicitudesDelDia.map((s, i) => (
-                  <span
-                    key={`sol-${i}`}
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      s.estado === "APROBADA" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                    }`}
-                  >
-                    {s.user.avatar || ""} {s.user.alias || s.user.name.split(" ")[0]}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Sin contenido */}
-          {eventosDelDia.length === 0 && solicitudesDelDia.length === 0 && (
+          {eventosDelDia.length === 0 && (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-sm text-muted-foreground">Sin eventos</p>
             </div>
@@ -818,9 +769,8 @@ export default function DashboardPage() {
     )
   }
 
-  // Eventos y solicitudes del día seleccionado
+  // Eventos del día seleccionado
   const eventosDelDiaSeleccionado = selectedDate ? getEventosDelDia(selectedDate) : []
-  const solicitudesDelDiaSeleccionado = selectedDate ? getSolicitudesDelDia(selectedDate) : []
 
   // Obtener rotativos de eventos (nuevo sistema)
   const rotativosDeEventos = eventos.flatMap(e =>
@@ -834,18 +784,8 @@ export default function DashboardPage() {
     }))
   )
 
-  // Obtener solicitudes (sistema antiguo)
-  const solicitudesFormateadas = solicitudes.map(s => ({
-    id: s.id,
-    tipo: "solicitud" as const,
-    fecha: s.fecha,
-    estado: s.estado,
-    user: s.user,
-    evento: null as Evento | null,
-  }))
-
-  // Combinar y ordenar por fecha
-  const todosLosRotativos = [...rotativosDeEventos, ...solicitudesFormateadas]
+  // Ordenar rotativos por fecha
+  const todosLosRotativos = rotativosDeEventos
     .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
 
   // Filtrar rotativos según la vista
@@ -1487,40 +1427,10 @@ export default function DashboardPage() {
                         </div>
                       )}
 
-                      {/* Solicitudes del día (sistema antiguo) */}
-                      {solicitudesDelDiaSeleccionado.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            Rotativos ({solicitudesDelDiaSeleccionado.length})
-                          </h4>
-                          <div className="space-y-1">
-                            {solicitudesDelDiaSeleccionado.map((s) => (
-                              <div
-                                key={s.id}
-                                className={`flex items-center justify-between p-2 rounded ${
-                                  s.estado === "APROBADA" ? "bg-green-50" : "bg-yellow-50"
-                                }`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  {s.user.avatar && <span>{s.user.avatar}</span>}
-                                  <span className="text-sm font-medium">
-                                    {s.user.alias || s.user.name}
-                                  </span>
-                                </div>
-                                <Badge variant={s.estado === "APROBADA" ? "default" : "secondary"} className="text-xs">
-                                  {s.estado === "APROBADA" ? "APROBADO" : s.estado}
-                                </Badge>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       {/* Mensaje si no hay nada */}
-                      {eventosDelDiaSeleccionado.length === 0 && solicitudesDelDiaSeleccionado.length === 0 && (
+                      {eventosDelDiaSeleccionado.length === 0 && (
                         <p className="text-muted-foreground text-sm text-center py-4">
-                          No hay eventos ni rotativos este día
+                          No hay eventos este día
                         </p>
                       )}
                     </>

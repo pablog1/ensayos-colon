@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// GET /api/titulos - Lista todos los titulos de la temporada activa
+// GET /api/titulos - Lista todos los titulos de una temporada
 export async function GET(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
@@ -11,10 +11,25 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const seasonId = searchParams.get("seasonId")
+  const year = searchParams.get("year")
 
-  // Si no se especifica temporada, buscar la activa
+  // Determinar temporada: por seasonId, por año, o la activa
   let targetSeasonId: string | null = seasonId
+
+  if (!targetSeasonId && year) {
+    // Buscar temporada por año
+    targetSeasonId = `season-${year}`
+    const seasonExists = await prisma.season.findUnique({
+      where: { id: targetSeasonId },
+    })
+    if (!seasonExists) {
+      // Si no existe la temporada para ese año, devolver lista vacía
+      return NextResponse.json([])
+    }
+  }
+
   if (!targetSeasonId) {
+    // Fallback a temporada activa
     const activeSeason = await prisma.season.findFirst({
       where: { isActive: true },
     })
@@ -22,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!targetSeasonId) {
-    return NextResponse.json({ error: "No hay temporada activa" }, { status: 404 })
+    return NextResponse.json([])
   }
 
   const titulos = await prisma.titulo.findMany({
@@ -139,21 +154,13 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Si no se especifica temporada, usar la activa
+  // Determinar la temporada basándose en el año de la fecha de inicio
+  const tituloYear = start.getFullYear()
   let targetSeasonId = seasonId
   let season
-  if (!targetSeasonId) {
-    season = await prisma.season.findFirst({
-      where: { isActive: true },
-    })
-    if (!season) {
-      return NextResponse.json(
-        { error: "No hay temporada activa" },
-        { status: 404 }
-      )
-    }
-    targetSeasonId = season.id
-  } else {
+
+  if (targetSeasonId) {
+    // Si se especifica temporada, usarla
     season = await prisma.season.findUnique({
       where: { id: targetSeasonId },
     })
@@ -163,6 +170,27 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       )
     }
+  } else {
+    // Buscar o crear temporada para el año del título
+    const seasonYearId = `season-${tituloYear}`
+    season = await prisma.season.findUnique({
+      where: { id: seasonYearId },
+    })
+
+    if (!season) {
+      // Crear temporada automáticamente
+      season = await prisma.season.create({
+        data: {
+          id: seasonYearId,
+          name: `Temporada ${tituloYear}`,
+          startDate: new Date(tituloYear, 0, 1), // 1 de enero
+          endDate: new Date(tituloYear, 11, 31), // 31 de diciembre
+          isActive: false,
+          workingDays: 250,
+        },
+      })
+    }
+    targetSeasonId = season.id
   }
 
   // Validar que las fechas estén dentro de la temporada

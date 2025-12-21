@@ -20,6 +20,11 @@ interface Solicitud {
   estado: string
   esCasoEspecial: boolean
   createdAt: string
+  eventoId: string
+  eventoTitle: string
+  eventoType: string
+  tituloName?: string
+  tituloColor?: string
 }
 
 export default function SolicitudesPage() {
@@ -55,13 +60,13 @@ export default function SolicitudesPage() {
 
   const estadoBadgeVariant = (estado: string) => {
     switch (estado) {
-      case "APROBADA":
+      case "APROBADO":
         return "default"
       case "PENDIENTE":
         return "secondary"
-      case "RECHAZADA":
+      case "RECHAZADO":
         return "destructive"
-      case "CANCELADA":
+      case "CANCELADO":
         return "outline"
       default:
         return "secondary"
@@ -91,8 +96,8 @@ export default function SolicitudesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
+                  <TableHead>Evento</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Caso Especial</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -100,12 +105,21 @@ export default function SolicitudesPage() {
                 {solicitudes.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>
-                      {new Date(s.fecha).toLocaleDateString("es-ES", {
+                      {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
                         weekday: "short",
                         day: "numeric",
                         month: "short",
-                        year: "numeric",
                       })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {s.tituloName || s.eventoTitle}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {s.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={estadoBadgeVariant(s.estado)}>
@@ -113,14 +127,7 @@ export default function SolicitudesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {s.esCasoEspecial ? (
-                        <Badge variant="outline">Si</Badge>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {(s.estado === "PENDIENTE" || s.estado === "APROBADA") &&
+                      {(s.estado === "PENDIENTE" || s.estado === "APROBADO") &&
                         new Date(s.fecha) >= new Date() && (
                           <Button
                             variant="destructive"
