@@ -18,8 +18,9 @@ export async function GET(req: NextRequest) {
   let fechaFilter = {}
   if (mes) {
     const [year, month] = mes.split("-").map(Number)
-    const inicioMes = new Date(year, month - 1, 1)
-    const finMes = new Date(year, month, 0)
+    // Usar UTC para evitar problemas de timezone
+    const inicioMes = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0))
+    const finMes = new Date(Date.UTC(year, month, 0, 23, 59, 59))
     fechaFilter = {
       fecha: {
         gte: inicioMes,
@@ -59,7 +60,14 @@ export async function GET(req: NextRequest) {
     orderBy: { fecha: "desc" },
   })
 
-  return NextResponse.json(solicitudes)
+  // Formatear fechas usando UTC para evitar problemas de timezone
+  // (igual que en /api/calendario)
+  const solicitudesFormateadas = solicitudes.map(s => ({
+    ...s,
+    fecha: `${s.fecha.getUTCFullYear()}-${String(s.fecha.getUTCMonth() + 1).padStart(2, '0')}-${String(s.fecha.getUTCDate()).padStart(2, '0')}`,
+  }))
+
+  return NextResponse.json(solicitudesFormateadas)
 }
 
 // POST /api/solicitudes - Crear solicitud o rotativo

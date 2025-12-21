@@ -88,10 +88,15 @@ export async function GET(req: NextRequest) {
           : evento.titulo.cupoFuncion
         : 2)
 
+    // Convertir fecha a string ISO para evitar problemas de timezone
+    // La DB guarda solo fecha (sin hora), pero Prisma la devuelve como UTC midnight
+    // Usamos los métodos UTC para extraer el día correcto
+    const dateStr = `${evento.date.getUTCFullYear()}-${String(evento.date.getUTCMonth() + 1).padStart(2, '0')}-${String(evento.date.getUTCDate()).padStart(2, '0')}`
+
     return {
       id: evento.id,
       title: evento.title,
-      date: evento.date,
+      date: dateStr,
       eventoType: evento.eventoType,
       startTime: evento.startTime,
       endTime: evento.endTime,

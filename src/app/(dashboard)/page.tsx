@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { formatInArgentina } from "@/lib/date-utils"
 import {
   Plus,
   Pencil,
@@ -1053,7 +1054,7 @@ export default function DashboardPage() {
                                             <span>{evento.eventoType === "FUNCION" ? "🎭" : "🎵"}</span>
                                             <p className="font-medium truncate">{evento.tituloName}</p>
                                             <Badge variant={evento.cupoDisponible > 0 ? "outline" : "secondary"} className="ml-auto">
-                                              {evento.rotativosUsados}/{evento.cupoEfectivo}
+                                              {evento.rotativosUsados}/{evento.cupoEfectivo} rot.
                                             </Badge>
                                           </div>
                                           <p className="text-sm text-muted-foreground">
@@ -1347,7 +1348,7 @@ export default function DashboardPage() {
                                 </span>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {format(new Date(r.fecha), "EEEE d MMM", { locale: es })}
+                                {formatInArgentina(r.fecha, "EEEE d MMM")}
                                 {r.evento && (
                                   <> · {formatTime(r.evento.startTime)} · {r.evento.tituloName}</>
                                 )}
@@ -1392,7 +1393,7 @@ export default function DashboardPage() {
                               <p className="font-medium text-sm">{evento.tituloName}</p>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {getEventTypeLabel(evento)} · {format(new Date(evento.date), "EEEE d MMM", { locale: es })} · {formatTime(evento.startTime)}
+                              {getEventTypeLabel(evento)} · {formatInArgentina(evento.date, "EEEE d MMM")} · {formatTime(evento.startTime)}
                             </p>
                           </div>
                           <Badge variant="outline" className="text-green-600 text-xs">

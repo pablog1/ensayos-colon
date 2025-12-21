@@ -6,21 +6,44 @@ export const TIMEZONE = "America/Argentina/Buenos_Aires"
 
 /**
  * Convierte una fecha a la zona horaria de Argentina
+ * Para strings de solo fecha (YYYY-MM-DD), agrega T12:00:00 para evitar
+ * problemas de timezone donde el día podría cambiar
  */
 export function toArgentinaTime(date: Date | string): Date {
-  const d = typeof date === "string" ? new Date(date) : date
+  let d: Date
+  if (typeof date === "string") {
+    // Si es solo fecha (YYYY-MM-DD), agregar T12:00:00 para evitar desfase de día
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      d = new Date(date + "T12:00:00")
+    } else {
+      d = new Date(date)
+    }
+  } else {
+    d = date
+  }
   return toZonedTime(d, TIMEZONE)
 }
 
 /**
  * Formatea una fecha en la zona horaria de Argentina
+ * Para strings de solo fecha (YYYY-MM-DD), los parseamos como fecha en Argentina
  */
 export function formatInArgentina(
   date: Date | string,
   formatStr: string
 ): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  return tzFormat(d, formatStr, { timeZone: TIMEZONE, locale: es })
+  if (typeof date === "string") {
+    // Si es solo fecha (YYYY-MM-DD), parsear los componentes directamente
+    // y formatear sin conversión de timezone
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split("-").map(Number)
+      // Crear fecha usando UTC para evitar cualquier conversión de timezone
+      const d = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+      return tzFormat(d, formatStr, { timeZone: "UTC", locale: es })
+    }
+    return tzFormat(new Date(date), formatStr, { timeZone: TIMEZONE, locale: es })
+  }
+  return tzFormat(date, formatStr, { timeZone: TIMEZONE, locale: es })
 }
 
 /**
