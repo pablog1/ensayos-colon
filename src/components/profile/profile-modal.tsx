@@ -17,8 +17,10 @@ import { User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const AVATARS = [
-  "🎻", "🎺", "🎷", "🎸", "🎹", "🥁",
-  "🎵", "🎶", "🎼", "🪕", "🪗", "🪘",
+  // Mujeres - variedad de pelo
+  "👩🏻‍🦱", "👩🏼‍🦱", "👩🏽‍🦱", "👩🏾‍🦱", "👩🏻", "👩🏼", "👩🏽", "👩🏾", "👧🏼", "👧🏽",
+  // Hombres - variedad de pelo
+  "👨🏻‍🦱", "👨🏼‍🦱", "👨🏽‍🦱", "👨🏾‍🦱", "👨🏻", "👨🏼", "👨🏽", "👨🏾", "🧔🏼", "🧔🏽",
 ]
 
 interface ProfileData {
@@ -138,7 +140,7 @@ export function ProfileModal() {
 
           <div className="space-y-2">
             <Label>Avatar</Label>
-            <div className="grid grid-cols-6 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {AVATARS.map((avatar) => (
                 <button
                   key={avatar}

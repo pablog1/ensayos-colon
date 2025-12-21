@@ -953,7 +953,7 @@ export default function DashboardPage() {
                         Hoy
                       </button>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs md:text-sm">
+                    <div className="flex items-center gap-1.5 text-xs md:text-sm ml-4 md:ml-6">
                       <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
                       <Switch
                         checked={modoLista}

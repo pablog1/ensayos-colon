@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Music } from "lucide-react"
+/* eslint-disable @next/next/no-img-element */
 
 export default function LoginPage() {
   const router = useRouter()
@@ -58,8 +58,12 @@ export default function LoginPage() {
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[var(--gold)] to-transparent" />
 
         <CardHeader className="text-center pb-2 pt-8">
-          <div className="mx-auto w-16 h-16 rounded-full bg-[var(--burgundy)] flex items-center justify-center mb-4 shadow-lg">
-            <Music className="w-8 h-8 text-[var(--gold)]" />
+          <div className="mx-auto w-16 h-16 rounded-full overflow-hidden border-2 border-[var(--gold)] mb-4 shadow-lg">
+            <img
+              src="/teatro-colon.jpg"
+              alt="Teatro Colón"
+              className="w-full h-full object-cover"
+            />
           </div>
           <h1
             className="text-3xl font-semibold text-[var(--burgundy)]"

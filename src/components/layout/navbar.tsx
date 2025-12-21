@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
+/* eslint-disable @next/next/no-img-element */
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Music } from "lucide-react"
 import { MobileNav } from "./mobile-nav"
 import { ProfileModal } from "@/components/profile/profile-modal"
 
@@ -17,8 +17,12 @@ export function Navbar() {
         <MobileNav />
 
         <Link href="/" className="flex items-center gap-3 ml-2 md:ml-0">
-          <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-[var(--gold)] flex items-center justify-center">
-            <Music className="w-4 h-4 md:w-5 md:h-5 text-[var(--burgundy)]" />
+          <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden border-2 border-[var(--gold)]">
+            <img
+              src="/teatro-colon.jpg"
+              alt="Teatro Colón"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div className="flex flex-col">
             <span

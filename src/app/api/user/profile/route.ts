@@ -2,20 +2,12 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// Lista de avatares disponibles (emojis de instrumentos musicales)
+// Lista de avatares disponibles (caras con variedad de pelo)
 export const AVATARS = [
-  "🎻", // Violín
-  "🎺", // Trompeta
-  "🎷", // Saxofón
-  "🎸", // Guitarra
-  "🎹", // Piano
-  "🥁", // Batería
-  "🎵", // Nota musical
-  "🎶", // Notas musicales
-  "🎼", // Partitura
-  "🪕", // Banjo
-  "🪗", // Acordeón
-  "🪘", // Tambor
+  // Mujeres - variedad de pelo
+  "👩🏻‍🦱", "👩🏼‍🦱", "👩🏽‍🦱", "👩🏾‍🦱", "👩🏻", "👩🏼", "👩🏽", "👩🏾", "👧🏼", "👧🏽",
+  // Hombres - variedad de pelo
+  "👨🏻‍🦱", "👨🏼‍🦱", "👨🏽‍🦱", "👨🏾‍🦱", "👨🏻", "👨🏼", "👨🏽", "👨🏾", "🧔🏼", "🧔🏽",
 ]
 
 export async function GET() {
