@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 
 // GET /api/titulos/[id]/eventos - Lista eventos de un titulo
 export async function GET(
@@ -35,14 +36,21 @@ export async function GET(
     },
   })
 
-  // Agregar cupo efectivo a cada evento
-  const eventosConCupo = eventos.map((evento) => ({
-    ...evento,
-    cupoEfectivo:
-      evento.cupoOverride ??
-      (evento.eventoType === "ENSAYO" ? titulo.cupoEnsayo : titulo.cupoFuncion),
-    rotativosUsados: evento._count.rotativos,
-  }))
+  // Agregar cupo efectivo a cada evento (usando reglas)
+  const eventosConCupo = await Promise.all(
+    eventos.map(async (evento) => {
+      const cupoDeReglas = await getCupoParaEvento(
+        evento.eventoType,
+        titulo.type,
+        evento.units > 1
+      )
+      return {
+        ...evento,
+        cupoEfectivo: evento.cupoOverride ?? cupoDeReglas,
+        rotativosUsados: evento._count.rotativos,
+      }
+    })
+  )
 
   return NextResponse.json(eventosConCupo)
 }

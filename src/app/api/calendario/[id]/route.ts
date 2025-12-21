@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 
 // GET /api/calendario/[id] - Obtener evento individual
 export async function GET(
@@ -22,8 +23,6 @@ export async function GET(
           id: true,
           name: true,
           type: true,
-          cupoEnsayo: true,
-          cupoFuncion: true,
           color: true,
         },
       },
@@ -48,13 +47,13 @@ export async function GET(
     )
   }
 
-  const cupoEfectivo =
-    evento.cupoOverride ??
-    (evento.titulo
-      ? evento.eventoType === "ENSAYO"
-        ? evento.titulo.cupoEnsayo
-        : evento.titulo.cupoFuncion
-      : 2)
+  // Obtener cupo de reglas
+  const cupoDeReglas = await getCupoParaEvento(
+    evento.eventoType,
+    evento.titulo?.type ?? null,
+    evento.units > 1
+  )
+  const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 
   return NextResponse.json({
     ...evento,

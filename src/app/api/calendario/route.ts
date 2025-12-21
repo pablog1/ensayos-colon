@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getCuposFromRules, type CupoDiarioConfig } from "@/lib/services/cupo-rules"
 
 // GET /api/calendario - Lista eventos para el calendario
 export async function GET(req: NextRequest) {
@@ -47,6 +48,9 @@ export async function GET(req: NextRequest) {
     whereClause.tituloId = { not: null }
   }
 
+  // Obtener cupos de reglas
+  const cuposReglas = await getCuposFromRules()
+
   const eventos = await prisma.event.findMany({
     where: whereClause,
     include: {
@@ -55,8 +59,6 @@ export async function GET(req: NextRequest) {
           id: true,
           name: true,
           type: true,
-          cupoEnsayo: true,
-          cupoFuncion: true,
           color: true,
         },
       },
@@ -78,15 +80,41 @@ export async function GET(req: NextRequest) {
     orderBy: [{ date: "asc" }, { startTime: "asc" }],
   })
 
+  // Helper para obtener cupo según tipo de evento
+  const getCupoParaEvento = (
+    eventoType: string | null,
+    tituloType: string | null,
+    isDoble: boolean = false
+  ): number => {
+    // Si es ensayo, usar cupo de ENSAYO
+    if (eventoType === "ENSAYO") {
+      return isDoble ? cuposReglas.ENSAYO_DOBLE : cuposReglas.ENSAYO
+    }
+    // Si es función, usar cupo según tipo de título
+    if (eventoType === "FUNCION" && tituloType) {
+      const tipoMap: Record<string, string> = {
+        OPERA: "OPERA",
+        CONCIERTO: "CONCIERTO",
+        BALLET: "OPERA", // Ballet usa mismo cupo que ópera
+        RECITAL: "CONCIERTO", // Recital usa mismo cupo que concierto
+        OTRO: "OTRO",
+      }
+      const cupoKey = tipoMap[tituloType] || "OTRO"
+      return cuposReglas[cupoKey] ?? cuposReglas.OTRO
+    }
+    return cuposReglas.OTRO
+  }
+
   // Formatear eventos para el calendario
   const eventosFormateados = eventos.map((evento) => {
+    // Usar cupoOverride si existe, sino obtener de reglas
     const cupoEfectivo =
       evento.cupoOverride ??
-      (evento.titulo
-        ? evento.eventoType === "ENSAYO"
-          ? evento.titulo.cupoEnsayo
-          : evento.titulo.cupoFuncion
-        : 2)
+      getCupoParaEvento(
+        evento.eventoType,
+        evento.titulo?.type ?? null,
+        evento.units > 1 // isDoble si tiene más de 1 unidad
+      )
 
     // Convertir fecha a string ISO para evitar problemas de timezone
     // La DB guarda solo fecha (sin hora), pero Prisma la devuelve como UTC midnight

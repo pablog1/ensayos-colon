@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { validarSolicitud } from "@/lib/rules/descanso-rules"
+import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 
 // GET /api/solicitudes - Lista solicitudes
 export async function GET(req: NextRequest) {
@@ -110,13 +111,13 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Calcular cupo efectivo
-    const cupoEfectivo = evento.cupoOverride ??
-      (evento.titulo
-        ? evento.eventoType === "ENSAYO"
-          ? evento.titulo.cupoEnsayo
-          : evento.titulo.cupoFuncion
-        : 2)
+    // Calcular cupo efectivo usando reglas
+    const cupoDeReglas = await getCupoParaEvento(
+      evento.eventoType,
+      evento.titulo?.type ?? null,
+      evento.units > 1
+    )
+    const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 
     // Verificar cupo disponible
     if (evento.rotativos.length >= cupoEfectivo) {
