@@ -10,6 +10,7 @@ import { coberturaExternaRule } from "./implementations/cobertura-externa"
 import { licenciasRule } from "./implementations/licencias"
 import { integranteNuevoRule } from "./implementations/integrante-nuevo"
 import { alertaCercaniaRule } from "./implementations/alerta-cercania"
+import { ensayosDoblesRule } from "./implementations/ensayos-dobles"
 
 let initialized = false
 
@@ -28,6 +29,7 @@ export function initializeRules(): void {
   registerRule(licenciasRule) // R9
   registerRule(integranteNuevoRule) // R10
   registerRule(alertaCercaniaRule) // R11
+  registerRule(ensayosDoblesRule) // R12
 
   initialized = true
 }
@@ -63,4 +65,5 @@ export {
   licenciasRule,
   integranteNuevoRule,
   alertaCercaniaRule,
+  ensayosDoblesRule,
 }

@@ -129,6 +129,18 @@ const ruleConfigs = [
     category: "alerta",
     priority: 200,
   },
+  {
+    key: "ENSAYOS_DOBLES",
+    value: JSON.stringify({
+      enabled: true,
+      maxRotativosPorTitulo: 1,
+    }),
+    valueType: "json",
+    description:
+      "Límite de rotativos en días con ensayo doble. Si un título tiene días con ensayo doble, cada integrante solo puede pedir rotativo para un ensayo en uno de esos días. Las solicitudes adicionales van a revisión del admin.",
+    category: "restriccion",
+    priority: 15,
+  },
 ]
 
 export async function seedRuleConfigs() {

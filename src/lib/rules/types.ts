@@ -113,6 +113,11 @@ export interface ListaEsperaConfig {
   vencimiento: number | null // dias o null para sin vencimiento
 }
 
+export interface EnsayosDoblesConfig {
+  enabled: boolean
+  maxRotativosPorTitulo: number // Máximo de rotativos en días dobles por título
+}
+
 // Todas las configuraciones de reglas
 export interface AllRuleConfigs {
   CUPO_DIARIO: CupoDiarioConfig
@@ -126,4 +131,5 @@ export interface AllRuleConfigs {
   LICENCIAS: { calculoPromedio: boolean }
   INTEGRANTE_NUEVO: { usarPromedio: boolean; adminOverride: boolean }
   ALERTA_UMBRAL: number
+  ENSAYOS_DOBLES: EnsayosDoblesConfig
 }

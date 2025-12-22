@@ -230,6 +230,27 @@ const friendlyRules: Record<string, {
       </div>
     ),
   },
+  ENSAYOS_DOBLES: {
+    icon: CalendarDays,
+    title: "Días con ensayos dobles",
+    summary: "Límite de rotativos en días con más de un ensayo del mismo título",
+    details: [
+      "Si un título tiene varios días con ensayo doble, solo podés pedir rotativo en uno de esos días",
+      "Si ya tenés uno y pedís otro, va a revisión del administrador",
+    ],
+    getValue: (value) => {
+      if (!value || typeof value !== "object") return null
+      const config = value as { maxRotativosPorTitulo: number }
+      return (
+        <div className="flex items-center gap-3 mt-3">
+          <div className="text-center p-3 bg-indigo-50 rounded-lg">
+            <div className="text-2xl font-bold text-indigo-700">{config.maxRotativosPorTitulo}</div>
+            <div className="text-xs text-indigo-600">día doble por título</div>
+          </div>
+        </div>
+      )
+    },
+  },
 }
 
 export default function ReglasPage() {

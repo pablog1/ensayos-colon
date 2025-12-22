@@ -1,6 +1,6 @@
 import { format as dateFnsFormat } from "date-fns"
 import { es } from "date-fns/locale"
-import { toZonedTime, format as tzFormat } from "date-fns-tz"
+import { toZonedTime, fromZonedTime, format as tzFormat } from "date-fns-tz"
 
 export const TIMEZONE = "America/Argentina/Buenos_Aires"
 
