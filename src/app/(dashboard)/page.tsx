@@ -578,7 +578,7 @@ export default function DashboardPage() {
     const fechaStr = date ? format(date, "yyyy-MM-dd") : ""
     const horarios = getHorariosPredefinidos("ENSAYO", fechaStr)
     const tieneHorariosPredefinidos = horarios.length > 0
-    // En domingos, forzar ensayoTipo a GENERAL
+    // En domingos no hay ensayos comunes, default a GENERAL
     const ensayoTipoDefault = esDomingo(fechaStr) ? "GENERAL" : "ENSAYO"
 
     setEventoForm({
@@ -708,88 +708,6 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </div>
-    )
-  }
-
-  // Renderizado para vista de semana (expandido, más limpio)
-  const renderDayContentSemana = (date: Date) => {
-    const eventosDelDia = getEventosDelDia(date)
-    const tituloColors = getTituloColorsForDate(date)
-
-    return (
-      <div className="relative w-full h-full flex flex-col overflow-hidden">
-        {/* Fondo con colores de títulos (transparente) */}
-        {tituloColors.length > 0 && (
-          <div className="absolute inset-0 flex pointer-events-none">
-            {tituloColors.map(t => (
-              <div
-                key={t.id}
-                className="flex-1"
-                style={{ backgroundColor: t.color || "#6b7280", opacity: 0.10 }}
-              />
-            ))}
-          </div>
-        )}
-        {/* Header del día */}
-        <div className="relative flex items-baseline gap-1 px-2 py-1.5 border-b bg-muted/30">
-          <span className="font-semibold text-base">{date.getDate()}</span>
-          <span className="text-sm text-muted-foreground">
-            {format(date, "EEE", { locale: es }).toLowerCase()}
-          </span>
-        </div>
-
-        {/* Contenido */}
-        <div className="flex flex-col gap-3 p-3 overflow-y-auto flex-1">
-          {/* Eventos */}
-          {eventosDelDia.map((e, i) => (
-            <div
-              key={`evento-${i}`}
-              className="rounded-lg overflow-hidden border"
-            >
-              {/* Header del evento */}
-              <div
-                className="px-3 py-2 text-white"
-                style={{ backgroundColor: getEventColor(e) }}
-              >
-                <p className="font-semibold text-sm leading-tight">{e.tituloName}</p>
-                <p className="text-xs opacity-90 mt-0.5">
-                  {getEventTypeLabel(e)} · {formatTime(e.startTime)} · {e.rotativosUsados}/{e.cupoEfectivo}
-                </p>
-              </div>
-
-              {/* Rotativos asignados */}
-              {e.rotativos && e.rotativos.length > 0 && (
-                <div className="px-3 py-2 bg-white border-t">
-                  <div className="flex flex-wrap gap-1">
-                    {e.rotativos.map((r, j) => (
-                      <span
-                        key={j}
-                        className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800"
-                      >
-                        {r.user.avatar || ""} {r.user.alias || r.user.name.split(" ")[0]}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Indicador de cupo */}
-              {e.cupoDisponible > 0 && (
-                <div className="px-3 py-1.5 bg-green-50 text-green-700 text-xs border-t">
-                  {e.cupoDisponible} {e.cupoDisponible === 1 ? "lugar" : "lugares"} disponible{e.cupoDisponible > 1 ? "s" : ""}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Sin contenido */}
-          {eventosDelDia.length === 0 && (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-sm text-muted-foreground">Sin eventos</p>
-            </div>
-          )}
-        </div>
       </div>
     )
   }
@@ -1774,8 +1692,8 @@ export default function DashboardPage() {
                         const tituloSigueValido = tituloActual?.startDate && tituloActual?.endDate &&
                           newDate >= tituloActual.startDate.substring(0, 10) &&
                           newDate <= tituloActual.endDate.substring(0, 10)
-                        // En domingos, forzar ensayoTipo a GENERAL
-                        const ensayoTipoNuevo = esDomingo(newDate) ? "GENERAL" : eventoForm.ensayoTipo
+                        // En domingos no hay ensayos comunes, cambiar a GENERAL si estaba en ENSAYO
+                        const ensayoTipoNuevo = esDomingo(newDate) && eventoForm.ensayoTipo === "ENSAYO" ? "GENERAL" : eventoForm.ensayoTipo
                         setEventoForm({
                           ...eventoForm,
                           date: newDate,
@@ -1834,7 +1752,7 @@ export default function DashboardPage() {
                         variant={eventoForm.eventoType === "ENSAYO" ? "default" : "outline"}
                         onClick={() => {
                           const horarios = getHorariosPredefinidos("ENSAYO", eventoForm.date)
-                          // En domingos, forzar ensayoTipo a GENERAL
+                          // En domingos no hay ensayos comunes, default a GENERAL
                           const ensayoTipo = esDomingo(eventoForm.date) ? "GENERAL" : "ENSAYO"
                           if (horarios.length > 0 && !horarioCustom) {
                             setEventoForm({ ...eventoForm, eventoType: "ENSAYO", ensayoTipo, startTime: horarios[0].start, endTime: horarios[0].end })
@@ -1868,48 +1786,36 @@ export default function DashboardPage() {
                     </div>
                     {eventoForm.eventoType === "ENSAYO" && (
                       <div className="flex gap-1 mt-2">
-                        {/* En domingos solo Ensayo General */}
-                        {esDomingo(eventoForm.date) ? (
+                        {/* En domingos no hay ensayos comunes, solo Pre General y General */}
+                        {!esDomingo(eventoForm.date) && (
                           <Button
                             type="button"
                             size="sm"
-                            variant="default"
+                            variant={eventoForm.ensayoTipo === "ENSAYO" ? "default" : "outline"}
+                            onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "ENSAYO" })}
                             className="flex-1 text-xs"
-                            disabled
                           >
-                            Ensayo General (único en domingos)
+                            Ensayo
                           </Button>
-                        ) : (
-                          <>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={eventoForm.ensayoTipo === "ENSAYO" ? "default" : "outline"}
-                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "ENSAYO" })}
-                              className="flex-1 text-xs"
-                            >
-                              Ensayo
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={eventoForm.ensayoTipo === "PRE_GENERAL" ? "default" : "outline"}
-                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "PRE_GENERAL" })}
-                              className="flex-1 text-xs"
-                            >
-                              Pre General
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={eventoForm.ensayoTipo === "GENERAL" ? "default" : "outline"}
-                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "GENERAL" })}
-                              className="flex-1 text-xs"
-                            >
-                              General
-                            </Button>
-                          </>
                         )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={eventoForm.ensayoTipo === "PRE_GENERAL" ? "default" : "outline"}
+                          onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "PRE_GENERAL" })}
+                          className="flex-1 text-xs"
+                        >
+                          Pre General
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={eventoForm.ensayoTipo === "GENERAL" ? "default" : "outline"}
+                          onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "GENERAL" })}
+                          className="flex-1 text-xs"
+                        >
+                          General
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -2023,8 +1929,8 @@ export default function DashboardPage() {
                         variant={eventoForm.eventoType === "ENSAYO" ? "default" : "outline"}
                         onClick={() => {
                           const horarios = getHorariosPredefinidos("ENSAYO", eventoForm.date)
-                          // En domingos, forzar ensayoTipo a GENERAL
-                          const ensayoTipo = esDomingo(eventoForm.date) ? "GENERAL" : (eventoForm.ensayoTipo || "ENSAYO")
+                          // En domingos no hay ensayos comunes, cambiar a GENERAL si estaba en ENSAYO
+                          const ensayoTipo = esDomingo(eventoForm.date) && eventoForm.ensayoTipo === "ENSAYO" ? "GENERAL" : (eventoForm.ensayoTipo || "ENSAYO")
                           if (horarios.length > 0 && !horarioCustom) {
                             setEventoForm({ ...eventoForm, eventoType: "ENSAYO", ensayoTipo, startTime: horarios[0].start, endTime: horarios[0].end })
                           } else {
@@ -2057,48 +1963,36 @@ export default function DashboardPage() {
                     </div>
                     {eventoForm.eventoType === "ENSAYO" && (
                       <div className="flex gap-1 mt-2">
-                        {/* En domingos solo Ensayo General */}
-                        {esDomingo(eventoForm.date) ? (
+                        {/* En domingos no hay ensayos comunes, solo Pre General y General */}
+                        {!esDomingo(eventoForm.date) && (
                           <Button
                             type="button"
                             size="sm"
-                            variant="default"
+                            variant={eventoForm.ensayoTipo === "ENSAYO" ? "default" : "outline"}
+                            onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "ENSAYO" })}
                             className="flex-1 text-xs"
-                            disabled
                           >
-                            Ensayo General (único en domingos)
+                            Ensayo
                           </Button>
-                        ) : (
-                          <>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={eventoForm.ensayoTipo === "ENSAYO" ? "default" : "outline"}
-                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "ENSAYO" })}
-                              className="flex-1 text-xs"
-                            >
-                              Ensayo
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={eventoForm.ensayoTipo === "PRE_GENERAL" ? "default" : "outline"}
-                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "PRE_GENERAL" })}
-                              className="flex-1 text-xs"
-                            >
-                              Pre General
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={eventoForm.ensayoTipo === "GENERAL" ? "default" : "outline"}
-                              onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "GENERAL" })}
-                              className="flex-1 text-xs"
-                            >
-                              General
-                            </Button>
-                          </>
                         )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={eventoForm.ensayoTipo === "PRE_GENERAL" ? "default" : "outline"}
+                          onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "PRE_GENERAL" })}
+                          className="flex-1 text-xs"
+                        >
+                          Pre General
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={eventoForm.ensayoTipo === "GENERAL" ? "default" : "outline"}
+                          onClick={() => setEventoForm({ ...eventoForm, ensayoTipo: "GENERAL" })}
+                          className="flex-1 text-xs"
+                        >
+                          General
+                        </Button>
                       </div>
                     )}
                   </div>
