@@ -208,14 +208,17 @@ export default function DashboardPage() {
     return date.getDay() === 0
   }
 
-  const fetchTitulos = useCallback(async (mes: Date) => {
-    const year = mes.getFullYear()
+  const [lastFetchedYear, setLastFetchedYear] = useState<number | null>(null)
+
+  const fetchTitulos = useCallback(async (year: number) => {
+    if (year === lastFetchedYear) return // No re-fetch si es el mismo año
     const res = await fetch(`/api/titulos?year=${year}`)
     if (res.ok) {
       const data = await res.json()
       setTitulos(data)
+      setLastFetchedYear(year)
     }
-  }, [])
+  }, [lastFetchedYear])
 
   const fetchSolicitudes = useCallback(async (mes: Date) => {
     const mesStr = format(mes, "yyyy-MM")
@@ -252,7 +255,7 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchEventos(mesActual)
     fetchSolicitudes(mesActual)
-    fetchTitulos(mesActual)
+    fetchTitulos(mesActual.getFullYear())
   }, [mesActual, fetchEventos, fetchSolicitudes, fetchTitulos])
 
   const getEventosDelDia = (date: Date): Evento[] => {
@@ -294,8 +297,17 @@ export default function DashboardPage() {
 
   const formatTime = (isoString: string) => {
     if (!isoString) return ""
-    const date = new Date(isoString)
-    return format(date, "HH:mm")
+    try {
+      return formatInArgentina(isoString, "HH:mm")
+    } catch {
+      // Fallback si formatInArgentina falla
+      try {
+        const date = new Date(isoString)
+        return format(date, "HH:mm")
+      } catch {
+        return ""
+      }
+    }
   }
 
   // Verificar si el usuario ya tiene rotativo en este evento
@@ -328,7 +340,8 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título creado")
-      fetchTitulos(mesActual)
+      setLastFetchedYear(null) // Forzar re-fetch
+      fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
       setSidebarMode("titulos")
       setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4, startDate: "", endDate: "" })
@@ -356,7 +369,8 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título actualizado")
-      fetchTitulos(mesActual)
+      setLastFetchedYear(null) // Forzar re-fetch
+      fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
       setSidebarMode("titulos")
       setEditingTitulo(null)
@@ -374,7 +388,8 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título eliminado")
-      fetchTitulos(mesActual)
+      setLastFetchedYear(null) // Forzar re-fetch
+      fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
     } else {
       const error = await res.json()
@@ -1012,7 +1027,7 @@ export default function DashboardPage() {
                                             </Badge>
                                           </div>
                                           <p className="text-sm text-muted-foreground">
-                                            {getEventTypeLabel(evento)} · {formatTime(evento.startTime)} - {formatTime(evento.endTime)}
+                                            {getEventTypeLabel(evento)} · {formatTime(evento.startTime)}
                                           </p>
                                           {/* Nombres completos de rotativos en vista lista */}
                                           {evento.rotativos && evento.rotativos.length > 0 && (
@@ -1472,7 +1487,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <Clock className="w-4 h-4" />
-                      <span>{formatTime(selectedEvento.startTime)} - {formatTime(selectedEvento.endTime)}</span>
+                      <span>{formatTime(selectedEvento.startTime)}</span>
                     </div>
                   </div>
 
