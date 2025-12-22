@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -210,17 +210,17 @@ export default function DashboardPage() {
     return date.getDay() === 0
   }
 
-  const [lastFetchedYear, setLastFetchedYear] = useState<number | null>(null)
+  const lastFetchedYearRef = useRef<number | null>(null)
 
   const fetchTitulos = useCallback(async (year: number) => {
-    if (year === lastFetchedYear) return // No re-fetch si es el mismo año
+    if (year === lastFetchedYearRef.current) return // No re-fetch si es el mismo año
     const res = await fetch(`/api/titulos?year=${year}`)
     if (res.ok) {
       const data = await res.json()
       setTitulos(data)
-      setLastFetchedYear(year)
+      lastFetchedYearRef.current = year
     }
-  }, [lastFetchedYear])
+  }, [])
 
   const fetchSolicitudes = useCallback(async (mes: Date) => {
     const mesStr = format(mes, "yyyy-MM")
@@ -342,7 +342,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título creado")
-      setLastFetchedYear(null) // Forzar re-fetch
+      lastFetchedYearRef.current = null // Forzar re-fetch
       fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
       setSidebarMode("titulos")
@@ -371,7 +371,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título actualizado")
-      setLastFetchedYear(null) // Forzar re-fetch
+      lastFetchedYearRef.current = null // Forzar re-fetch
       fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
       setSidebarMode("titulos")
@@ -390,7 +390,7 @@ export default function DashboardPage() {
 
     if (res.ok) {
       toast.success("Título eliminado")
-      setLastFetchedYear(null) // Forzar re-fetch
+      lastFetchedYearRef.current = null // Forzar re-fetch
       fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
     } else {
@@ -1539,7 +1539,7 @@ export default function DashboardPage() {
                             <p className="font-medium truncate">{titulo.name}</p>
                             {titulo.startDate && titulo.endDate && (
                               <p className="text-xs text-muted-foreground">
-                                {titulo.startDate.substring(0, 10)} → {titulo.endDate.substring(0, 10)}
+                                {titulo.startDate.substring(0, 10).split('-').reverse().join('-')} → {titulo.endDate.substring(0, 10).split('-').reverse().join('-')}
                               </p>
                             )}
                           </div>
