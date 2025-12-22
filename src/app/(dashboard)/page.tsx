@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { formatInArgentina } from "@/lib/date-utils"
+import { formatInArgentina, toISOFromArgentina } from "@/lib/date-utils"
 import {
   Plus,
   Pencil,
@@ -413,8 +413,8 @@ export default function DashboardPage() {
         date: eventoForm.date,
         eventoType: eventoForm.eventoType,
         ensayoTipo: eventoForm.eventoType === "ENSAYO" ? eventoForm.ensayoTipo : undefined,
-        startTime: `${eventoForm.date}T${eventoForm.startTime}:00`,
-        endTime: `${eventoForm.date}T${eventoForm.endTime}:00`,
+        startTime: toISOFromArgentina(eventoForm.date, eventoForm.startTime),
+        endTime: toISOFromArgentina(eventoForm.date, eventoForm.endTime),
       }),
     })
 
@@ -441,8 +441,8 @@ export default function DashboardPage() {
         eventoType: eventoForm.eventoType,
         ensayoTipo: eventoForm.eventoType === "ENSAYO" ? eventoForm.ensayoTipo : undefined,
         date: eventoForm.date,
-        startTime: `${eventoForm.date}T${eventoForm.startTime}:00`,
-        endTime: `${eventoForm.date}T${eventoForm.endTime}:00`,
+        startTime: toISOFromArgentina(eventoForm.date, eventoForm.startTime),
+        endTime: toISOFromArgentina(eventoForm.date, eventoForm.endTime),
       }),
     })
 
@@ -667,8 +667,7 @@ export default function DashboardPage() {
             {eventosDelDia.map((e, i) => (
               <div
                 key={`evento-${i}`}
-                className="flex flex-col cursor-pointer"
-                onClick={(ev) => { ev.stopPropagation(); openDetalleEvento(e) }}
+                className="flex flex-col"
               >
                 {/* Evento */}
                 <div
@@ -746,8 +745,7 @@ export default function DashboardPage() {
           {eventosDelDia.map((e, i) => (
             <div
               key={`evento-${i}`}
-              className="rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow border"
-              onClick={(ev) => { ev.stopPropagation(); openDetalleEvento(e) }}
+              className="rounded-lg overflow-hidden border"
             >
               {/* Header del evento */}
               <div
@@ -1006,12 +1004,11 @@ export default function DashboardPage() {
                                   </div>
                                 </div>
                                 {/* Lista de eventos */}
-                                <div className="divide-y">
+                                <div className="divide-y cursor-pointer" onClick={() => handleDayClick(date)}>
                                   {eventos.map(evento => (
                                     <div
                                       key={evento.id}
-                                      className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
-                                      onClick={() => openDetalleEvento(evento)}
+                                      className="p-3 hover:bg-muted/50 transition-colors"
                                     >
                                       <div className="flex items-center gap-3">
                                         <div

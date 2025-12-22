@@ -83,3 +83,36 @@ export function getTodayInArgentina(): Date {
   const argNow = toArgentinaTime(now)
   return new Date(argNow.getFullYear(), argNow.getMonth(), argNow.getDate())
 }
+
+/**
+ * Convierte una fecha y hora especificada en Argentina a UTC.
+ * Útil para guardar en la base de datos.
+ *
+ * @param dateStr - Fecha en formato YYYY-MM-DD
+ * @param timeStr - Hora en formato HH:mm
+ * @returns Date en UTC que representa el momento especificado en Argentina
+ *
+ * @example
+ * // Usuario en Argentina selecciona 20:00 del 26/12/2025
+ * toUTCFromArgentina("2025-12-26", "20:00")
+ * // Retorna Date representando 2025-12-26T23:00:00.000Z (UTC)
+ */
+export function toUTCFromArgentina(dateStr: string, timeStr: string): Date {
+  // Crear string de datetime sin timezone
+  const dateTimeStr = `${dateStr}T${timeStr}:00`
+  // fromZonedTime interpreta el datetime como si estuviera en la zona especificada
+  // y lo convierte a UTC
+  return fromZonedTime(dateTimeStr, TIMEZONE)
+}
+
+/**
+ * Convierte una fecha y hora especificada en Argentina a ISO string UTC.
+ * Útil para enviar al backend en requests.
+ *
+ * @param dateStr - Fecha en formato YYYY-MM-DD
+ * @param timeStr - Hora en formato HH:mm
+ * @returns ISO string en UTC
+ */
+export function toISOFromArgentina(dateStr: string, timeStr: string): string {
+  return toUTCFromArgentina(dateStr, timeStr).toISOString()
+}
