@@ -790,7 +790,7 @@ export default function DashboardPage() {
                         : (() => {
                             const semana = getSemanaActual()
                             const inicio = semana[0]
-                            const fin = semana[6]
+                            const fin = semana[5] // Ahora son 6 días (índices 0-5)
                             if (inicio.getMonth() === fin.getMonth()) {
                               return `${inicio.getDate()} - ${fin.getDate()} ${format(fin, "MMMM yyyy", { locale: es })}`
                             }
