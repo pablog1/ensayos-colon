@@ -74,6 +74,12 @@ export default function LoginPage() {
           <p className="text-sm text-[var(--gold)] tracking-widest uppercase mt-1">
             Sistema de Gestión de Rotativos
           </p>
+          <p
+            className="text-2xl text-[var(--burgundy)] font-semibold mt-1"
+            style={{ fontFamily: "Playfair Display, serif" }}
+          >
+            Primeros Violines
+          </p>
           <div className="ornament mt-4" />
         </CardHeader>
 

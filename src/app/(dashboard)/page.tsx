@@ -172,32 +172,34 @@ export default function DashboardPage() {
       dayOfWeek = date.getDay()
     }
 
-    const esMartesSabado = dayOfWeek >= 2 && dayOfWeek <= 6
+    const esLunes = dayOfWeek === 1
+    const esMartesASabado = dayOfWeek >= 2 && dayOfWeek <= 6
     const esDomingo = dayOfWeek === 0
+
+    // Lunes no hay actividades
+    if (esLunes) return []
 
     if (tipo === "FUNCION") {
       if (esDomingo) {
         return [{ start: "17:00", end: "20:00", label: "17:00" }]
       }
-      if (esMartesSabado) {
+      if (esMartesASabado) {
         return [{ start: "20:00", end: "23:00", label: "20:00" }]
       }
-      // Lunes u otro día: sin horarios predefinidos
       return []
     }
 
     // ENSAYO
     if (esDomingo) {
-      // Domingos: solo Ensayo General a las 17:00
+      // Domingos: solo Pre General o General a las 17:00
       return [{ start: "17:00", end: "20:00", label: "17:00" }]
     }
-    if (esMartesSabado) {
+    if (esMartesASabado) {
       return [
         { start: "14:00", end: "17:00", label: "14:00" },
         { start: "20:00", end: "23:00", label: "20:00" },
       ]
     }
-    // Lunes u otro día: sin horarios predefinidos
     return []
   }
 
@@ -612,18 +614,19 @@ export default function DashboardPage() {
     }
   }
 
-  // Obtener las fechas de la semana actual (lunes a domingo)
+  // Obtener las fechas de la semana actual (martes a domingo, sin lunes)
   const getSemanaActual = () => {
     const fechaBase = selectedDate || new Date()
     const dayOfWeek = fechaBase.getDay()
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek // Ajustar para que lunes sea el primer día
-    const lunes = new Date(fechaBase)
-    lunes.setDate(fechaBase.getDate() + diff)
+    // Ajustar para que martes sea el primer día
+    const diff = dayOfWeek === 0 ? -5 : dayOfWeek === 1 ? 1 : 2 - dayOfWeek
+    const martes = new Date(fechaBase)
+    martes.setDate(fechaBase.getDate() + diff)
 
     const dias: Date[] = []
-    for (let i = 0; i < 7; i++) {
-      const dia = new Date(lunes)
-      dia.setDate(lunes.getDate() + i)
+    for (let i = 0; i < 6; i++) { // 6 días: martes a domingo
+      const dia = new Date(martes)
+      dia.setDate(martes.getDate() + i)
       dias.push(dia)
     }
     return dias
@@ -977,37 +980,58 @@ export default function DashboardPage() {
                     <>
                       {/* Vista de Mes */}
                       {/* Días de la semana */}
-                      <div className="grid grid-cols-7 border border-border">
-                        {["lu", "ma", "mi", "ju", "vi", "sá", "do"].map((dia) => (
+                      <div className="grid grid-cols-6 border border-border">
+                        {["ma", "mi", "ju", "vi", "sá", "do"].map((dia) => (
                           <div key={dia} className="text-muted-foreground font-medium text-sm py-2 text-center bg-muted/50 border-r border-border last:border-r-0">
                             {dia}
                           </div>
                         ))}
                       </div>
-                      {/* Celdas del calendario */}
-                      <div className="grid grid-cols-7 border-l border-r border-b border-border">
+                      {/* Celdas del calendario (sin lunes) */}
+                      <div className="grid grid-cols-6 border-l border-r border-b border-border">
                         {(() => {
                           const firstDay = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
                           const lastDay = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
-                          const startDayOfWeek = (firstDay.getDay() + 6) % 7
+                          // Calcular día de inicio (martes=0, mie=1, jue=2, vie=3, sab=4, dom=5)
+                          const jsDay = firstDay.getDay() // dom=0, lun=1, mar=2...
+                          // Convertir: mar=0, mie=1, jue=2, vie=3, sab=4, dom=5, lun se salta
+                          const startDayOfWeek = jsDay === 0 ? 5 : jsDay === 1 ? 0 : jsDay - 2
                           const daysInMonth = lastDay.getDate()
                           const prevMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 0)
                           const daysInPrevMonth = prevMonth.getDate()
 
                           const cells: { date: Date; isOutside: boolean }[] = []
 
-                          for (let i = startDayOfWeek - 1; i >= 0; i--) {
-                            const day = daysInPrevMonth - i
-                            cells.push({ date: new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, day), isOutside: true })
+                          // Días del mes anterior (excluyendo lunes)
+                          let daysToAdd = startDayOfWeek
+                          let prevDay = daysInPrevMonth
+                          const prevDays: { date: Date; isOutside: boolean }[] = []
+                          while (daysToAdd > 0) {
+                            const date = new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, prevDay)
+                            if (date.getDay() !== 1) { // No es lunes
+                              prevDays.unshift({ date, isOutside: true })
+                              daysToAdd--
+                            }
+                            prevDay--
                           }
+                          cells.push(...prevDays)
 
+                          // Días del mes actual (excluyendo lunes)
                           for (let day = 1; day <= daysInMonth; day++) {
-                            cells.push({ date: new Date(mesActual.getFullYear(), mesActual.getMonth(), day), isOutside: false })
+                            const date = new Date(mesActual.getFullYear(), mesActual.getMonth(), day)
+                            if (date.getDay() !== 1) { // No es lunes
+                              cells.push({ date, isOutside: false })
+                            }
                           }
 
-                          const remaining = 42 - cells.length
-                          for (let day = 1; day <= remaining; day++) {
-                            cells.push({ date: new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, day), isOutside: true })
+                          // Días del mes siguiente para completar la grilla (6 filas x 6 cols = 36)
+                          let nextDay = 1
+                          while (cells.length < 36) {
+                            const date = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, nextDay)
+                            if (date.getDay() !== 1) { // No es lunes
+                              cells.push({ date, isOutside: true })
+                            }
+                            nextDay++
                           }
 
                           return cells.map((cell, idx) => {
@@ -1033,18 +1057,18 @@ export default function DashboardPage() {
                     </>
                   ) : (
                     <>
-                      {/* Vista de Semana - Igual que mes pero sin límite de altura */}
+                      {/* Vista de Semana (sin lunes) */}
                       {/* Días de la semana */}
-                      <div className="grid grid-cols-7 border border-border">
-                        {["lu", "ma", "mi", "ju", "vi", "sá", "do"].map((dia) => (
+                      <div className="grid grid-cols-6 border border-border">
+                        {["ma", "mi", "ju", "vi", "sá", "do"].map((dia) => (
                           <div key={dia} className="text-muted-foreground font-medium text-sm py-2 text-center bg-muted/50 border-r border-border last:border-r-0">
                             {dia}
                           </div>
                         ))}
                       </div>
                       {/* Celdas de la semana */}
-                      <div className="grid grid-cols-7 border-l border-r border-b border-border">
-                        {getSemanaActual().map((dia, idx) => {
+                      <div className="grid grid-cols-6 border-l border-r border-b border-border">
+                        {getSemanaActual().filter(dia => dia.getDay() !== 1).map((dia, idx) => {
                           const isToday = dia.toDateString() === new Date().toDateString()
                           const isSelected = selectedDate?.toDateString() === dia.toDateString()
 
@@ -1892,7 +1916,11 @@ export default function DashboardPage() {
                   </div>
                   {eventoForm.tituloId && (
                     <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                      Cupo: {titulos.find((t) => t.id === eventoForm.tituloId)?.[eventoForm.eventoType === "ENSAYO" ? "cupoEnsayo" : "cupoFuncion"] || 0} rotativos
+                      Cupo: {titulos.find((t) => t.id === eventoForm.tituloId)?.[
+                        eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                          ? "cupoFuncion"
+                          : "cupoEnsayo"
+                      ] || 0} rotativos
                     </div>
                   )}
                   <div className="flex gap-2">
