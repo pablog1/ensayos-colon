@@ -19,10 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { Users, UserPlus, Shield, User, Pencil } from "lucide-react"
+import { Users, UserPlus, Shield, User, Pencil, Key, Eye, EyeOff, MoreVertical, Trash2 } from "lucide-react"
 
 interface Integrante {
   id: string
@@ -52,6 +59,16 @@ export default function IntegrantesPage() {
     role: "INTEGRANTE" as "ADMIN" | "INTEGRANTE",
   })
   const [submitting, setSubmitting] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [passwordUser, setPasswordUser] = useState<Integrante | null>(null)
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const [showPasswords, setShowPasswords] = useState({
+    new: false,
+    confirm: false,
+  })
 
   useEffect(() => {
     fetchIntegrantes()
@@ -136,6 +153,48 @@ export default function IntegrantesPage() {
       setEditDialogOpen(false)
       setEditingUser(null)
       fetchIntegrantes()
+    } else {
+      const error = await res.json()
+      toast.error(error.error)
+    }
+
+    setSubmitting(false)
+  }
+
+  const openPasswordDialog = (user: Integrante) => {
+    setPasswordUser(user)
+    setPasswordData({ newPassword: "", confirmPassword: "" })
+    setShowPasswords({ new: false, confirm: false })
+    setPasswordDialogOpen(true)
+  }
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!passwordUser) return
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("Las contraseñas no coinciden")
+      return
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("La contraseña debe tener al menos 6 caracteres")
+      return
+    }
+
+    setSubmitting(true)
+
+    const res = await fetch(`/api/integrantes/${passwordUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: passwordData.newPassword }),
+    })
+
+    if (res.ok) {
+      toast.success("Contraseña reseteada exitosamente")
+      setPasswordDialogOpen(false)
+      setPasswordUser(null)
+      setPasswordData({ newPassword: "", confirmPassword: "" })
     } else {
       const error = await res.json()
       toast.error(error.error)
@@ -346,22 +405,33 @@ export default function IntegrantesPage() {
 
                     {/* Acciones */}
                     {!isCurrentUser && (
-                      <div className="flex gap-2 pt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditDialog(i)}
-                        >
-                          <Pencil className="w-3 h-3 mr-1" />
-                          Editar rol
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(i.id, i.name)}
-                        >
-                          Eliminar
-                        </Button>
+                      <div className="pt-1">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm">
+                              <MoreVertical className="w-4 h-4" />
+                              <span className="ml-1">Acciones</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start">
+                            <DropdownMenuItem onClick={() => openEditDialog(i)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Editar rol
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openPasswordDialog(i)}>
+                              <Key className="w-4 h-4 mr-2" />
+                              Resetear contraseña
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(i.id, i.name)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     )}
                   </div>
@@ -425,6 +495,81 @@ export default function IntegrantesPage() {
                 </Button>
                 <Button type="submit" disabled={submitting || editFormData.role === editingUser.role}>
                   {submitting ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para resetear contraseña */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Resetear Contraseña</DialogTitle>
+          </DialogHeader>
+          {passwordUser && (
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Usuario</Label>
+                <p className="text-sm font-medium">{passwordUser.name}</p>
+                <p className="text-xs text-muted-foreground">{passwordUser.email}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPasswordReset">Nueva contraseña</Label>
+                <div className="relative">
+                  <Input
+                    id="newPasswordReset"
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPasswordReset">Confirmar contraseña</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPasswordReset"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                    placeholder="Repetir contraseña"
+                    required
+                    minLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Deberás comunicar la nueva contraseña al usuario fuera del sistema.
+              </p>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPasswordDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Reseteando..." : "Resetear Contraseña"}
                 </Button>
               </div>
             </form>

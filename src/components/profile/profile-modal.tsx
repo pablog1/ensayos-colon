@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { User } from "lucide-react"
+import { User, Key, Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const AVATARS = [
@@ -38,6 +38,18 @@ export function ProfileModal() {
     alias: "",
     avatar: null,
   })
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  })
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [showPasswordSection, setShowPasswordSection] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -83,6 +95,45 @@ export function ProfileModal() {
     }
   }
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("Las contraseñas no coinciden")
+      return
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("La nueva contraseña debe tener al menos 6 caracteres")
+      return
+    }
+
+    setPasswordLoading(true)
+
+    try {
+      const res = await fetch("/api/user/password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error)
+      }
+
+      toast.success("Contraseña actualizada correctamente")
+      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al cambiar contraseña")
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
   const userName = session?.user?.name?.split(" ")[0] || "Usuario"
   const userAlias = session?.user?.alias
   const displayAvatar = session?.user?.avatar
@@ -107,7 +158,7 @@ export function ProfileModal() {
           </div>
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Mi Perfil</DialogTitle>
         </DialogHeader>
@@ -178,6 +229,109 @@ export function ProfileModal() {
             </Button>
           </div>
         </form>
+
+        {/* Sección colapsable de cambio de contraseña */}
+        <div className="border-t pt-4">
+          {!showPasswordSection ? (
+            <button
+              type="button"
+              onClick={() => setShowPasswordSection(true)}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Key className="w-4 h-4" />
+              <span>Cambiar contraseña</span>
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4 text-muted-foreground" />
+                  <h3 className="font-medium">Cambiar contraseña</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordSection(false)
+                    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Cancelar
+                </button>
+              </div>
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Contraseña actual</Label>
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={showPasswords.current ? "text" : "password"}
+                      value={passwordData.currentPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                      placeholder="Tu contraseña actual"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nueva contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={showPasswords.new ? "text" : "password"}
+                      value={passwordData.newPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmar nueva contraseña</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPasswords.confirm ? "text" : "password"}
+                      value={passwordData.confirmPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                      placeholder="Repetir nueva contraseña"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <Button type="submit" variant="secondary" className="w-full" disabled={passwordLoading}>
+                  {passwordLoading ? "Cambiando..." : "Cambiar contraseña"}
+                </Button>
+              </form>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )
