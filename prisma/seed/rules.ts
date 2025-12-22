@@ -141,6 +141,20 @@ const ruleConfigs = [
     category: "restriccion",
     priority: 15,
   },
+  {
+    key: "FUNCIONES_POR_TITULO",
+    value: JSON.stringify({
+      enabled: true,
+      umbralFunciones: 3,
+      maxHasta: 1,
+      porcentajeSobre: 30,
+    }),
+    valueType: "json",
+    description:
+      "Límite de funciones por título. Si un título tiene hasta 3 funciones, cada integrante puede pedir rotativo para máximo 1. Si tiene más de 3 funciones, puede pedir hasta el 30% del total. Las solicitudes adicionales van a revisión del admin.",
+    category: "restriccion",
+    priority: 16,
+  },
 ]
 
 export async function seedRuleConfigs() {

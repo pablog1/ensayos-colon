@@ -11,6 +11,7 @@ import { licenciasRule } from "./implementations/licencias"
 import { integranteNuevoRule } from "./implementations/integrante-nuevo"
 import { alertaCercaniaRule } from "./implementations/alerta-cercania"
 import { ensayosDoblesRule } from "./implementations/ensayos-dobles"
+import { funcionesPorTituloRule } from "./implementations/funciones-por-titulo"
 
 let initialized = false
 
@@ -30,6 +31,7 @@ export function initializeRules(): void {
   registerRule(integranteNuevoRule) // R10
   registerRule(alertaCercaniaRule) // R11
   registerRule(ensayosDoblesRule) // R12
+  registerRule(funcionesPorTituloRule) // R13
 
   initialized = true
 }
@@ -66,4 +68,5 @@ export {
   integranteNuevoRule,
   alertaCercaniaRule,
   ensayosDoblesRule,
+  funcionesPorTituloRule,
 }

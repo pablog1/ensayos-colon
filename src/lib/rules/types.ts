@@ -118,6 +118,13 @@ export interface EnsayosDoblesConfig {
   maxRotativosPorTitulo: number // Máximo de rotativos en días dobles por título
 }
 
+export interface FuncionesPorTituloConfig {
+  enabled: boolean
+  umbralFunciones: number // Hasta este número, aplica maxHasta
+  maxHasta: number // Máximo cuando hay pocas funciones
+  porcentajeSobre: number // Porcentaje cuando hay más funciones
+}
+
 // Todas las configuraciones de reglas
 export interface AllRuleConfigs {
   CUPO_DIARIO: CupoDiarioConfig
@@ -132,4 +139,5 @@ export interface AllRuleConfigs {
   INTEGRANTE_NUEVO: { usarPromedio: boolean; adminOverride: boolean }
   ALERTA_UMBRAL: number
   ENSAYOS_DOBLES: EnsayosDoblesConfig
+  FUNCIONES_POR_TITULO: FuncionesPorTituloConfig
 }

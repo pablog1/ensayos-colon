@@ -17,6 +17,7 @@ import {
   Bell,
   CheckCircle,
   Info,
+  Theater,
 } from "lucide-react"
 
 interface RuleConfig {
@@ -246,6 +247,32 @@ const friendlyRules: Record<string, {
           <div className="text-center p-3 bg-indigo-50 rounded-lg">
             <div className="text-2xl font-bold text-indigo-700">{config.maxRotativosPorTitulo}</div>
             <div className="text-xs text-indigo-600">día doble por título</div>
+          </div>
+        </div>
+      )
+    },
+  },
+  FUNCIONES_POR_TITULO: {
+    icon: Theater,
+    title: "Funciones por título",
+    summary: "Límite de funciones que podés pedir como rotativo en un mismo título",
+    details: [
+      "Si el título tiene hasta 3 funciones: podés pedir rotativo en máximo 1",
+      "Si el título tiene más de 3 funciones: podés pedir hasta el 30% del total",
+      "Las solicitudes que excedan el límite van a revisión del administrador",
+    ],
+    getValue: (value) => {
+      if (!value || typeof value !== "object") return null
+      const config = value as { umbralFunciones: number; maxHasta: number; porcentajeSobre: number }
+      return (
+        <div className="flex items-center gap-3 mt-3">
+          <div className="text-center p-3 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-700">{config.maxHasta}</div>
+            <div className="text-xs text-purple-600">si hay hasta {config.umbralFunciones}</div>
+          </div>
+          <div className="text-center p-3 bg-purple-50 rounded-lg">
+            <div className="text-2xl font-bold text-purple-700">{config.porcentajeSobre}%</div>
+            <div className="text-xs text-purple-600">si hay más de {config.umbralFunciones}</div>
           </div>
         </div>
       )
