@@ -21,9 +21,15 @@ export async function GET(req: NextRequest) {
   if (mes) {
     const [year, month] = mes.split("-").map(Number)
     // Usar UTC para evitar problemas de timezone
-    startDate = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0))
-    // Último día del mes: día 0 del mes siguiente
-    endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59))
+    // Extender rango para incluir días visibles en el calendario (días de meses adyacentes)
+    // El calendario puede mostrar hasta 6 días del mes anterior y 13 del siguiente
+    const firstOfMonth = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0))
+    const dayOfWeek = firstOfMonth.getUTCDay() // 0=domingo, 1=lunes, etc.
+    // Ajustar para que martes sea el primer día de la semana (dayOfWeek: mar=2)
+    const daysFromPrevMonth = dayOfWeek === 0 ? 5 : dayOfWeek === 1 ? 6 : dayOfWeek - 2
+    startDate = new Date(Date.UTC(year, month - 1, 1 - daysFromPrevMonth, 0, 0, 0))
+    // Último día del mes + hasta 13 días del siguiente mes para completar la grilla
+    endDate = new Date(Date.UTC(year, month, 13, 23, 59, 59))
   } else {
     // Por defecto, mostrar mes actual
     const now = new Date()
@@ -131,6 +137,7 @@ export async function GET(req: NextRequest) {
       tituloType: evento.titulo?.type,
       tituloColor: evento.titulo?.color,
       cupoEfectivo,
+      cupoOverride: evento.cupoOverride,
       rotativosUsados: evento.rotativos.length,
       cupoDisponible: cupoEfectivo - evento.rotativos.length,
       rotativos: evento.rotativos,

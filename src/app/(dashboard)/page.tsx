@@ -47,6 +47,7 @@ interface Evento {
   tituloType: string
   tituloColor: string | null
   cupoEfectivo: number
+  cupoOverride: number | null
   rotativosUsados: number
   cupoDisponible: number
   rotativos: {
@@ -158,6 +159,7 @@ export default function DashboardPage() {
     date: "",
     startTime: "14:00",
     endTime: "17:00",
+    cupoOverride: null as number | null,
   })
   const [horarioCustom, setHorarioCustom] = useState(false)
 
@@ -417,6 +419,7 @@ export default function DashboardPage() {
         ensayoTipo: eventoForm.eventoType === "ENSAYO" ? eventoForm.ensayoTipo : undefined,
         startTime: toISOFromArgentina(eventoForm.date, eventoForm.startTime),
         endTime: toISOFromArgentina(eventoForm.date, eventoForm.endTime),
+        cupoOverride: eventoForm.cupoOverride,
       }),
     })
 
@@ -445,6 +448,7 @@ export default function DashboardPage() {
         date: eventoForm.date,
         startTime: toISOFromArgentina(eventoForm.date, eventoForm.startTime),
         endTime: toISOFromArgentina(eventoForm.date, eventoForm.endTime),
+        cupoOverride: eventoForm.cupoOverride,
       }),
     })
 
@@ -567,6 +571,7 @@ export default function DashboardPage() {
       date: evento.date.substring(0, 10),
       startTime,
       endTime,
+      cupoOverride: evento.cupoOverride ?? null,
     })
     // Verificar si es un horario predefinido
     const fechaEvento = evento.date.substring(0, 10)
@@ -590,6 +595,7 @@ export default function DashboardPage() {
       date: fechaStr,
       startTime: tieneHorariosPredefinidos ? horarios[0].start : "14:00",
       endTime: tieneHorariosPredefinidos ? horarios[0].end : "17:00",
+      cupoOverride: null,
     })
     setHorarioCustom(!tieneHorariosPredefinidos)
     setSidebarMode("nuevo-evento")
@@ -680,6 +686,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-1">
                     <span className="font-black bg-white/30 rounded px-1">{e.eventoType === "FUNCION" ? "F" : "E"}</span>
                     <span>{formatTime(e.startTime)} · {getEventTypeLabel(e)}</span>
+                    <span className="ml-auto bg-white/30 rounded px-1">{e.rotativosUsados}/{e.cupoEfectivo}</span>
                   </div>
                   <div className="line-clamp-2">{e.tituloName}</div>
                 </div>
@@ -699,12 +706,6 @@ export default function DashboardPage() {
                     {e.rotativos.length > 4 && (
                       <span className="text-[10px] text-muted-foreground">+{e.rotativos.length - 4}</span>
                     )}
-                  </div>
-                )}
-                {/* Cupo disponible */}
-                {e.cupoDisponible > 0 && (!e.rotativos || e.rotativos.length === 0) && (
-                  <div className="bg-gray-50 rounded-b px-1.5 py-0.5">
-                    <span className="text-[10px] text-muted-foreground">{e.cupoDisponible} disp.</span>
                   </div>
                 )}
               </div>
@@ -1787,7 +1788,7 @@ export default function DashboardPage() {
                         }}
                         className="flex-1"
                       >
-                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold">E</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold text-black">E</span>
                         Ensayo
                       </Button>
                       <Button
@@ -1804,7 +1805,7 @@ export default function DashboardPage() {
                         }}
                         className="flex-1"
                       >
-                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold">F</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold text-black">F</span>
                         Función
                       </Button>
                     </div>
@@ -1915,12 +1916,39 @@ export default function DashboardPage() {
                     })()}
                   </div>
                   {eventoForm.tituloId && (
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                      Cupo: {titulos.find((t) => t.id === eventoForm.tituloId)?.[
-                        eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                          ? "cupoFuncion"
-                          : "cupoEnsayo"
-                      ] || 0} rotativos
+                    <div className="space-y-2">
+                      <Label>Cupo de rotativos</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={20}
+                          value={eventoForm.cupoOverride ?? titulos.find((t) => t.id === eventoForm.tituloId)?.[
+                            eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                              ? "cupoFuncion"
+                              : "cupoEnsayo"
+                          ] ?? 0}
+                          onChange={(e) => setEventoForm({ ...eventoForm, cupoOverride: e.target.value ? parseInt(e.target.value) : null })}
+                          className="w-20"
+                        />
+                        {eventoForm.cupoOverride !== null && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEventoForm({ ...eventoForm, cupoOverride: null })}
+                          >
+                            Restablecer
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Default del título: {titulos.find((t) => t.id === eventoForm.tituloId)?.[
+                          eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                            ? "cupoFuncion"
+                            : "cupoEnsayo"
+                        ] || 0}
+                      </p>
                     </div>
                   )}
                   <div className="flex gap-2">
@@ -1968,7 +1996,7 @@ export default function DashboardPage() {
                         }}
                         className="flex-1"
                       >
-                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold">E</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold text-black">E</span>
                         Ensayo
                       </Button>
                       <Button
@@ -1985,7 +2013,7 @@ export default function DashboardPage() {
                         }}
                         className="flex-1"
                       >
-                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold">F</span>
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-white rounded-full mr-1.5 text-sm font-bold text-black">F</span>
                         Función
                       </Button>
                     </div>
@@ -2092,6 +2120,39 @@ export default function DashboardPage() {
                             </button>
                           )}
                         </>
+                      )
+                    })()}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cupo de rotativos</Label>
+                    {(() => {
+                      const tituloDelEvento = titulos.find((t) => t.id === editingEvento.tituloId)
+                      const cupoDefault = tituloDelEvento?.[
+                        eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                          ? "cupoFuncion"
+                          : "cupoEnsayo"
+                      ] ?? editingEvento.cupoEfectivo
+                      return (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={20}
+                            value={eventoForm.cupoOverride ?? cupoDefault}
+                            onChange={(e) => setEventoForm({ ...eventoForm, cupoOverride: e.target.value ? parseInt(e.target.value) : null })}
+                            className="w-20"
+                          />
+                          {eventoForm.cupoOverride !== null && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEventoForm({ ...eventoForm, cupoOverride: null })}
+                            >
+                              Restablecer
+                            </Button>
+                          )}
+                        </div>
                       )
                     })()}
                   </div>
