@@ -164,6 +164,7 @@ export default function DashboardPage() {
   const [horarioCustom, setHorarioCustom] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
+  const [debugInfo, setDebugInfo] = useState<string[]>([])
 
   // Horarios predefinidos según tipo de evento
   const getHorariosPredefinidos = (tipo: "ENSAYO" | "FUNCION", fecha?: string) => {
@@ -404,34 +405,65 @@ export default function DashboardPage() {
   // Handlers para eventos
   const handleCreateEvento = async (e: React.FormEvent) => {
     e.preventDefault()
+    const addDebug = (msg: string) => setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`])
+
+    setDebugInfo([])
+    addDebug("Iniciando creación...")
+
     if (!eventoForm.tituloId || !eventoForm.date) {
+      addDebug("ERROR: Campos incompletos")
       toast.error("Completa todos los campos")
       return
     }
-    setSubmitting(true)
 
-    const res = await fetch(`/api/titulos/${eventoForm.tituloId}/eventos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    addDebug(`Datos: fecha=${eventoForm.date}, tipo=${eventoForm.eventoType}`)
+    setSubmitting(true)
+    addDebug("Enviando request...")
+
+    try {
+      const body = {
         date: eventoForm.date,
         eventoType: eventoForm.eventoType,
         ensayoTipo: eventoForm.eventoType === "ENSAYO" ? eventoForm.ensayoTipo : undefined,
         startTime: toISOFromArgentina(eventoForm.date, eventoForm.startTime),
         endTime: toISOFromArgentina(eventoForm.date, eventoForm.endTime),
         cupoOverride: eventoForm.cupoOverride,
-      }),
-    })
+      }
+      addDebug(`Body: ${JSON.stringify(body).substring(0, 100)}...`)
 
-    if (res.ok) {
-      toast.success("Evento creado")
-      fetchEventos(mesActual)
-      setSidebarMode("eventos")
-    } else {
-      const error = await res.json()
-      toast.error(error.error || "Error al crear evento")
+      const res = await fetch(`/api/titulos/${eventoForm.tituloId}/eventos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+
+      addDebug(`Response status: ${res.status}`)
+
+      if (res.ok) {
+        addDebug("Evento creado OK")
+        toast.success("Evento creado")
+        fetchEventos(mesActual)
+        // DEBUG: No cerrar para poder copiar info
+        // setSidebarMode("eventos")
+      } else {
+        try {
+          const errorText = await res.text()
+          addDebug(`ERROR del servidor (${res.status}): ${errorText}`)
+          const error = errorText ? JSON.parse(errorText) : {}
+          toast.error(error.error || `Error del servidor: ${res.status}`)
+        } catch {
+          addDebug(`ERROR: No se pudo parsear respuesta (status ${res.status})`)
+          toast.error(`Error del servidor: ${res.status}`)
+        }
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      addDebug(`CATCH ERROR: ${errorMsg}`)
+      toast.error(`Error de red: ${errorMsg}`)
+    } finally {
+      addDebug("Finalizando...")
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   const handleUpdateEvento = async (e: React.FormEvent) => {
@@ -1959,6 +1991,18 @@ export default function DashboardPage() {
                       {submitting ? "Creando..." : "Crear"}
                     </Button>
                   </div>
+
+                  {/* Debug info - temporal para diagnóstico */}
+                  {debugInfo.length > 0 && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg text-xs font-mono space-y-1 max-h-40 overflow-y-auto">
+                      <p className="font-bold text-muted-foreground mb-2">Debug:</p>
+                      {debugInfo.map((line, i) => (
+                        <p key={i} className={line.includes("ERROR") || line.includes("CATCH") ? "text-destructive" : "text-muted-foreground"}>
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </form>
               )}
 
