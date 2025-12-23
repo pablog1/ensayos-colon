@@ -132,19 +132,18 @@ export async function POST(
       eventTitle = `${titulo.name} - ${ensayoLabel}`
     }
 
-    // Verificar si ya existe un evento con mismo título y fecha
-    const eventoExistente = await prisma.event.findFirst({
+    // Verificar si ya existen eventos similares en la misma fecha para numerar
+    const eventosExistentes = await prisma.event.count({
       where: {
-        title: eventTitle,
+        tituloId,
         date: fechaEvento,
+        eventoType,
       },
     })
 
-    if (eventoExistente) {
-      return NextResponse.json(
-        { error: "Ya existe un evento con este título en la misma fecha" },
-        { status: 400 }
-      )
+    // Si ya hay eventos del mismo tipo en la misma fecha, agregar número
+    if (eventosExistentes > 0) {
+      eventTitle = `${eventTitle} (${eventosExistentes + 1})`
     }
 
     // Crear evento
