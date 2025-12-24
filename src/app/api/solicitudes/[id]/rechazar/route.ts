@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// POST /api/solicitudes/[id]/rechazar - Rechazar caso especial (solo admin)
+// POST /api/solicitudes/[id]/rechazar - Rechazar rotativo pendiente (solo admin)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,47 +14,35 @@ export async function POST(
 
   if (session.user.role !== "ADMIN") {
     return NextResponse.json(
-      { error: "Solo administradores pueden rechazar casos especiales" },
+      { error: "Solo administradores pueden rechazar solicitudes" },
       { status: 403 }
     )
   }
 
   const { id } = await params
 
-  const solicitud = await prisma.solicitud.findUnique({
+  const rotativo = await prisma.rotativo.findUnique({
     where: { id },
   })
 
-  if (!solicitud) {
+  if (!rotativo) {
     return NextResponse.json(
-      { error: "Solicitud no encontrada" },
+      { error: "Rotativo no encontrado" },
       { status: 404 }
     )
   }
 
-  if (solicitud.estado !== "PENDIENTE") {
+  if (rotativo.estado !== "PENDIENTE") {
     return NextResponse.json(
-      { error: "Solo se pueden rechazar solicitudes pendientes" },
+      { error: "Solo se pueden rechazar rotativos pendientes" },
       { status: 400 }
     )
   }
 
-  const updated = await prisma.solicitud.update({
+  // Al rechazar, eliminamos el rotativo
+  await prisma.rotativo.delete({
     where: { id },
-    data: {
-      estado: "RECHAZADA",
-      aprobadoPor: session.user.id,
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json({ success: true })
 }
