@@ -2236,7 +2236,7 @@ export default function DashboardPage() {
             </div>
             <DialogTitle className="text-xl">Rotativo pendiente de aprobación</DialogTitle>
             <DialogDescription className="text-base mt-2">
-              Tu solicitud fue registrada pero requiere aprobación de un administrador.
+              Tu solicitud fue registrada pero requiere aprobación.
             </DialogDescription>
           </DialogHeader>
 
