@@ -161,6 +161,7 @@ export default function DashboardPage() {
     endTime: "17:00",
     cupoOverride: null as number | null,
   })
+  const [cupoInputValue, setCupoInputValue] = useState("")
   const [horarioCustom, setHorarioCustom] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
@@ -1750,7 +1751,12 @@ export default function DashboardPage() {
                         <>
                           <Select
                             value={eventoForm.tituloId}
-                            onValueChange={(v) => setEventoForm({ ...eventoForm, tituloId: v })}
+                            onValueChange={(v) => {
+                              const titulo = titulos.find(t => t.id === v)
+                              const defaultCupo = titulo?.[eventoForm.eventoType === "FUNCION" ? "cupoFuncion" : "cupoEnsayo"] ?? 0
+                              setCupoInputValue(String(defaultCupo))
+                              setEventoForm({ ...eventoForm, tituloId: v, cupoOverride: null })
+                            }}
                             disabled={!eventoForm.date}
                           >
                             <SelectTrigger>
@@ -1925,23 +1931,44 @@ export default function DashboardPage() {
                       <Label>Cupo de rotativos</Label>
                       <div className="flex items-center gap-2">
                         <Input
-                          type="number"
-                          min={0}
-                          max={20}
-                          value={eventoForm.cupoOverride ?? titulos.find((t) => t.id === eventoForm.tituloId)?.[
-                            eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                              ? "cupoFuncion"
-                              : "cupoEnsayo"
-                          ] ?? 0}
-                          onChange={(e) => setEventoForm({ ...eventoForm, cupoOverride: e.target.value ? parseInt(e.target.value) : null })}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={cupoInputValue}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "")
+                            setCupoInputValue(val)
+                            const defaultCupo = titulos.find((t) => t.id === eventoForm.tituloId)?.[
+                              eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                                ? "cupoFuncion"
+                                : "cupoEnsayo"
+                            ] ?? 0
+                            if (val === "" || val === String(defaultCupo)) {
+                              setEventoForm({ ...eventoForm, cupoOverride: null })
+                            } else {
+                              setEventoForm({ ...eventoForm, cupoOverride: val ? Math.min(20, parseInt(val)) : null })
+                            }
+                          }}
                           className="w-20"
                         />
-                        {eventoForm.cupoOverride !== null && (
+                        {cupoInputValue !== String(titulos.find((t) => t.id === eventoForm.tituloId)?.[
+                          eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                            ? "cupoFuncion"
+                            : "cupoEnsayo"
+                        ] ?? 0) && (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => setEventoForm({ ...eventoForm, cupoOverride: null })}
+                            onClick={() => {
+                              const defaultCupo = titulos.find((t) => t.id === eventoForm.tituloId)?.[
+                                eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
+                                  ? "cupoFuncion"
+                                  : "cupoEnsayo"
+                              ] ?? 0
+                              setCupoInputValue(String(defaultCupo))
+                              setEventoForm({ ...eventoForm, cupoOverride: null })
+                            }}
                           >
                             Restablecer
                           </Button>
@@ -2140,11 +2167,14 @@ export default function DashboardPage() {
                       return (
                         <div className="flex items-center gap-2">
                           <Input
-                            type="number"
-                            min={0}
-                            max={20}
-                            value={eventoForm.cupoOverride ?? cupoDefault}
-                            onChange={(e) => setEventoForm({ ...eventoForm, cupoOverride: e.target.value ? parseInt(e.target.value) : null })}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={String(eventoForm.cupoOverride ?? cupoDefault)}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, "")
+                              setEventoForm({ ...eventoForm, cupoOverride: val ? Math.min(20, parseInt(val)) : null })
+                            }}
                             className="w-20"
                           />
                           {eventoForm.cupoOverride !== null && (
