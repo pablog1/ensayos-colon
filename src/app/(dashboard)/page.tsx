@@ -42,6 +42,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   AlertTriangle,
+  Loader2,
 } from "lucide-react"
 
 interface Evento {
@@ -1470,7 +1471,14 @@ export default function DashboardPage() {
                         onClick={() => handleSolicitarRotativo(selectedEvento)}
                         disabled={submitting}
                       >
-                        {submitting ? "Solicitando..." : "Solicitar Rotativo"}
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Validando reglas...
+                          </>
+                        ) : (
+                          "Solicitar Rotativo"
+                        )}
                       </Button>
                     )}
                     {userHasRotativo(selectedEvento) && (
@@ -1480,7 +1488,14 @@ export default function DashboardPage() {
                         onClick={() => handleCancelarRotativo(selectedEvento)}
                         disabled={submitting}
                       >
-                        {submitting ? "Cancelando..." : "Cancelar mi Rotativo"}
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Cancelando...
+                          </>
+                        ) : (
+                          "Cancelar mi Rotativo"
+                        )}
                       </Button>
                     )}
                     {isAdmin && (
