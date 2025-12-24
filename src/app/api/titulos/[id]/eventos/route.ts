@@ -132,6 +132,24 @@ export async function POST(
       eventTitle = `${titulo.name} - ${ensayoLabel}`
     }
 
+    // Verificar que no exista otro evento a la misma hora en la misma fecha
+    if (startTime) {
+      const startTimeDate = new Date(startTime)
+      const eventoMismaHora = await prisma.event.findFirst({
+        where: {
+          date: fechaEvento,
+          startTime: startTimeDate,
+        },
+      })
+
+      if (eventoMismaHora) {
+        return NextResponse.json(
+          { error: "Ya existe un evento a la misma hora en esta fecha" },
+          { status: 400 }
+        )
+      }
+    }
+
     // Verificar si ya existen eventos similares en la misma fecha para numerar
     const eventosExistentes = await prisma.event.count({
       where: {

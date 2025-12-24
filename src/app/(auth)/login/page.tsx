@@ -80,6 +80,12 @@ export default function LoginPage() {
           >
             Primeros Violines
           </p>
+          <p
+            className="text-3xl text-[var(--burgundy)] font-semibold mt-1"
+            style={{ fontFamily: "Playfair Display, serif" }}
+          >
+            OETC
+          </p>
           <div className="ornament mt-4" />
         </CardHeader>
 

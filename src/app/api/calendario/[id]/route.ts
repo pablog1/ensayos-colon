@@ -164,6 +164,25 @@ export async function PUT(
     updateData.endTime = new Date(endTime)
   }
 
+  // Verificar que no exista otro evento a la misma hora en la misma fecha (excluyendo el actual)
+  const fechaVerificar = updateData.date || evento.date
+  const horaVerificar = updateData.startTime || evento.startTime
+
+  const eventoConflicto = await prisma.event.findFirst({
+    where: {
+      id: { not: id },
+      date: fechaVerificar,
+      startTime: horaVerificar,
+    },
+  })
+
+  if (eventoConflicto) {
+    return NextResponse.json(
+      { error: "Ya existe un evento a la misma hora en esta fecha" },
+      { status: 400 }
+    )
+  }
+
   const updated = await prisma.event.update({
     where: { id },
     data: updateData,
