@@ -289,6 +289,29 @@ export default function DashboardPage() {
     return "Ensayo"
   }
 
+  // Color del badge E/F según horario
+  const getBadgeColor = (evento: Evento) => {
+    const hour = new Date(evento.startTime).getHours()
+    const eventDate = new Date(evento.date + "T12:00:00")
+    const isSunday = eventDate.getDay() === 0
+
+    if (evento.eventoType === "FUNCION") {
+      // F siempre rojo (20:00 o domingo 17:00)
+      return "bg-red-500 text-white"
+    }
+    // Ensayos
+    if (hour >= 19) {
+      // E a las 20:00 → azul
+      return "bg-blue-500 text-white"
+    }
+    if (hour >= 13 && hour < 19) {
+      // E a las 14:00 → naranja/amarillo
+      return "bg-amber-500 text-white"
+    }
+    // Por defecto (mañana u otro horario)
+    return "bg-gray-500 text-white"
+  }
+
   const getDayBgColor = (date: Date) => {
     const dayOfWeek = date.getDay()
     if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -690,7 +713,7 @@ export default function DashboardPage() {
                   style={{ backgroundColor: getEventColor(e) }}
                 >
                   <div className="flex items-center gap-1">
-                    <span className="font-black bg-white/30 rounded px-1">{e.eventoType === "FUNCION" ? "F" : "E"}</span>
+                    <span className={`font-black rounded px-1 ${getBadgeColor(e)}`}>{e.eventoType === "FUNCION" ? "F" : "E"}</span>
                     <span>{formatTime(e.startTime)} · {getEventTypeLabel(e)}</span>
                     <span className="ml-auto bg-white/30 rounded px-1">{e.rotativosUsados}/{e.cupoEfectivo}</span>
                   </div>
@@ -945,7 +968,7 @@ export default function DashboardPage() {
                                         />
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2">
-                                            <span className="font-black bg-black/10 rounded px-1">{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
+                                            <span className={`font-black rounded px-1 ${getBadgeColor(evento)}`}>{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
                                             <p className="font-medium truncate">{evento.tituloName}</p>
                                             <Badge variant={evento.cupoDisponible > 0 ? "outline" : "secondary"} className="ml-auto">
                                               {evento.rotativosUsados}/{evento.cupoEfectivo} rot.
@@ -1304,7 +1327,7 @@ export default function DashboardPage() {
                         <div className="flex items-start justify-between">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="font-black bg-black/10 rounded px-1">{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
+                              <span className={`font-black rounded px-1 ${getBadgeColor(evento)}`}>{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
                               <p className="font-medium text-sm">{evento.tituloName}</p>
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">
@@ -1362,7 +1385,7 @@ export default function DashboardPage() {
                                 onClick={() => openDetalleEvento(evento)}
                               >
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-black bg-black/10 rounded px-1">{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
+                                  <span className={`font-black rounded px-1 ${getBadgeColor(evento)}`}>{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
                                   <p className="font-medium text-sm">{evento.tituloName}</p>
                                 </div>
                                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -1419,7 +1442,7 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="p-3 rounded-lg" style={{ backgroundColor: getEventColor(selectedEvento) + "20" }}>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl font-black bg-black/10 rounded-lg px-2 py-1">{selectedEvento.eventoType === "FUNCION" ? "F" : "E"}</span>
+                      <span className={`text-2xl font-black rounded-lg px-2 py-1 ${getBadgeColor(selectedEvento)}`}>{selectedEvento.eventoType === "FUNCION" ? "F" : "E"}</span>
                       <div>
                         <p className="font-semibold">{selectedEvento.tituloName}</p>
                         <p className="text-sm text-muted-foreground">
