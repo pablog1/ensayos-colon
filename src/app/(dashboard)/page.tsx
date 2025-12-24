@@ -103,7 +103,6 @@ type SidebarMode =
   | "nuevo-evento"
   | "editar-evento"
   | "detalle-evento"
-  | "solicitar-rotativo"
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -769,9 +768,6 @@ export default function DashboardPage() {
     ? todosLosRotativos.filter(r => r.user.id === userId)
     : todosLosRotativos
 
-  // Eventos con cupo disponible para solicitar
-  const eventosConCupo = eventos.filter(e => e.cupoDisponible > 0 && !userHasRotativo(e))
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -1209,7 +1205,6 @@ export default function DashboardPage() {
                   {sidebarMode === "rotativos" && "Rotativos del Mes"}
                   {sidebarMode === "titulos" && "Títulos"}
                   {sidebarMode === "eventos" && (selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Eventos del día")}
-                  {sidebarMode === "solicitar-rotativo" && "Solicitar Rotativo"}
                   {sidebarMode === "nuevo-titulo" && "Nuevo Título"}
                   {sidebarMode === "editar-titulo" && "Editar Título"}
                   {sidebarMode === "nuevo-evento" && "Nuevo Evento"}
@@ -1230,16 +1225,6 @@ export default function DashboardPage() {
               {/* Vista de rotativos del mes */}
               {sidebarMode === "rotativos" && (
                 <div className="space-y-3">
-                  {/* Botón solicitar */}
-                  <Button
-                    className="w-full"
-                    onClick={() => setSidebarMode("solicitar-rotativo")}
-                    disabled={eventosConCupo.length === 0}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Solicitar Rotativo
-                  </Button>
-
                   {/* Toggle mis rotativos / todos */}
                   <div className="flex gap-1">
                     <Button
@@ -1306,44 +1291,6 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Solicitar rotativo - lista de eventos disponibles */}
-              {sidebarMode === "solicitar-rotativo" && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Selecciona un evento para solicitar rotativo:
-                  </p>
-                  {eventosConCupo.length === 0 ? (
-                    <p className="text-muted-foreground text-sm text-center py-4">
-                      No hay eventos con cupo disponible
-                    </p>
-                  ) : (
-                    eventosConCupo.map((evento) => (
-                      <div
-                        key={evento.id}
-                        className="p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                        style={{ borderLeftColor: getEventColor(evento), borderLeftWidth: 4 }}
-                        onClick={() => handleSolicitarRotativo(evento)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className={`font-black rounded px-1 ${getBadgeColor(evento)}`}>{evento.eventoType === "FUNCION" ? "F" : "E"}</span>
-                              <p className="font-medium text-sm">{evento.tituloName}</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {getEventTypeLabel(evento)} · {formatInArgentina(evento.date, "EEEE d MMM")} · {formatTime(evento.startTime)}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-green-600 text-xs">
-                            {evento.cupoDisponible} disp.
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
               {/* Detalle del día seleccionado */}
               {sidebarMode === "eventos" && (
                 <div className="space-y-4">
@@ -1354,20 +1301,14 @@ export default function DashboardPage() {
                   ) : (
                     <>
                       {/* Acciones del día */}
-                      <div className="flex gap-2">
-                        {isAdmin && (
+                      {isAdmin && (
+                        <div className="flex gap-2">
                           <Button className="flex-1" size="sm" onClick={() => openNuevoEvento(selectedDate)}>
                             <Plus className="w-4 h-4 mr-1" />
                             Evento
                           </Button>
-                        )}
-                        {eventosDelDiaSeleccionado.some(e => e.cupoDisponible > 0 && !userHasRotativo(e)) && (
-                          <Button variant="outline" className="flex-1" size="sm" onClick={() => setSidebarMode("solicitar-rotativo")}>
-                            <Plus className="w-4 h-4 mr-1" />
-                            Rotativo
-                          </Button>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Eventos del día */}
                       {eventosDelDiaSeleccionado.length > 0 && (
