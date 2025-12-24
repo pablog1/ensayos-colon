@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma"
 export type CupoDiarioConfig = {
   OPERA: number
   CONCIERTO: number
-  ENSAYO: number
   BALLET: number
   [key: string]: number
 }
@@ -11,7 +10,6 @@ export type CupoDiarioConfig = {
 const DEFAULT_CUPOS: CupoDiarioConfig = {
   OPERA: 4,
   CONCIERTO: 2,
-  ENSAYO: 4,
   BALLET: 4,
 }
 
@@ -51,24 +49,18 @@ export async function getCuposFromRules(): Promise<CupoDiarioConfig> {
 }
 
 /**
- * Obtiene el cupo para un evento específico
- * @param eventoType - ENSAYO o FUNCION
+ * Obtiene el cupo para un evento específico basado en el tipo de título
+ * Tanto ensayos como funciones de un mismo título usan el mismo cupo
  * @param tituloType - OPERA, CONCIERTO, BALLET, RECITAL, OTRO
  */
 export async function getCupoParaEvento(
-  eventoType: "ENSAYO" | "FUNCION" | null,
+  _eventoType: "ENSAYO" | "FUNCION" | null,
   tituloType: string | null
 ): Promise<number> {
   const cupos = await getCuposFromRules()
 
-  // Si es ensayo, usar cupo de ENSAYO
-  if (eventoType === "ENSAYO") {
-    return cupos.ENSAYO
-  }
-
-  // Si es función, usar cupo según tipo de título
-  if (eventoType === "FUNCION" && tituloType) {
-    // Mapear tipos de título a tipos de cupo
+  // Usar cupo según tipo de título (tanto para ensayos como funciones)
+  if (tituloType) {
     const tipoMap: Record<string, string> = {
       OPERA: "OPERA",
       CONCIERTO: "CONCIERTO",

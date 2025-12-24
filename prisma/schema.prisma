@@ -143,8 +143,7 @@ model Titulo {
   id          String     @id @default(cuid())
   name        String     // "La Traviata", "Concierto de Primavera"
   type        TituloType
-  cupoEnsayo  Int        @default(2)  // Rotativos disponibles por ensayo
-  cupoFuncion Int        @default(4)  // Rotativos disponibles por funcion
+  cupo        Int        @default(4)  // Rotativos disponibles por evento
   seasonId    String
   description String?
   color       String?    // Color para mostrar en calendario (hex)

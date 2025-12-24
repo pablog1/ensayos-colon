@@ -79,8 +79,7 @@ interface Titulo {
   name: string
   type: string
   color: string | null
-  cupoEnsayo: number
-  cupoFuncion: number
+  cupo?: number // opcional para compatibilidad con datos cacheados
   startDate?: string
   endDate?: string
 }
@@ -146,8 +145,7 @@ export default function DashboardPage() {
     name: "",
     type: "OPERA" as string,
     color: "#3b82f6",
-    cupoEnsayo: 2,
-    cupoFuncion: 4,
+    cupo: 4,
     startDate: "",
     endDate: "",
   })
@@ -349,7 +347,7 @@ export default function DashboardPage() {
       fetchTitulos(mesActual.getFullYear())
       fetchEventos(mesActual)
       setSidebarMode("titulos")
-      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4, startDate: "", endDate: "" })
+      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupo: 4, startDate: "", endDate: "" })
     } else {
       const error = await res.json()
       toast.error(error.error || "Error al crear título")
@@ -545,12 +543,14 @@ export default function DashboardPage() {
 
   const openEditTitulo = (titulo: Titulo) => {
     setEditingTitulo(titulo)
+    // Fallback para datos cacheados que pueden tener cupoEnsayo/cupoFuncion en lugar de cupo
+    const defaultCupos: Record<string, number> = { OPERA: 4, BALLET: 4, CONCIERTO: 2 }
+    const cupoValue = titulo.cupo ?? defaultCupos[titulo.type] ?? 4
     setTituloForm({
       name: titulo.name,
       type: titulo.type,
       color: titulo.color || "#3b82f6",
-      cupoEnsayo: titulo.cupoEnsayo,
-      cupoFuncion: titulo.cupoFuncion,
+      cupo: cupoValue,
       startDate: titulo.startDate?.substring(0, 10) || "",
       endDate: titulo.endDate?.substring(0, 10) || "",
     })
@@ -1520,7 +1520,7 @@ export default function DashboardPage() {
                   <Button
                     className="w-full mb-3"
                     onClick={() => {
-                      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupoEnsayo: 2, cupoFuncion: 4, startDate: "", endDate: "" })
+                      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupo: 4, startDate: "", endDate: "" })
                       setSidebarMode("nuevo-titulo")
                     }}
                   >
@@ -1579,7 +1579,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Tipo</Label>
-                    <Select value={tituloForm.type} onValueChange={(v) => setTituloForm({ ...tituloForm, type: v })}>
+                    <Select value={tituloForm.type} onValueChange={(v) => {
+                      const defaultCupos: Record<string, number> = { OPERA: 4, BALLET: 4, CONCIERTO: 2 }
+                      setTituloForm({ ...tituloForm, type: v, cupo: defaultCupos[v] ?? 4 })
+                    }}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1605,6 +1608,23 @@ export default function DashboardPage() {
                         />
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cupo de rotativos</Label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={tituloForm.cupo === 0 ? "" : String(tituloForm.cupo)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "")
+                        setTituloForm({ ...tituloForm, cupo: val === "" ? 0 : Math.min(20, parseInt(val)) })
+                      }}
+                      className="w-20"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se ajusta automáticamente según el tipo seleccionado
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-2">
@@ -1650,7 +1670,10 @@ export default function DashboardPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Tipo</Label>
-                    <Select value={tituloForm.type} onValueChange={(v) => setTituloForm({ ...tituloForm, type: v })}>
+                    <Select value={tituloForm.type} onValueChange={(v) => {
+                      const defaultCupos: Record<string, number> = { OPERA: 4, BALLET: 4, CONCIERTO: 2 }
+                      setTituloForm({ ...tituloForm, type: v, cupo: defaultCupos[v] ?? 4 })
+                    }}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -1676,6 +1699,23 @@ export default function DashboardPage() {
                         />
                       ))}
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cupo de rotativos</Label>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={tituloForm.cupo === 0 ? "" : String(tituloForm.cupo)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "")
+                        setTituloForm({ ...tituloForm, cupo: val === "" ? 0 : Math.min(20, parseInt(val)) })
+                      }}
+                      className="w-20"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se ajusta automáticamente según el tipo seleccionado
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-2">
@@ -1753,7 +1793,7 @@ export default function DashboardPage() {
                             value={eventoForm.tituloId}
                             onValueChange={(v) => {
                               const titulo = titulos.find(t => t.id === v)
-                              const defaultCupo = titulo?.[eventoForm.eventoType === "FUNCION" ? "cupoFuncion" : "cupoEnsayo"] ?? 0
+                              const defaultCupo = titulo?.cupo ?? 0
                               setCupoInputValue(String(defaultCupo))
                               setEventoForm({ ...eventoForm, tituloId: v, cupoOverride: null })
                             }}
@@ -1938,11 +1978,7 @@ export default function DashboardPage() {
                           onChange={(e) => {
                             const val = e.target.value.replace(/[^0-9]/g, "")
                             setCupoInputValue(val)
-                            const defaultCupo = titulos.find((t) => t.id === eventoForm.tituloId)?.[
-                              eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                                ? "cupoFuncion"
-                                : "cupoEnsayo"
-                            ] ?? 0
+                            const defaultCupo = titulos.find((t) => t.id === eventoForm.tituloId)?.cupo ?? 0
                             if (val === "" || val === String(defaultCupo)) {
                               setEventoForm({ ...eventoForm, cupoOverride: null })
                             } else {
@@ -1951,21 +1987,13 @@ export default function DashboardPage() {
                           }}
                           className="w-20"
                         />
-                        {cupoInputValue !== String(titulos.find((t) => t.id === eventoForm.tituloId)?.[
-                          eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                            ? "cupoFuncion"
-                            : "cupoEnsayo"
-                        ] ?? 0) && (
+                        {cupoInputValue !== String(titulos.find((t) => t.id === eventoForm.tituloId)?.cupo ?? 0) && (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              const defaultCupo = titulos.find((t) => t.id === eventoForm.tituloId)?.[
-                                eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                                  ? "cupoFuncion"
-                                  : "cupoEnsayo"
-                              ] ?? 0
+                              const defaultCupo = titulos.find((t) => t.id === eventoForm.tituloId)?.cupo ?? 0
                               setCupoInputValue(String(defaultCupo))
                               setEventoForm({ ...eventoForm, cupoOverride: null })
                             }}
@@ -1975,11 +2003,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Default del título: {titulos.find((t) => t.id === eventoForm.tituloId)?.[
-                          eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                            ? "cupoFuncion"
-                            : "cupoEnsayo"
-                        ] || 0}
+                        Default del título: {titulos.find((t) => t.id === eventoForm.tituloId)?.cupo || 0}
                       </p>
                     </div>
                   )}
@@ -2159,11 +2183,7 @@ export default function DashboardPage() {
                     <Label>Cupo de rotativos</Label>
                     {(() => {
                       const tituloDelEvento = titulos.find((t) => t.id === editingEvento.tituloId)
-                      const cupoDefault = tituloDelEvento?.[
-                        eventoForm.eventoType === "FUNCION" || eventoForm.ensayoTipo === "GENERAL" || eventoForm.ensayoTipo === "PRE_GENERAL"
-                          ? "cupoFuncion"
-                          : "cupoEnsayo"
-                      ] ?? editingEvento.cupoEfectivo
+                      const cupoDefault = tituloDelEvento?.cupo ?? editingEvento.cupoEfectivo
                       return (
                         <div className="flex items-center gap-2">
                           <Input

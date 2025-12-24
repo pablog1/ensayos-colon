@@ -83,7 +83,6 @@ export interface RuleValidationSummary {
 export interface CupoDiarioConfig {
   OPERA: number
   CONCIERTO: number
-  ENSAYO: number
   BALLET: number
   [key: string]: number
 }

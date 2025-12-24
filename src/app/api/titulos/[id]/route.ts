@@ -51,9 +51,7 @@ export async function GET(
   let totalFunciones = 0
 
   for (const event of titulo.events) {
-    const cupo =
-      event.cupoOverride ??
-      (event.eventoType === "ENSAYO" ? titulo.cupoEnsayo : titulo.cupoFuncion)
+    const cupo = event.cupoOverride ?? titulo.cupo
     totalRotativos += cupo
 
     if (event.eventoType === "ENSAYO") {
@@ -88,7 +86,7 @@ export async function PUT(
 
   const { id } = await params
   const body = await req.json()
-  const { name, type, cupoEnsayo, cupoFuncion, description, color, startDate, endDate } = body
+  const { name, type, cupo, description, color, startDate, endDate } = body
 
   const titulo = await prisma.titulo.findUnique({
     where: { id },
@@ -183,8 +181,7 @@ export async function PUT(
   const updateData: {
     name?: string
     type?: "OPERA" | "CONCIERTO" | "BALLET" | "RECITAL" | "OTRO"
-    cupoEnsayo?: number
-    cupoFuncion?: number
+    cupo?: number
     description?: string | null
     color?: string | null
     startDate?: Date
@@ -193,8 +190,7 @@ export async function PUT(
 
   if (name) updateData.name = name
   if (type) updateData.type = type
-  if (cupoEnsayo !== undefined) updateData.cupoEnsayo = cupoEnsayo
-  if (cupoFuncion !== undefined) updateData.cupoFuncion = cupoFuncion
+  if (cupo !== undefined) updateData.cupo = cupo
   if (description !== undefined) updateData.description = description || null
   if (color !== undefined) updateData.color = color || null
   if (newStartDate) updateData.startDate = newStartDate

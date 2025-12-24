@@ -43,10 +43,10 @@ const friendlyRules: Record<string, {
   CUPO_DIARIO: {
     icon: Users,
     title: "Cupos disponibles",
-    summary: "Cantidad de músicos que pueden tomar rotativo por tipo de evento",
+    summary: "Cantidad de músicos que pueden tomar rotativo según el tipo de título",
     details: [
-      "Cada tipo de evento tiene un cupo diferente",
-      "Los cupos se definen según las necesidades de cada actividad",
+      "El cupo depende del tipo de título (ópera, ballet, concierto)",
+      "Ensayos y funciones de un mismo título usan el mismo cupo",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -54,11 +54,10 @@ const friendlyRules: Record<string, {
       const labels: Record<string, string> = {
         OPERA: "Ópera",
         CONCIERTO: "Concierto",
-        ENSAYO: "Ensayo",
         BALLET: "Ballet",
       }
       return (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+        <div className="grid grid-cols-3 gap-2 mt-3">
           {Object.entries(cupos).map(([tipo, cantidad]) => (
             <div key={tipo} className="text-center p-2 bg-blue-50 rounded-lg">
               <div className="text-xl font-bold text-blue-700">{cantidad}</div>

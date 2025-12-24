@@ -51,9 +51,7 @@ export async function GET() {
 
     for (const evento of titulo.events) {
       totalEventos++
-      const cupo =
-        evento.cupoOverride ??
-        (evento.eventoType === "ENSAYO" ? titulo.cupoEnsayo : titulo.cupoFuncion)
+      const cupo = evento.cupoOverride ?? titulo.cupo
       totalRotativosDisponibles += cupo
 
       if (evento.eventoType === "ENSAYO") {

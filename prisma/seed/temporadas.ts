@@ -111,24 +111,24 @@ async function main() {
   console.log("\n--- Temporada 2025 ---")
 
   const titulos2025 = [
-    // Óperas
-    { name: "La Traviata", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2025-02-15", ensayos: 12, funciones: 6 },
-    { name: "Tosca", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2025-04-01", ensayos: 10, funciones: 5 },
-    { name: "La Bohème", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2025-05-20", ensayos: 11, funciones: 6 },
-    { name: "Carmen", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2025-07-10", ensayos: 12, funciones: 7 },
-    { name: "Aida", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2025-09-01", ensayos: 14, funciones: 6 },
-    { name: "Rigoletto", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2025-10-20", ensayos: 10, funciones: 5 },
-    // Ballets
-    { name: "El Lago de los Cisnes", type: "BALLET", cupoEnsayo: 2, cupoFuncion: 3, fechaInicio: "2025-03-10", ensayos: 8, funciones: 5 },
-    { name: "El Cascanueces", type: "BALLET", cupoEnsayo: 2, cupoFuncion: 3, fechaInicio: "2025-12-01", ensayos: 10, funciones: 8 },
-    { name: "Giselle", type: "BALLET", cupoEnsayo: 2, cupoFuncion: 3, fechaInicio: "2025-06-15", ensayos: 7, funciones: 4 },
-    // Conciertos
-    { name: "Concierto de Apertura", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2025-01-20", ensayos: 4, funciones: 2 },
-    { name: "Sinfonías de Beethoven I", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2025-03-25", ensayos: 4, funciones: 2 },
-    { name: "Concierto de Otoño", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2025-04-28", ensayos: 3, funciones: 2 },
-    { name: "Mahler Sinfonía No. 5", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2025-06-02", ensayos: 5, funciones: 2 },
-    { name: "Noche de Gala", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2025-08-15", ensayos: 4, funciones: 1 },
-    { name: "Concierto Navideño", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2025-12-18", ensayos: 3, funciones: 2 },
+    // Óperas (cupo: 4)
+    { name: "La Traviata", type: "OPERA", cupo: 4, fechaInicio: "2025-02-15", ensayos: 12, funciones: 6 },
+    { name: "Tosca", type: "OPERA", cupo: 4, fechaInicio: "2025-04-01", ensayos: 10, funciones: 5 },
+    { name: "La Bohème", type: "OPERA", cupo: 4, fechaInicio: "2025-05-20", ensayos: 11, funciones: 6 },
+    { name: "Carmen", type: "OPERA", cupo: 4, fechaInicio: "2025-07-10", ensayos: 12, funciones: 7 },
+    { name: "Aida", type: "OPERA", cupo: 4, fechaInicio: "2025-09-01", ensayos: 14, funciones: 6 },
+    { name: "Rigoletto", type: "OPERA", cupo: 4, fechaInicio: "2025-10-20", ensayos: 10, funciones: 5 },
+    // Ballets (cupo: 4)
+    { name: "El Lago de los Cisnes", type: "BALLET", cupo: 4, fechaInicio: "2025-03-10", ensayos: 8, funciones: 5 },
+    { name: "El Cascanueces", type: "BALLET", cupo: 4, fechaInicio: "2025-12-01", ensayos: 10, funciones: 8 },
+    { name: "Giselle", type: "BALLET", cupo: 4, fechaInicio: "2025-06-15", ensayos: 7, funciones: 4 },
+    // Conciertos (cupo: 2)
+    { name: "Concierto de Apertura", type: "CONCIERTO", cupo: 2, fechaInicio: "2025-01-20", ensayos: 4, funciones: 2 },
+    { name: "Sinfonías de Beethoven I", type: "CONCIERTO", cupo: 2, fechaInicio: "2025-03-25", ensayos: 4, funciones: 2 },
+    { name: "Concierto de Otoño", type: "CONCIERTO", cupo: 2, fechaInicio: "2025-04-28", ensayos: 3, funciones: 2 },
+    { name: "Mahler Sinfonía No. 5", type: "CONCIERTO", cupo: 2, fechaInicio: "2025-06-02", ensayos: 5, funciones: 2 },
+    { name: "Noche de Gala", type: "CONCIERTO", cupo: 2, fechaInicio: "2025-08-15", ensayos: 4, funciones: 1 },
+    { name: "Concierto Navideño", type: "CONCIERTO", cupo: 2, fechaInicio: "2025-12-18", ensayos: 3, funciones: 2 },
   ]
 
   let totalEventos2025 = 0
@@ -144,8 +144,7 @@ async function main() {
       data: {
         name: t.name,
         type: t.type as "OPERA" | "CONCIERTO" | "BALLET" | "RECITAL" | "OTRO",
-        cupoEnsayo: t.cupoEnsayo,
-        cupoFuncion: t.cupoFuncion,
+        cupo: t.cupo,
         seasonId: season2025.id,
         startDate,
         endDate,
@@ -171,26 +170,26 @@ async function main() {
   console.log("\n--- Temporada 2026 ---")
 
   const titulos2026 = [
-    // Óperas
-    { name: "Don Giovanni", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-02-10", ensayos: 12, funciones: 6 },
-    { name: "Madama Butterfly", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-03-25", ensayos: 11, funciones: 5 },
-    { name: "Il Trovatore", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-05-15", ensayos: 10, funciones: 5 },
-    { name: "La Flauta Mágica", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-07-01", ensayos: 12, funciones: 7 },
-    { name: "Otello", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-08-20", ensayos: 13, funciones: 6 },
-    { name: "Turandot", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-10-10", ensayos: 14, funciones: 6 },
-    { name: "Las Bodas de Fígaro", type: "OPERA", cupoEnsayo: 2, cupoFuncion: 4, fechaInicio: "2026-11-20", ensayos: 11, funciones: 5 },
-    // Ballets
-    { name: "La Bella Durmiente", type: "BALLET", cupoEnsayo: 2, cupoFuncion: 3, fechaInicio: "2026-03-05", ensayos: 9, funciones: 5 },
-    { name: "Romeo y Julieta", type: "BALLET", cupoEnsayo: 2, cupoFuncion: 3, fechaInicio: "2026-06-10", ensayos: 8, funciones: 4 },
-    { name: "El Cascanueces", type: "BALLET", cupoEnsayo: 2, cupoFuncion: 3, fechaInicio: "2026-12-05", ensayos: 10, funciones: 8 },
-    // Conciertos
-    { name: "Concierto Inaugural 2026", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-01-15", ensayos: 4, funciones: 2 },
-    { name: "Ciclo Brahms I", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-02-25", ensayos: 4, funciones: 2 },
-    { name: "Ciclo Brahms II", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-04-20", ensayos: 4, funciones: 2 },
-    { name: "Tchaikovsky Festival", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-05-28", ensayos: 5, funciones: 3 },
-    { name: "Concierto de Invierno", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-07-20", ensayos: 3, funciones: 2 },
-    { name: "Gala Aniversario", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-09-15", ensayos: 5, funciones: 1 },
-    { name: "Concierto de Fin de Año", type: "CONCIERTO", cupoEnsayo: 1, cupoFuncion: 2, fechaInicio: "2026-12-28", ensayos: 3, funciones: 2 },
+    // Óperas (cupo: 4)
+    { name: "Don Giovanni", type: "OPERA", cupo: 4, fechaInicio: "2026-02-10", ensayos: 12, funciones: 6 },
+    { name: "Madama Butterfly", type: "OPERA", cupo: 4, fechaInicio: "2026-03-25", ensayos: 11, funciones: 5 },
+    { name: "Il Trovatore", type: "OPERA", cupo: 4, fechaInicio: "2026-05-15", ensayos: 10, funciones: 5 },
+    { name: "La Flauta Mágica", type: "OPERA", cupo: 4, fechaInicio: "2026-07-01", ensayos: 12, funciones: 7 },
+    { name: "Otello", type: "OPERA", cupo: 4, fechaInicio: "2026-08-20", ensayos: 13, funciones: 6 },
+    { name: "Turandot", type: "OPERA", cupo: 4, fechaInicio: "2026-10-10", ensayos: 14, funciones: 6 },
+    { name: "Las Bodas de Fígaro", type: "OPERA", cupo: 4, fechaInicio: "2026-11-20", ensayos: 11, funciones: 5 },
+    // Ballets (cupo: 4)
+    { name: "La Bella Durmiente", type: "BALLET", cupo: 4, fechaInicio: "2026-03-05", ensayos: 9, funciones: 5 },
+    { name: "Romeo y Julieta", type: "BALLET", cupo: 4, fechaInicio: "2026-06-10", ensayos: 8, funciones: 4 },
+    { name: "El Cascanueces", type: "BALLET", cupo: 4, fechaInicio: "2026-12-05", ensayos: 10, funciones: 8 },
+    // Conciertos (cupo: 2)
+    { name: "Concierto Inaugural 2026", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-01-15", ensayos: 4, funciones: 2 },
+    { name: "Ciclo Brahms I", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-02-25", ensayos: 4, funciones: 2 },
+    { name: "Ciclo Brahms II", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-04-20", ensayos: 4, funciones: 2 },
+    { name: "Tchaikovsky Festival", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-05-28", ensayos: 5, funciones: 3 },
+    { name: "Concierto de Invierno", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-07-20", ensayos: 3, funciones: 2 },
+    { name: "Gala Aniversario", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-09-15", ensayos: 5, funciones: 1 },
+    { name: "Concierto de Fin de Año", type: "CONCIERTO", cupo: 2, fechaInicio: "2026-12-28", ensayos: 3, funciones: 2 },
   ]
 
   let totalEventos2026 = 0
@@ -206,8 +205,7 @@ async function main() {
       data: {
         name: t.name,
         type: t.type as "OPERA" | "CONCIERTO" | "BALLET" | "RECITAL" | "OTRO",
-        cupoEnsayo: t.cupoEnsayo,
-        cupoFuncion: t.cupoFuncion,
+        cupo: t.cupo,
         seasonId: season2026.id,
         startDate,
         endDate,

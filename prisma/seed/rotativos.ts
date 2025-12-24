@@ -29,12 +29,7 @@ async function createRotativos() {
   let created = 0
   for (const event of events.slice(0, 15)) {
     // Calculate effective cupo respecting the limit
-    const cupoEfectivo = event.cupoOverride ??
-      (event.titulo
-        ? event.eventoType === "ENSAYO"
-          ? event.titulo.cupoEnsayo
-          : event.titulo.cupoFuncion
-        : 2)
+    const cupoEfectivo = event.cupoOverride ?? (event.titulo?.cupo ?? 2)
 
     // Only create up to cupoEfectivo rotativos, minus existing ones
     const existingCount = event.rotativos.length

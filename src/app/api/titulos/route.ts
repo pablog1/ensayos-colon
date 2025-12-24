@@ -4,99 +4,101 @@ import { prisma } from "@/lib/prisma"
 
 // GET /api/titulos - Lista todos los titulos de una temporada
 export async function GET(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
-
-  const { searchParams } = new URL(req.url)
-  const seasonId = searchParams.get("seasonId")
-  const year = searchParams.get("year")
-
-  // Determinar temporada: por seasonId, por año, o la activa
-  let targetSeasonId: string | null = seasonId
-
-  if (!targetSeasonId && year) {
-    // Buscar temporada por año
-    targetSeasonId = `season-${year}`
-    const seasonExists = await prisma.season.findUnique({
-      where: { id: targetSeasonId },
-    })
-    if (!seasonExists) {
-      // Si no existe la temporada para ese año, devolver lista vacía
-      return NextResponse.json([])
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
     }
-  }
 
-  if (!targetSeasonId) {
-    // Fallback a temporada activa
-    const activeSeason = await prisma.season.findFirst({
-      where: { isActive: true },
-    })
-    targetSeasonId = activeSeason?.id ?? null
-  }
+    const { searchParams } = new URL(req.url)
+    const seasonId = searchParams.get("seasonId")
+    const year = searchParams.get("year")
 
-  if (!targetSeasonId) {
-    return NextResponse.json([])
-  }
+    // Determinar temporada: por seasonId, por año, o la activa
+    let targetSeasonId: string | null = seasonId
 
-  const titulos = await prisma.titulo.findMany({
-    where: { seasonId: targetSeasonId },
-    include: {
-      _count: {
-        select: { events: true },
-      },
-      events: {
-        select: {
-          id: true,
-          eventoType: true,
-          cupoOverride: true,
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  })
-
-  // Calcular totales para cada titulo
-  const titulosConTotales = titulos.map((titulo) => {
-    let totalRotativos = 0
-    let totalEnsayos = 0
-    let totalFunciones = 0
-
-    for (const event of titulo.events) {
-      const cupo =
-        event.cupoOverride ??
-        (event.eventoType === "ENSAYO" ? titulo.cupoEnsayo : titulo.cupoFuncion)
-      totalRotativos += cupo
-
-      if (event.eventoType === "ENSAYO") {
-        totalEnsayos++
-      } else {
-        totalFunciones++
+    if (!targetSeasonId && year) {
+      // Buscar temporada por año
+      targetSeasonId = `season-${year}`
+      const seasonExists = await prisma.season.findUnique({
+        where: { id: targetSeasonId },
+      })
+      if (!seasonExists) {
+        // Si no existe la temporada para ese año, devolver lista vacía
+        return NextResponse.json([])
       }
     }
 
-    return {
-      id: titulo.id,
-      name: titulo.name,
-      type: titulo.type,
-      cupoEnsayo: titulo.cupoEnsayo,
-      cupoFuncion: titulo.cupoFuncion,
-      description: titulo.description,
-      color: titulo.color,
-      startDate: titulo.startDate,
-      endDate: titulo.endDate,
-      seasonId: titulo.seasonId,
-      createdAt: titulo.createdAt,
-      updatedAt: titulo.updatedAt,
-      totalEventos: titulo._count.events,
-      totalEnsayos,
-      totalFunciones,
-      totalRotativos,
+    if (!targetSeasonId) {
+      // Fallback a temporada activa
+      const activeSeason = await prisma.season.findFirst({
+        where: { isActive: true },
+      })
+      targetSeasonId = activeSeason?.id ?? null
     }
-  })
 
-  return NextResponse.json(titulosConTotales)
+    if (!targetSeasonId) {
+      return NextResponse.json([])
+    }
+
+    const titulos = await prisma.titulo.findMany({
+      where: { seasonId: targetSeasonId },
+      include: {
+        _count: {
+          select: { events: true },
+        },
+        events: {
+          select: {
+            id: true,
+            eventoType: true,
+            cupoOverride: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    })
+
+    // Calcular totales para cada titulo
+    const titulosConTotales = titulos.map((titulo) => {
+      let totalRotativos = 0
+      let totalEnsayos = 0
+      let totalFunciones = 0
+
+      for (const event of titulo.events) {
+        const cupo = event.cupoOverride ?? titulo.cupo
+        totalRotativos += cupo
+
+        if (event.eventoType === "ENSAYO") {
+          totalEnsayos++
+        } else {
+          totalFunciones++
+        }
+      }
+
+      return {
+        id: titulo.id,
+        name: titulo.name,
+        type: titulo.type,
+        cupo: titulo.cupo,
+        description: titulo.description,
+        color: titulo.color,
+        startDate: titulo.startDate,
+        endDate: titulo.endDate,
+        seasonId: titulo.seasonId,
+        createdAt: titulo.createdAt,
+        updatedAt: titulo.updatedAt,
+        totalEventos: titulo._count.events,
+        totalEnsayos,
+        totalFunciones,
+        totalRotativos,
+      }
+    })
+
+    return NextResponse.json(titulosConTotales)
+  } catch (error) {
+    console.error("Error en GET /api/titulos:", error)
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+  }
 }
 
 // POST /api/titulos - Crear nuevo titulo (solo admin)
@@ -111,7 +113,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { name, type, cupoEnsayo, cupoFuncion, description, color, seasonId, startDate, endDate } = body
+  const { name, type, cupo, description, color, seasonId, startDate, endDate } = body
 
   if (!name || !type) {
     return NextResponse.json(
@@ -204,12 +206,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Cupo por defecto según tipo
+  const defaultCupos: Record<string, number> = { OPERA: 4, BALLET: 4, CONCIERTO: 2 }
+  const cupoFinal = cupo ?? defaultCupos[type] ?? 4
+
   const titulo = await prisma.titulo.create({
     data: {
       name,
       type,
-      cupoEnsayo: cupoEnsayo ?? 2,
-      cupoFuncion: cupoFuncion ?? 4,
+      cupo: cupoFinal,
       description: description || null,
       color: color || null,
       seasonId: targetSeasonId,

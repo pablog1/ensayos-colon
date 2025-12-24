@@ -86,23 +86,19 @@ export async function GET(req: NextRequest) {
     orderBy: [{ date: "asc" }, { startTime: "asc" }],
   })
 
-  // Helper para obtener cupo según tipo de evento
+  // Helper para obtener cupo según tipo de título
+  // Tanto ensayos como funciones de un mismo título usan el mismo cupo
   const getCupoParaEvento = (
-    eventoType: string | null,
+    _eventoType: string | null,
     tituloType: string | null
   ): number => {
-    // Si es ensayo, usar cupo de ENSAYO
-    if (eventoType === "ENSAYO") {
-      return cuposReglas.ENSAYO
-    }
-    // Si es función, usar cupo según tipo de título
-    if (eventoType === "FUNCION" && tituloType) {
+    if (tituloType) {
       const tipoMap: Record<string, string> = {
         OPERA: "OPERA",
         CONCIERTO: "CONCIERTO",
         BALLET: "BALLET",
-        RECITAL: "CONCIERTO", // Recital usa mismo cupo que concierto
-        OTRO: "BALLET", // Fallback a Ballet
+        RECITAL: "CONCIERTO",
+        OTRO: "BALLET",
       }
       const cupoKey = tipoMap[tituloType] || "BALLET"
       return cuposReglas[cupoKey] ?? cuposReglas.BALLET

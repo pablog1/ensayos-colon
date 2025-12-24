@@ -43,8 +43,7 @@ interface Titulo {
   id: string
   name: string
   type: "OPERA" | "CONCIERTO" | "BALLET" | "RECITAL" | "OTRO"
-  cupoEnsayo: number
-  cupoFuncion: number
+  cupo: number
   description: string | null
   color: string | null
   totalEventos: number
@@ -85,8 +84,7 @@ export default function TitulosPage() {
   const [formData, setFormData] = useState({
     name: "",
     type: "OPERA" as Titulo["type"],
-    cupoEnsayo: 2,
-    cupoFuncion: 4,
+    cupo: 4,
     description: "",
   })
   const [submitting, setSubmitting] = useState(false)
@@ -120,8 +118,7 @@ export default function TitulosPage() {
     setFormData({
       name: "",
       type: "OPERA",
-      cupoEnsayo: 2,
-      cupoFuncion: 4,
+      cupo: 4,
       description: "",
     })
     setDialogOpen(true)
@@ -132,8 +129,7 @@ export default function TitulosPage() {
     setFormData({
       name: titulo.name,
       type: titulo.type,
-      cupoEnsayo: titulo.cupoEnsayo,
-      cupoFuncion: titulo.cupoFuncion,
+      cupo: titulo.cupo,
       description: titulo.description || "",
     })
     setDialogOpen(true)
@@ -245,44 +241,26 @@ export default function TitulosPage() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cupoEnsayo">Cupo por Ensayo</Label>
-                  <Input
-                    id="cupoEnsayo"
-                    type="number"
-                    min="1"
-                    value={formData.cupoEnsayo}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        cupoEnsayo: parseInt(e.target.value) || 1,
-                      })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Rotativos disponibles por ensayo
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cupoFuncion">Cupo por Funcion</Label>
-                  <Input
-                    id="cupoFuncion"
-                    type="number"
-                    min="1"
-                    value={formData.cupoFuncion}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        cupoFuncion: parseInt(e.target.value) || 1,
-                      })
-                    }
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Rotativos disponibles por funcion
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="cupo">Cupo de rotativos</Label>
+                <Input
+                  id="cupo"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className="w-20"
+                  value={formData.cupo === 0 ? "" : String(formData.cupo)}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "")
+                    setFormData({
+                      ...formData,
+                      cupo: val === "" ? 0 : Math.min(20, parseInt(val)),
+                    })
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Se ajusta automáticamente según el tipo seleccionado
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -416,8 +394,7 @@ export default function TitulosPage() {
                 <TableRow>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Tipo</TableHead>
-                  <TableHead className="text-center">Cupo E.</TableHead>
-                  <TableHead className="text-center">Cupo F.</TableHead>
+                  <TableHead className="text-center">Cupo</TableHead>
                   <TableHead className="text-center">Eventos</TableHead>
                   <TableHead className="text-center">Rotativos</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -433,10 +410,7 @@ export default function TitulosPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      {titulo.cupoEnsayo}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {titulo.cupoFuncion}
+                      {titulo.cupo}
                     </TableCell>
                     <TableCell className="text-center">
                       <span className="text-muted-foreground">
