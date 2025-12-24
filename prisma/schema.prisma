@@ -207,7 +207,7 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([title, date])  // Previene eventos duplicados
+  @@unique([date, startTime])  // Previene eventos duplicados en misma fecha y hora
   @@index([date])
   @@index([seasonId])
   @@index([eventType])
