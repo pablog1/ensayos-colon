@@ -66,129 +66,138 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
 
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  }
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
 
-  const { id } = await params
-  const body = await req.json()
-  const { date, eventoType, ensayoTipo, cupoOverride, notes, startTime, endTime } = body
+    const { id } = await params
+    const body = await req.json()
+    const { date, eventoType, ensayoTipo, cupoOverride, notes, startTime, endTime } = body
 
-  const evento = await prisma.event.findUnique({
-    where: { id },
-    include: { titulo: true },
-  })
+    const evento = await prisma.event.findUnique({
+      where: { id },
+      include: { titulo: true },
+    })
 
-  if (!evento) {
-    return NextResponse.json(
-      { error: "Evento no encontrado" },
-      { status: 404 }
-    )
-  }
+    if (!evento) {
+      return NextResponse.json(
+        { error: "Evento no encontrado" },
+        { status: 404 }
+      )
+    }
 
-  const updateData: {
-    date?: Date
-    eventoType?: "ENSAYO" | "FUNCION"
-    cupoOverride?: number | null
-    description?: string | null
-    startTime?: Date
-    endTime?: Date
-    title?: string
-  } = {}
+    const updateData: {
+      date?: Date
+      eventoType?: "ENSAYO" | "FUNCION"
+      cupoOverride?: number | null
+      description?: string | null
+      startTime?: Date
+      endTime?: Date
+      title?: string
+    } = {}
 
-  if (date) {
-    // Parsear fecha como mediodía UTC para evitar problemas de timezone
-    const [year, month, day] = date.split('-').map(Number)
-    const newDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
+    if (date) {
+      // Parsear fecha como mediodía UTC para evitar problemas de timezone
+      const [year, month, day] = date.split('-').map(Number)
+      const newDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0))
 
-    // Si el evento pertenece a un título, validar que la nueva fecha esté dentro del rango
-    if (evento.titulo) {
-      const tituloStart = new Date(evento.titulo.startDate)
-      const tituloEnd = new Date(evento.titulo.endDate)
+      // Si el evento pertenece a un título, validar que la nueva fecha esté dentro del rango
+      if (evento.titulo) {
+        const tituloStart = new Date(evento.titulo.startDate)
+        const tituloEnd = new Date(evento.titulo.endDate)
 
-      const newDateStr = newDate.toISOString().split('T')[0]
-      const tituloStartStr = tituloStart.toISOString().split('T')[0]
-      const tituloEndStr = tituloEnd.toISOString().split('T')[0]
+        const newDateStr = newDate.toISOString().split('T')[0]
+        const tituloStartStr = tituloStart.toISOString().split('T')[0]
+        const tituloEndStr = tituloEnd.toISOString().split('T')[0]
 
-      if (newDateStr < tituloStartStr || newDateStr > tituloEndStr) {
+        if (newDateStr < tituloStartStr || newDateStr > tituloEndStr) {
+          return NextResponse.json(
+            { error: `La fecha debe estar dentro del rango del título (${tituloStartStr} - ${tituloEndStr})` },
+            { status: 400 }
+          )
+        }
+      }
+
+      updateData.date = newDate
+    }
+
+    if (eventoType) {
+      if (!["ENSAYO", "FUNCION"].includes(eventoType)) {
         return NextResponse.json(
-          { error: `La fecha debe estar dentro del rango del título (${tituloStartStr} - ${tituloEndStr})` },
+          { error: "Tipo de evento invalido" },
           { status: 400 }
         )
       }
+      updateData.eventoType = eventoType
+      // Actualizar titulo del evento
+      if (evento.titulo) {
+        if (eventoType === "FUNCION") {
+          updateData.title = `${evento.titulo.name} - Función`
+        } else {
+          // Para ensayos, usar el subtipo
+          const ensayoLabel = ensayoTipo === "PRE_GENERAL" ? "Pre General"
+                            : ensayoTipo === "GENERAL" ? "Ensayo General"
+                            : "Ensayo"
+          updateData.title = `${evento.titulo.name} - ${ensayoLabel}`
+        }
+      }
     }
 
-    updateData.date = newDate
-  }
+    if (cupoOverride !== undefined) {
+      updateData.cupoOverride = cupoOverride === null ? null : cupoOverride
+    }
 
-  if (eventoType) {
-    if (!["ENSAYO", "FUNCION"].includes(eventoType)) {
+    if (notes !== undefined) {
+      updateData.description = notes || null
+    }
+
+    if (startTime) {
+      updateData.startTime = new Date(startTime)
+    }
+
+    if (endTime) {
+      updateData.endTime = new Date(endTime)
+    }
+
+    // Verificar que no exista otro evento a la misma hora en la misma fecha (excluyendo el actual)
+    const fechaVerificar = updateData.date || evento.date
+    const horaVerificar = updateData.startTime || evento.startTime
+
+    const eventoConflicto = await prisma.event.findFirst({
+      where: {
+        id: { not: id },
+        date: fechaVerificar,
+        startTime: horaVerificar,
+      },
+    })
+
+    if (eventoConflicto) {
       return NextResponse.json(
-        { error: "Tipo de evento invalido" },
+        { error: "Ya existe un evento a la misma hora en esta fecha" },
         { status: 400 }
       )
     }
-    updateData.eventoType = eventoType
-    // Actualizar titulo del evento
-    if (evento.titulo) {
-      if (eventoType === "FUNCION") {
-        updateData.title = `${evento.titulo.name} - Función`
-      } else {
-        // Para ensayos, usar el subtipo
-        const ensayoLabel = ensayoTipo === "PRE_GENERAL" ? "Pre General"
-                          : ensayoTipo === "GENERAL" ? "Ensayo General"
-                          : "Ensayo"
-        updateData.title = `${evento.titulo.name} - ${ensayoLabel}`
-      }
-    }
-  }
 
-  if (cupoOverride !== undefined) {
-    updateData.cupoOverride = cupoOverride === null ? null : cupoOverride
-  }
+    const updated = await prisma.event.update({
+      where: { id },
+      data: updateData,
+    })
 
-  if (notes !== undefined) {
-    updateData.description = notes || null
-  }
-
-  if (startTime) {
-    updateData.startTime = new Date(startTime)
-  }
-
-  if (endTime) {
-    updateData.endTime = new Date(endTime)
-  }
-
-  // Verificar que no exista otro evento a la misma hora en la misma fecha (excluyendo el actual)
-  const fechaVerificar = updateData.date || evento.date
-  const horaVerificar = updateData.startTime || evento.startTime
-
-  const eventoConflicto = await prisma.event.findFirst({
-    where: {
-      id: { not: id },
-      date: fechaVerificar,
-      startTime: horaVerificar,
-    },
-  })
-
-  if (eventoConflicto) {
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error("Error actualizando evento:", error)
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
     return NextResponse.json(
-      { error: "Ya existe un evento a la misma hora en esta fecha" },
-      { status: 400 }
+      { error: `Error interno: ${errorMessage}` },
+      { status: 500 }
     )
   }
-
-  const updated = await prisma.event.update({
-    where: { id },
-    data: updateData,
-  })
-
-  return NextResponse.json(updated)
 }
 
 // DELETE /api/calendario/[id] - Eliminar evento (solo admin)
@@ -196,42 +205,51 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  if (!session?.user) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 })
-  }
+  try {
+    const session = await auth()
+    if (!session?.user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+    }
 
-  if (session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 })
-  }
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 })
+    }
 
-  const { id } = await params
+    const { id } = await params
 
-  const evento = await prisma.event.findUnique({
-    where: { id },
-    include: {
-      _count: { select: { rotativos: true } },
-    },
-  })
+    const evento = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { rotativos: true } },
+      },
+    })
 
-  if (!evento) {
+    if (!evento) {
+      return NextResponse.json(
+        { error: "Evento no encontrado" },
+        { status: 404 }
+      )
+    }
+
+    // Advertir si hay rotativos asignados
+    if (evento._count.rotativos > 0) {
+      // Eliminar rotativos asociados primero
+      await prisma.rotativo.deleteMany({
+        where: { eventId: id },
+      })
+    }
+
+    await prisma.event.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error eliminando evento:", error)
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido"
     return NextResponse.json(
-      { error: "Evento no encontrado" },
-      { status: 404 }
+      { error: `Error interno: ${errorMessage}` },
+      { status: 500 }
     )
   }
-
-  // Advertir si hay rotativos asignados
-  if (evento._count.rotativos > 0) {
-    // Eliminar rotativos asociados primero
-    await prisma.rotativo.deleteMany({
-      where: { eventId: id },
-    })
-  }
-
-  await prisma.event.delete({
-    where: { id },
-  })
-
-  return NextResponse.json({ success: true })
 }

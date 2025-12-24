@@ -81,8 +81,8 @@ export default function LoginPage() {
             Primeros Violines
           </p>
           <p
-            className="text-3xl text-[var(--burgundy)] font-semibold mt-1"
-            style={{ fontFamily: "Playfair Display, serif" }}
+            className="text-[var(--burgundy)] font-semibold mt-1"
+            style={{ fontFamily: "Playfair Display, serif", fontSize: "22px" }}
           >
             OETC
           </p>
