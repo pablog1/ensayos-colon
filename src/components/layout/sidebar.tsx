@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { useNotifications } from "@/hooks/use-notifications"
 import {
   Calendar,
   FileText,
@@ -13,8 +14,6 @@ import {
   AlertCircle,
   BookOpen,
   Settings,
-  Music,
-  Theater,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react"
@@ -69,6 +68,7 @@ export function Sidebar() {
   const { data: session } = useSession()
   const userRole = session?.user?.role || "INTEGRANTE"
   const [collapsed, setCollapsed] = useState(false)
+  const { pendingRequests } = useNotifications()
 
   // Cargar estado desde localStorage
   useEffect(() => {
@@ -112,6 +112,7 @@ export function Sidebar() {
         {filteredItems.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
+          const showBadge = item.href === "/admin/pendientes" && pendingRequests > 0
 
           return (
             <Link
@@ -119,20 +120,36 @@ export function Sidebar() {
               href={item.href}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex items-center rounded-lg text-sm font-medium transition-all duration-200",
+                "flex items-center rounded-lg text-sm font-medium transition-all duration-200 relative",
                 collapsed ? "justify-center px-2 py-3" : "gap-3 px-4 py-3",
                 isActive
                   ? "bg-[var(--gold)]/20 text-[var(--gold)] border-l-2 border-[var(--gold)]"
                   : "text-white/70 hover:bg-white/5 hover:text-white border-l-2 border-transparent"
               )}
             >
-              <Icon
-                className={cn(
-                  "w-5 h-5 flex-shrink-0",
-                  isActive ? "text-[var(--gold)]" : "text-white/50"
+              <div className="relative">
+                <Icon
+                  className={cn(
+                    "w-5 h-5 flex-shrink-0",
+                    isActive ? "text-[var(--gold)]" : "text-white/50"
+                  )}
+                />
+                {showBadge && collapsed && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {pendingRequests > 9 ? "9+" : pendingRequests}
+                  </span>
                 )}
-              />
-              {!collapsed && <span>{item.label}</span>}
+              </div>
+              {!collapsed && (
+                <>
+                  <span className="flex-1">{item.label}</span>
+                  {showBadge && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                      {pendingRequests > 99 ? "99+" : pendingRequests}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           )
         })}

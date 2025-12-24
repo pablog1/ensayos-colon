@@ -6,6 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
+import { useNotifications } from "@/hooks/use-notifications"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -75,10 +76,13 @@ export function MobileNav() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const userRole = session?.user?.role || "INTEGRANTE"
+  const { pendingRequests } = useNotifications()
 
   const filteredItems = navItems.filter((item) =>
     item.roles.includes(userRole)
   )
+
+  const totalBadgeCount = userRole === "ADMIN" ? pendingRequests : 0
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -86,9 +90,14 @@ export function MobileNav() {
         <Button
           variant="ghost"
           size="icon"
-          className="md:hidden text-white hover:bg-white/10"
+          className="md:hidden text-white hover:bg-white/10 relative"
         >
           <Menu className="h-6 w-6" />
+          {totalBadgeCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+              {totalBadgeCount > 9 ? "9+" : totalBadgeCount}
+            </span>
+          )}
           <span className="sr-only">Abrir menú</span>
         </Button>
       </SheetTrigger>
@@ -123,6 +132,7 @@ export function MobileNav() {
           {filteredItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
+            const showBadge = item.href === "/admin/pendientes" && pendingRequests > 0
 
             return (
               <Link
@@ -142,7 +152,12 @@ export function MobileNav() {
                     isActive ? "text-[var(--gold)]" : "text-white/50"
                   )}
                 />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {showBadge && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+                    {pendingRequests > 99 ? "99+" : pendingRequests}
+                  </span>
+                )}
               </Link>
             )
           })}
