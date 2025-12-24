@@ -2247,10 +2247,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground text-center">
-            Recibirás una notificación cuando tu solicitud sea procesada.
-          </p>
-
           <DialogFooter className="sm:justify-center">
             <Button
               onClick={() => setPendingDialogOpen(false)}
