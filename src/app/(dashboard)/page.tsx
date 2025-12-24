@@ -6,6 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -33,6 +41,7 @@ import {
   Users,
   PanelRightClose,
   PanelRightOpen,
+  AlertTriangle,
 } from "lucide-react"
 
 interface Evento {
@@ -162,6 +171,10 @@ export default function DashboardPage() {
   const [horarioCustom, setHorarioCustom] = useState(false)
 
   const [submitting, setSubmitting] = useState(false)
+
+  // Estado para el diálogo de rotativo pendiente
+  const [pendingDialogOpen, setPendingDialogOpen] = useState(false)
+  const [pendingMotivo, setPendingMotivo] = useState<string | null>(null)
 
   // Horarios predefinidos según tipo de evento
   const getHorariosPredefinidos = (tipo: "ENSAYO" | "FUNCION", fecha?: string) => {
@@ -528,10 +541,18 @@ export default function DashboardPage() {
     })
 
     if (res.ok) {
-      toast.success("Rotativo solicitado")
+      const data = await res.json()
       await fetchEventos(mesActual)
       setSidebarMode("rotativos")
       setSelectedEvento(null)
+
+      // Verificar si el rotativo quedó pendiente de aprobación
+      if (data.estado === "PENDIENTE") {
+        setPendingMotivo(data.motivo)
+        setPendingDialogOpen(true)
+      } else {
+        toast.success("Rotativo aprobado")
+      }
     } else {
       const error = await res.json()
       toast.error(error.error || "Error al solicitar")
@@ -2190,6 +2211,41 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Dialog de rotativo pendiente de aprobación */}
+      <Dialog open={pendingDialogOpen} onOpenChange={setPendingDialogOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <AlertTriangle className="h-8 w-8 text-amber-600" />
+            </div>
+            <DialogTitle className="text-xl">Rotativo pendiente de aprobación</DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              Tu solicitud fue registrada pero requiere aprobación de un administrador.
+            </DialogDescription>
+          </DialogHeader>
+
+          {pendingMotivo && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 my-2">
+              <p className="text-sm font-medium text-amber-800 mb-1">Motivo:</p>
+              <p className="text-sm text-amber-700">{pendingMotivo}</p>
+            </div>
+          )}
+
+          <p className="text-sm text-muted-foreground text-center">
+            Recibirás una notificación cuando tu solicitud sea procesada.
+          </p>
+
+          <DialogFooter className="sm:justify-center">
+            <Button
+              onClick={() => setPendingDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
