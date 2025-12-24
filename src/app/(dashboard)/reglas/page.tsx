@@ -235,7 +235,7 @@ const friendlyRules: Record<string, {
     title: "Días con ensayos dobles",
     summary: "Límite de rotativos en días con más de un ensayo del mismo título",
     details: [
-      "Si un título tiene varios días con ensayo doble, solo podés pedir rotativo en uno de esos días",
+      "Si un título tiene varios días con ensayos dobles, solo podés pedir un rotativo en uno de esos días",
       "Si ya tenés uno y pedís otro, va a revisión del administrador",
     ],
     getValue: (value) => {
@@ -245,7 +245,7 @@ const friendlyRules: Record<string, {
         <div className="flex items-center gap-3 mt-3">
           <div className="text-center p-3 bg-indigo-50 rounded-lg">
             <div className="text-2xl font-bold text-indigo-700">{config.maxRotativosPorTitulo}</div>
-            <div className="text-xs text-indigo-600">día doble por título</div>
+            <div className="text-xs text-indigo-600">en días con ensayos dobles</div>
           </div>
         </div>
       )
