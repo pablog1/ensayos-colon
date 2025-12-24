@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Clock, CheckCircle, XCircle } from "lucide-react"
+import { Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 
 interface SolicitudPendiente {
   id: string
@@ -25,21 +25,30 @@ interface SolicitudPendiente {
 export default function PendientesPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudPendiente[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const fetchPendientes = useCallback(async (showRefreshing = false) => {
+    if (showRefreshing) setRefreshing(true)
+    try {
+      const res = await fetch("/api/solicitudes")
+      const data = await res.json()
+      // Filtrar todas las solicitudes pendientes
+      const pendientes = data.filter(
+        (s: { estado: string }) => s.estado === "PENDIENTE"
+      )
+      setSolicitudes(pendientes)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
 
   useEffect(() => {
     fetchPendientes()
-  }, [])
-
-  const fetchPendientes = async () => {
-    const res = await fetch("/api/solicitudes")
-    const data = await res.json()
-    // Filtrar todas las solicitudes pendientes
-    const pendientes = data.filter(
-      (s: { estado: string }) => s.estado === "PENDIENTE"
-    )
-    setSolicitudes(pendientes)
-    setLoading(false)
-  }
+    // Auto-refresh cada 15 segundos
+    const interval = setInterval(() => fetchPendientes(), 15000)
+    return () => clearInterval(interval)
+  }, [fetchPendientes])
 
   const aprobar = async (id: string) => {
     const res = await fetch(`/api/solicitudes/${id}/aprobar`, {
@@ -73,14 +82,25 @@ export default function PendientesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Clock className="w-8 h-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold">Solicitudes Pendientes</h1>
-          <p className="text-muted-foreground">
-            Rotativos que requieren tu aprobación
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Clock className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Solicitudes Pendientes</h1>
+            <p className="text-muted-foreground">
+              Rotativos que requieren tu aprobación
+            </p>
+          </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => fetchPendientes(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
+          Actualizar
+        </Button>
       </div>
 
       <Card>
