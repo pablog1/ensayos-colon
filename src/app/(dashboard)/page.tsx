@@ -1559,6 +1559,11 @@ export default function DashboardPage() {
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
+                                  {r.evento && (
+                                    <span className={`font-black text-xs rounded px-1 ${getBadgeColor(r.evento)}`}>
+                                      {r.evento.eventoType === "FUNCION" ? "F" : "E"}
+                                    </span>
+                                  )}
                                   {r.user.avatar && <span>{r.user.avatar}</span>}
                                   <span className="font-medium text-sm truncate">
                                     {r.user.alias || r.user.name}
