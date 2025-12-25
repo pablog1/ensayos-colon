@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import {
   Dialog,
@@ -30,32 +30,60 @@ interface NotificationPanelProps {
   unreadCount: number
 }
 
+const PAGE_SIZE = 10
+
 export function NotificationPanel({ unreadCount }: NotificationPanelProps) {
   const { data: session } = useSession()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
 
-  useEffect(() => {
-    if (open) {
-      fetchNotifications()
+  const fetchNotifications = useCallback(async (append = false, skip = 0) => {
+    if (append) {
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
     }
-  }, [open])
 
-  const fetchNotifications = async () => {
-    setLoading(true)
     try {
-      const res = await fetch("/api/notifications?limit=50")
+      const params = new URLSearchParams({
+        limit: PAGE_SIZE.toString(),
+        skip: skip.toString(),
+      })
+      if (!showAll) {
+        params.set("unreadOnly", "true")
+      }
+
+      const res = await fetch(`/api/notifications?${params}`)
       if (res.ok) {
         const data = await res.json()
-        setNotifications(data.notifications || [])
+        if (append) {
+          setNotifications((prev) => [...prev, ...(data.notifications || [])])
+        } else {
+          setNotifications(data.notifications || [])
+        }
+        setTotalCount(data.totalCount || 0)
       }
     } catch (error) {
       console.error("Error fetching notifications:", error)
       toast.error("Error al cargar notificaciones")
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
+  }, [showAll])
+
+  useEffect(() => {
+    if (open) {
+      fetchNotifications(false, 0)
+    }
+  }, [open, showAll, fetchNotifications])
+
+  const handleLoadMore = () => {
+    fetchNotifications(true, notifications.length)
   }
 
   const markAsRead = async (id: string) => {
@@ -113,6 +141,8 @@ export function NotificationPanel({ unreadCount }: NotificationPanelProps) {
     }
   }
 
+  const hasMore = notifications.length < totalCount
+
   if (!session?.user) return null
 
   return (
@@ -143,6 +173,31 @@ export function NotificationPanel({ unreadCount }: NotificationPanelProps) {
               </Button>
             )}
           </div>
+          {/* Toggle para ver todas o solo no leídas */}
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => setShowAll(false)}
+              className={cn(
+                "text-sm px-3 py-1 rounded-full transition-colors",
+                !showAll
+                  ? "bg-[var(--burgundy)] text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              No leídas
+            </button>
+            <button
+              onClick={() => setShowAll(true)}
+              className={cn(
+                "text-sm px-3 py-1 rounded-full transition-colors",
+                showAll
+                  ? "bg-[var(--burgundy)] text-white"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              Todas
+            </button>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 -mx-6 px-6 overflow-y-auto max-h-[60vh]">
@@ -153,7 +208,17 @@ export function NotificationPanel({ unreadCount }: NotificationPanelProps) {
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Bell className="w-12 h-12 mb-3 opacity-20" />
-              <p className="text-sm">No tienes notificaciones</p>
+              <p className="text-sm">
+                {showAll ? "No tienes notificaciones" : "No tienes notificaciones sin leer"}
+              </p>
+              {!showAll && (
+                <button
+                  onClick={() => setShowAll(true)}
+                  className="text-sm text-[var(--burgundy)] hover:underline mt-2"
+                >
+                  Ver todas las notificaciones
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2 py-2">
@@ -212,6 +277,19 @@ export function NotificationPanel({ unreadCount }: NotificationPanelProps) {
                   </div>
                 </div>
               ))}
+
+              {/* Botón "Ver más" */}
+              {hasMore && (
+                <div className="py-3 text-center">
+                  <button
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="text-sm text-[var(--burgundy)] hover:underline disabled:opacity-50"
+                  >
+                    {loadingMore ? "Cargando..." : `Ver más (${totalCount - notifications.length} restantes)`}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

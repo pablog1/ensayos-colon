@@ -23,6 +23,7 @@ interface SolicitudPendiente {
   esCasoEspecial: boolean
   porcentajeAlMomento: number | null
   createdAt: string
+  motivo?: string | null
   user: {
     id: string
     name: string
@@ -203,6 +204,14 @@ export default function PendientesPage() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Motivo de la solicitud */}
+                  {s.motivo && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-sm">
+                      <span className="text-amber-800 font-medium">Motivo: </span>
+                      <span className="text-amber-700">{s.motivo}</span>
+                    </div>
+                  )}
 
                   {/* Acciones */}
                   <div className="flex gap-2 pt-1">

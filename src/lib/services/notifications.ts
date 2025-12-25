@@ -42,15 +42,38 @@ export async function notifyAdmins(params: Omit<CreateNotificationParams, "userI
 
 export async function getUserNotifications(
   userId: string,
-  options?: { unreadOnly?: boolean; limit?: number }
+  options?: { unreadOnly?: boolean; limit?: number; skip?: number }
 ) {
+  // Limitar a notificaciones de los últimos 12 meses
+  const twelveMonthsAgo = new Date()
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+
   return prisma.notification.findMany({
     where: {
       userId,
+      createdAt: { gte: twelveMonthsAgo },
       ...(options?.unreadOnly ? { read: false } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: options?.limit ?? 50,
+    skip: options?.skip ?? 0,
+  })
+}
+
+export async function countUserNotifications(
+  userId: string,
+  options?: { unreadOnly?: boolean }
+): Promise<number> {
+  // Limitar a notificaciones de los últimos 12 meses
+  const twelveMonthsAgo = new Date()
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12)
+
+  return prisma.notification.count({
+    where: {
+      userId,
+      createdAt: { gte: twelveMonthsAgo },
+      ...(options?.unreadOnly ? { read: false } : {}),
+    },
   })
 }
 
