@@ -1483,7 +1483,25 @@ export default function DashboardPage() {
               {/* Título ABAJO */}
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">
-                  {sidebarMode === "rotativos" && "Rotativos del Mes"}
+                  {sidebarMode === "rotativos" && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="p-1 hover:bg-muted rounded transition-colors"
+                        onClick={() => setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() - 1))}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="min-w-[120px] text-center">
+                        {format(mesActual, "MMMM yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())}
+                      </span>
+                      <button
+                        className="p-1 hover:bg-muted rounded transition-colors"
+                        onClick={() => setMesActual(new Date(mesActual.getFullYear(), mesActual.getMonth() + 1))}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                   {sidebarMode === "titulos" && "Títulos"}
                   {sidebarMode === "eventos" && (selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Eventos del día")}
                   {sidebarMode === "nuevo-titulo" && "Nuevo Título"}
