@@ -39,8 +39,12 @@ export async function DELETE(
     )
   }
 
-  // No permitir cancelar eventos pasados
-  if (rotativo.event.date < new Date()) {
+  // No permitir cancelar eventos pasados (usar UTC para evitar problemas de timezone)
+  const ahora = new Date()
+  const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
+  const eventoDate = new Date(rotativo.event.date)
+  const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
+  if (fechaEventoUTC < hoyUTC) {
     return NextResponse.json(
       { error: "No se puede cancelar un rotativo de un evento pasado" },
       { status: 400 }

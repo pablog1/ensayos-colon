@@ -62,18 +62,6 @@ const ruleConfigs = [
     priority: 15,
   },
   {
-    key: "PLAZO_SOLICITUD",
-    value: JSON.stringify({
-      mismoDia: "PENDING_ADMIN",
-      diaAnterior: "APPROVE",
-    }),
-    valueType: "json",
-    description:
-      "Plazos de solicitud. Hasta el día anterior puede auto-aprobarse. El mismo día siempre queda pendiente de aprobación.",
-    category: "restriccion",
-    priority: 60,
-  },
-  {
     key: "ROTACION_OBLIGATORIA",
     value: JSON.stringify({
       diasAntes: 5,

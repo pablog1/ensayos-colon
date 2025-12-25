@@ -108,7 +108,6 @@ function getLogDescription(log: AuditLog): string {
 
     case "CONFIG_MODIFICADA": {
       const keyLabels: Record<string, string> = {
-        "PLAZO_SOLICITUD": "Plazo de solicitud",
         "FINES_SEMANA_MAX": "Máximo fines de semana",
         "MAX_PROYECTADO": "Máximo proyectado",
         "ENSAYOS_DOBLES": "Ensayos dobles",

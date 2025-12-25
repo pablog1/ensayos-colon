@@ -92,11 +92,6 @@ export interface MaxProyectadoConfig {
   formula: string
 }
 
-export interface PlazoSolicitudConfig {
-  mismoDia: SuggestedAction
-  diaAnterior: SuggestedAction
-}
-
 export interface RotacionObligatoriaConfig {
   diasAntes: number
   criterio: "MENOS_ROTATIVOS" | "MAS_ROTATIVOS"
@@ -131,7 +126,6 @@ export interface AllRuleConfigs {
   FINES_SEMANA_MAX: number
   BLOQUE_EXCLUSIVO: BloqueExclusivoConfig
   LISTA_ESPERA: ListaEsperaConfig
-  PLAZO_SOLICITUD: PlazoSolicitudConfig
   ROTACION_OBLIGATORIA: RotacionObligatoriaConfig
   COBERTURA_EXTERNA: { criterio: "MAS_ROTATIVOS" | "MENOS_ROTATIVOS" }
   LICENCIAS: { calculoPromedio: boolean }

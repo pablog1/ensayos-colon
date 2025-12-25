@@ -75,37 +75,20 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Verificar fecha pasada (validación básica que siempre debe hacerse)
+  const ahora = new Date()
+  const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
+  const eventoDate = new Date(evento.date)
+  const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
+  if (fechaEventoUTC < hoyUTC) {
+    return NextResponse.json(
+      { error: "No se pueden solicitar rotativos para fechas pasadas" },
+      { status: 400 }
+    )
+  }
+
   // Validar reglas y recopilar motivos
   const motivosAprobacion: string[] = []
-
-  // ============================================
-  // REGLA: PLAZO_SOLICITUD
-  // ============================================
-  const reglaPlazo = await prisma.ruleConfig.findUnique({
-    where: { key: "PLAZO_SOLICITUD" },
-  })
-
-  if (reglaPlazo?.enabled) {
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
-
-    const fechaEvento = new Date(evento.date)
-    fechaEvento.setHours(0, 0, 0, 0)
-
-    const diffMs = fechaEvento.getTime() - hoy.getTime()
-    const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-    if (diffDias < 0) {
-      return NextResponse.json(
-        { error: "No se pueden solicitar rotativos para fechas pasadas" },
-        { status: 400 }
-      )
-    }
-
-    if (diffDias === 0) {
-      motivosAprobacion.push("Solicitud del mismo día")
-    }
-  }
 
   // ============================================
   // REGLA: FINES_SEMANA_MAX

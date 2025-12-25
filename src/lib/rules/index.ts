@@ -4,7 +4,6 @@ import { maxProyectadoRule } from "./implementations/max-proyectado"
 import { finesSemanasRule } from "./implementations/fines-semana"
 import { bloqueExclusivoRule } from "./implementations/bloque-exclusivo"
 import { listaEsperaRule } from "./implementations/lista-espera"
-import { plazoSolicitudRule } from "./implementations/plazo-solicitud"
 import { rotacionObligatoriaRule } from "./implementations/rotacion-obligatoria"
 import { coberturaExternaRule } from "./implementations/cobertura-externa"
 import { licenciasRule } from "./implementations/licencias"
@@ -24,7 +23,6 @@ export function initializeRules(): void {
   registerRule(finesSemanasRule) // R3
   registerRule(bloqueExclusivoRule) // R4
   registerRule(listaEsperaRule) // R5
-  registerRule(plazoSolicitudRule) // R6
   registerRule(rotacionObligatoriaRule) // R7
   registerRule(coberturaExternaRule) // R8
   registerRule(licenciasRule) // R9
@@ -61,7 +59,6 @@ export {
   finesSemanasRule,
   bloqueExclusivoRule,
   listaEsperaRule,
-  plazoSolicitudRule,
   rotacionObligatoriaRule,
   coberturaExternaRule,
   licenciasRule,

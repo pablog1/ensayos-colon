@@ -207,31 +207,6 @@ const ruleUIConfig: Record<string, {
       )
     },
   },
-  PLAZO_SOLICITUD: {
-    icon: Clock,
-    friendlyName: "Plazos para solicitar",
-    shortDescription: "Cuándo se puede pedir rotativo y cómo se aprueba",
-    explanation: "Si pedís el rotativo con al menos un día de anticipación, se aprueba automáticamente (si hay cupo). Si lo pedís el mismo día del evento, siempre queda pendiente de aprobación del administrador.",
-    editable: false,
-    renderValue: () => (
-      <div className="space-y-3">
-        <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-          <div>
-            <p className="font-medium text-green-800">Hasta el día anterior</p>
-            <p className="text-sm text-green-600">Aprobación automática si hay cupo</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-          <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-          <div>
-            <p className="font-medium text-yellow-800">El mismo día</p>
-            <p className="text-sm text-yellow-600">Requiere aprobación del administrador</p>
-          </div>
-        </div>
-      </div>
-    ),
-  },
   ROTACION_OBLIGATORIA: {
     icon: Shuffle,
     friendlyName: "Rotación obligatoria",

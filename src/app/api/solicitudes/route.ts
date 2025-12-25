@@ -172,11 +172,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar fecha pasada (validación básica que siempre debe hacerse)
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
-    const fechaEvento = new Date(evento.date)
-    fechaEvento.setHours(0, 0, 0, 0)
-    if (fechaEvento < hoy) {
+    // Usar UTC para evitar problemas de timezone entre servidor y cliente
+    const ahora = new Date()
+    const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
+    const eventoDate = new Date(evento.date)
+    const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
+    if (fechaEventoUTC < hoyUTC) {
       return NextResponse.json(
         { error: "No se pueden solicitar rotativos para fechas pasadas" },
         { status: 400 }

@@ -182,6 +182,9 @@ export default function DashboardPage() {
   // Estado para mostrar progreso de validación
   const [validatingRule, setValidatingRule] = useState<string | null>(null)
 
+  // Ref para cancelar fetches anteriores y evitar race conditions
+  const abortControllerRef = useRef<AbortController | null>(null)
+
   // Estado para el diálogo de bloque completo
   const [bloqueDialogOpen, setBloqueDialogOpen] = useState(false)
   const [bloqueInfo, setBloqueInfo] = useState<{
@@ -271,26 +274,46 @@ export default function DashboardPage() {
   }, [])
 
   const fetchEventos = useCallback(async (mes: Date) => {
-    const mesStr = format(mes, "yyyy-MM")
-    const res = await fetch(`/api/calendario?mes=${mesStr}`)
-    if (res.ok) {
-      const data = await res.json()
-      // Handle new API response format (object with eventos and titulos)
-      const eventosData = data.eventos || data
-      setEventos(eventosData)
-      setTituloRanges(data.titulos || [])
-
-      const porFecha: EventosPorFecha = {}
-      for (const evento of eventosData) {
-        const fechaKey = evento.date.substring(0, 10)
-        if (!porFecha[fechaKey]) {
-          porFecha[fechaKey] = []
-        }
-        porFecha[fechaKey].push(evento)
-      }
-      setEventosPorFecha(porFecha)
+    // Cancelar fetch anterior si existe para evitar race conditions
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
     }
-    setLoading(false)
+
+    // Crear nuevo AbortController para este fetch
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
+
+    const mesStr = format(mes, "yyyy-MM")
+    try {
+      const res = await fetch(`/api/calendario?mes=${mesStr}`, { signal })
+
+      // Si fue abortado, no actualizar estado
+      if (signal.aborted) return
+
+      if (res.ok) {
+        const data = await res.json()
+        // Handle new API response format (object with eventos and titulos)
+        const eventosData = data.eventos || data
+        setEventos(eventosData)
+        setTituloRanges(data.titulos || [])
+
+        const porFecha: EventosPorFecha = {}
+        for (const evento of eventosData) {
+          const fechaKey = evento.date.substring(0, 10)
+          if (!porFecha[fechaKey]) {
+            porFecha[fechaKey] = []
+          }
+          porFecha[fechaKey].push(evento)
+        }
+        setEventosPorFecha(porFecha)
+      }
+      setLoading(false)
+    } catch (error) {
+      // Ignorar errores de abort (son esperados)
+      if (error instanceof Error && error.name === 'AbortError') return
+      console.error('Error fetching eventos:', error)
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {

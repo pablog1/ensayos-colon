@@ -138,27 +138,6 @@ const friendlyRules: Record<string, {
       "Se mantiene hasta el fin de la temporada",
     ],
   },
-  PLAZO_SOLICITUD: {
-    icon: Clock,
-    title: "Plazos para pedir rotativo",
-    summary: "Cuándo podés solicitar y cómo se aprueba",
-    details: [
-      "Con un día de anticipación: aprobación automática si hay cupo",
-      "El mismo día: queda pendiente de aprobación del administrador",
-    ],
-    getValue: () => (
-      <div className="space-y-2 mt-3">
-        <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
-          <CheckCircle className="w-4 h-4 text-green-600" />
-          <span className="text-sm text-green-800">Hasta el día anterior = Automático</span>
-        </div>
-        <div className="flex items-center gap-2 p-2 bg-yellow-50 rounded-lg">
-          <Clock className="w-4 h-4 text-yellow-600" />
-          <span className="text-sm text-yellow-800">Mismo día = Requiere aprobación</span>
-        </div>
-      </div>
-    ),
-  },
   ROTACION_OBLIGATORIA: {
     icon: Shuffle,
     title: "Rotación obligatoria",
