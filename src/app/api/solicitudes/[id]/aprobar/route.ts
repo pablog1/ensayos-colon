@@ -23,6 +23,15 @@ export async function POST(
 
   const { id } = await params
 
+  // Leer motivo del body (opcional)
+  let motivo: string | undefined
+  try {
+    const body = await req.json()
+    motivo = body.motivo
+  } catch {
+    // Si no hay body, continuar sin motivo
+  }
+
   const rotativo = await prisma.rotativo.findUnique({
     where: { id },
     include: {
@@ -54,6 +63,7 @@ export async function POST(
     data: {
       estado: "APROBADO",
       aprobadoPor: session.user.id,
+      motivo: motivo || rotativo.motivo,
     },
     include: {
       user: {
@@ -78,6 +88,7 @@ export async function POST(
       eventId: updated.eventId,
       eventTitle: updated.event.title,
       eventDate: updated.event.date.toISOString(),
+      motivo: motivo,
     },
   })
 
@@ -91,6 +102,7 @@ export async function POST(
     details: {
       evento: updated.event.title,
       fecha: updated.event.date.toISOString(),
+      motivo: motivo,
     },
   })
 

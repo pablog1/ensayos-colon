@@ -6,6 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 
 interface SolicitudPendiente {
   id: string
@@ -22,10 +32,21 @@ interface SolicitudPendiente {
   }
 }
 
+type AccionPendiente = {
+  tipo: "aprobar" | "rechazar"
+  solicitud: SolicitudPendiente
+} | null
+
+const MOTIVO_APROBACION_DEFAULT = "Validado por la fila"
+const MOTIVO_RECHAZO_DEFAULT = "No validado por la fila"
+
 export default function PendientesPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudPendiente[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [accionPendiente, setAccionPendiente] = useState<AccionPendiente>(null)
+  const [motivoAdicional, setMotivoAdicional] = useState("")
+  const [procesando, setProcesando] = useState(false)
 
   const fetchPendientes = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true)
@@ -50,40 +71,50 @@ export default function PendientesPage() {
     return () => clearInterval(interval)
   }, [fetchPendientes])
 
-  const aprobar = async (id: string) => {
-    const res = await fetch(`/api/solicitudes/${id}/aprobar`, {
-      method: "POST",
-    })
+  const abrirDialogAccion = (tipo: "aprobar" | "rechazar", solicitud: SolicitudPendiente) => {
+    setAccionPendiente({ tipo, solicitud })
+    setMotivoAdicional("")
+  }
 
-    if (res.ok) {
-      toast.success("Solicitud aprobada")
-      fetchPendientes()
-    } else {
-      const error = await res.json()
-      toast.error(error.error)
+  const cerrarDialog = () => {
+    setAccionPendiente(null)
+    setMotivoAdicional("")
+  }
+
+  const confirmarAccion = async () => {
+    if (!accionPendiente) return
+
+    setProcesando(true)
+    const { tipo, solicitud } = accionPendiente
+    const motivoDefault = tipo === "aprobar" ? MOTIVO_APROBACION_DEFAULT : MOTIVO_RECHAZO_DEFAULT
+    const motivoFinal = motivoAdicional.trim()
+      ? `${motivoDefault}. ${motivoAdicional.trim()}`
+      : motivoDefault
+
+    try {
+      const endpoint = tipo === "aprobar" ? "aprobar" : "rechazar"
+      const res = await fetch(`/api/solicitudes/${solicitud.id}/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: motivoFinal }),
+      })
+
+      if (res.ok) {
+        toast.success(tipo === "aprobar" ? "Solicitud aprobada" : "Solicitud rechazada")
+        fetchPendientes()
+        cerrarDialog()
+      } else {
+        const error = await res.json()
+        toast.error(error.error)
+      }
+    } finally {
+      setProcesando(false)
     }
   }
 
-  const rechazar = async (id: string) => {
-    const motivo = prompt("Motivo del rechazo (opcional):")
-
-    // Si el usuario cancela el prompt, no continuar
-    if (motivo === null) return
-
-    const res = await fetch(`/api/solicitudes/${id}/rechazar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ motivo: motivo || undefined }),
-    })
-
-    if (res.ok) {
-      toast.success("Solicitud rechazada")
-      fetchPendientes()
-    } else {
-      const error = await res.json()
-      toast.error(error.error)
-    }
-  }
+  const motivoDefault = accionPendiente?.tipo === "aprobar"
+    ? MOTIVO_APROBACION_DEFAULT
+    : MOTIVO_RECHAZO_DEFAULT
 
   return (
     <div className="space-y-6">
@@ -182,7 +213,7 @@ export default function PendientesPage() {
                     <Button
                       size="sm"
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => aprobar(s.id)}
+                      onClick={() => abrirDialogAccion("aprobar", s)}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
                       Aprobar
@@ -191,7 +222,7 @@ export default function PendientesPage() {
                       size="sm"
                       variant="destructive"
                       className="flex-1"
-                      onClick={() => rechazar(s.id)}
+                      onClick={() => abrirDialogAccion("rechazar", s)}
                     >
                       <XCircle className="w-4 h-4 mr-1" />
                       Rechazar
@@ -203,6 +234,87 @@ export default function PendientesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmación */}
+      <Dialog open={accionPendiente !== null} onOpenChange={(open) => !open && cerrarDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {accionPendiente?.tipo === "aprobar" ? "Aprobar solicitud" : "Rechazar solicitud"}
+            </DialogTitle>
+            <DialogDescription>
+              {accionPendiente && (
+                <>
+                  Solicitud de <strong>{accionPendiente.solicitud.user.alias || accionPendiente.solicitud.user.name}</strong> para el{" "}
+                  <strong>
+                    {new Date(accionPendiente.solicitud.fecha + "T12:00:00").toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    })}
+                  </strong>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Motivo por defecto</Label>
+              <div className={`p-3 rounded-md text-sm font-medium ${
+                accionPendiente?.tipo === "aprobar"
+                  ? "bg-green-50 text-green-800 border border-green-200"
+                  : "bg-red-50 text-red-800 border border-red-200"
+              }`}>
+                {motivoDefault}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="motivo-adicional">Aclaración adicional (opcional)</Label>
+              <Textarea
+                id="motivo-adicional"
+                placeholder="Si necesitas agregar alguna aclaración..."
+                value={motivoAdicional}
+                onChange={(e) => setMotivoAdicional(e.target.value)}
+                rows={3}
+              />
+            </div>
+
+            {motivoAdicional.trim() && (
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Motivo final</Label>
+                <div className="p-3 bg-muted rounded-md text-sm">
+                  {motivoDefault}. {motivoAdicional.trim()}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={cerrarDialog} disabled={procesando}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmarAccion}
+              disabled={procesando}
+              className={accionPendiente?.tipo === "aprobar"
+                ? "bg-green-600 hover:bg-green-700"
+                : "bg-destructive hover:bg-destructive/90"
+              }
+            >
+              {procesando ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : accionPendiente?.tipo === "aprobar" ? (
+                <CheckCircle className="w-4 h-4 mr-2" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-2" />
+              )}
+              {accionPendiente?.tipo === "aprobar" ? "Confirmar aprobación" : "Confirmar rechazo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

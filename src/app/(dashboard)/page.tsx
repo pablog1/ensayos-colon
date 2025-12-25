@@ -64,6 +64,8 @@ interface Evento {
   rotativos: {
     id: string
     estado: string
+    motivo: string | null
+    validationResults: Record<string, unknown> | null
     user: {
       id: string
       name: string
@@ -948,16 +950,25 @@ export default function DashboardPage() {
                 {/* Rotativos del evento */}
                 {e.rotativos && e.rotativos.length > 0 && (
                   <div className="bg-gray-100 rounded-b px-1.5 py-1 flex flex-wrap gap-1">
-                    {e.rotativos.slice(0, 4).map((r, j) => (
-                      <span
-                        key={j}
-                        className={`text-[10px] px-1.5 py-0.5 rounded ${
-                          r.estado === "APROBADO" ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
-                        }`}
-                      >
-                        {r.user.avatar || ""}{r.user.alias || r.user.name.split(" ")[0]}
-                      </span>
-                    ))}
+                    {e.rotativos.slice(0, 4).map((r, j) => {
+                      const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                      return (
+                        <span
+                          key={j}
+                          className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
+                            tieneExcepcion
+                              ? "bg-amber-200 text-amber-800"
+                              : r.estado === "APROBADO"
+                                ? "bg-green-200 text-green-800"
+                                : "bg-yellow-200 text-yellow-800"
+                          }`}
+                          title={tieneExcepcion ? r.motivo || "" : ""}
+                        >
+                          {r.user.avatar || ""}{r.user.alias || r.user.name.split(" ")[0]}
+                          {tieneExcepcion && <AlertTriangle className="w-2.5 h-2.5" />}
+                        </span>
+                      )
+                    })}
                     {e.rotativos.length > 4 && (
                       <span className="text-[10px] text-muted-foreground">+{e.rotativos.length - 4}</span>
                     )}
@@ -981,6 +992,7 @@ export default function DashboardPage() {
       tipo: "evento" as const,
       fecha: e.date,
       estado: r.estado,
+      motivo: r.motivo,
       user: r.user,
       evento: e,
     }))
@@ -1203,19 +1215,26 @@ export default function DashboardPage() {
                                           {/* Nombres completos de rotativos en vista lista */}
                                           {evento.rotativos && evento.rotativos.length > 0 && (
                                             <div className="flex flex-wrap gap-1.5 mt-2">
-                                              {evento.rotativos.map((r) => (
-                                                <span
-                                                  key={r.id}
-                                                  className={`text-xs px-2 py-1 rounded-full ${
-                                                    r.estado === "APROBADO"
-                                                      ? "bg-green-100 text-green-800"
-                                                      : "bg-yellow-100 text-yellow-800"
-                                                  }`}
-                                                >
-                                                  {r.user.avatar && <span className="mr-1">{r.user.avatar}</span>}
-                                                  {r.user.alias || r.user.name.split(" ")[0]}
-                                                </span>
-                                              ))}
+                                              {evento.rotativos.map((r) => {
+                                                const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                                                return (
+                                                  <span
+                                                    key={r.id}
+                                                    className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                                                      tieneExcepcion
+                                                        ? "bg-amber-100 text-amber-800"
+                                                        : r.estado === "APROBADO"
+                                                          ? "bg-green-100 text-green-800"
+                                                          : "bg-yellow-100 text-yellow-800"
+                                                    }`}
+                                                    title={tieneExcepcion ? r.motivo || "" : ""}
+                                                  >
+                                                    {r.user.avatar && <span className="mr-1">{r.user.avatar}</span>}
+                                                    {r.user.alias || r.user.name.split(" ")[0]}
+                                                    {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
+                                                  </span>
+                                                )
+                                              })}
                                             </div>
                                           )}
                                         </div>
@@ -1411,19 +1430,17 @@ export default function DashboardPage() {
                     <Theater className="w-4 h-4" />
                     Eventos
                   </button>
-                  {isAdmin && (
-                    <button
-                      className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                        sidebarMode === "titulos"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={() => setSidebarMode("titulos")}
-                    >
-                      <Music className="w-4 h-4" />
-                      Títulos
-                    </button>
-                  )}
+                  <button
+                    className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                      sidebarMode === "titulos"
+                        ? "border-primary text-primary"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                    onClick={() => setSidebarMode("titulos")}
+                  >
+                    <Music className="w-4 h-4" />
+                    Títulos
+                  </button>
                 </nav>
               )}
               {/* Título ABAJO */}
@@ -1484,40 +1501,53 @@ export default function DashboardPage() {
                     </p>
                   ) : (
                     <div className="space-y-2">
-                      {rotativosFiltrados.map((r) => (
-                        <div
-                          key={r.id}
-                          className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors`}
-                          style={{
-                            borderLeftColor: r.evento ? getEventColor(r.evento) : (r.estado === "APROBADA" ? "#22c55e" : "#eab308"),
-                            borderLeftWidth: 4
-                          }}
-                          onClick={() => r.evento && openDetalleEvento(r.evento)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                {r.user.avatar && <span>{r.user.avatar}</span>}
-                                <span className="font-medium text-sm truncate">
-                                  {r.user.alias || r.user.name}
-                                </span>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {formatInArgentina(r.fecha, "EEEE d MMM")}
-                                {r.evento && (
-                                  <> · {formatTime(r.evento.startTime)} · {r.evento.tituloName}</>
+                      {rotativosFiltrados.map((r) => {
+                        const tieneExcepcion = (r.estado === "APROBADO" || r.estado === "APROBADA") && r.motivo && r.motivo !== "Validado por la fila"
+                        return (
+                          <div
+                            key={r.id}
+                            className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors ${
+                              tieneExcepcion ? "bg-amber-50 border-amber-200" : ""
+                            }`}
+                            style={{
+                              borderLeftColor: tieneExcepcion
+                                ? "#f59e0b"
+                                : r.evento
+                                  ? getEventColor(r.evento)
+                                  : (r.estado === "APROBADA" ? "#22c55e" : "#eab308"),
+                              borderLeftWidth: 4
+                            }}
+                            onClick={() => r.evento && openDetalleEvento(r.evento)}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  {r.user.avatar && <span>{r.user.avatar}</span>}
+                                  <span className="font-medium text-sm truncate">
+                                    {r.user.alias || r.user.name}
+                                  </span>
+                                  {tieneExcepcion && <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {formatInArgentina(r.fecha, "EEEE d MMM")}
+                                  {r.evento && (
+                                    <> · {formatTime(r.evento.startTime)} · {r.evento.tituloName}</>
+                                  )}
+                                </p>
+                                {tieneExcepcion && r.motivo && (
+                                  <p className="text-xs text-amber-700 mt-1">{r.motivo}</p>
                                 )}
-                              </p>
+                              </div>
+                              <Badge
+                                variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
+                                className="text-xs flex-shrink-0"
+                              >
+                                {r.estado === "APROBADA" ? "APROBADO" : r.estado}
+                              </Badge>
                             </div>
-                            <Badge
-                              variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
-                              className="text-xs flex-shrink-0"
-                            >
-                              {r.estado === "APROBADA" ? "APROBADO" : r.estado}
-                            </Badge>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -1614,16 +1644,25 @@ export default function DashboardPage() {
                                 {/* Rotativos del evento */}
                                 {evento.rotativos && evento.rotativos.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-2">
-                                    {evento.rotativos.map((r) => (
-                                      <span
-                                        key={r.id}
-                                        className={`text-xs px-2 py-0.5 rounded ${
-                                          r.estado === "APROBADO" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                                        }`}
-                                      >
-                                        {r.user.avatar || ""} {r.user.alias || r.user.name.split(" ")[0]}
-                                      </span>
-                                    ))}
+                                    {evento.rotativos.map((r) => {
+                                      const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                                      return (
+                                        <span
+                                          key={r.id}
+                                          className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${
+                                            tieneExcepcion
+                                              ? "bg-amber-100 text-amber-800"
+                                              : r.estado === "APROBADO"
+                                                ? "bg-green-100 text-green-800"
+                                                : "bg-yellow-100 text-yellow-800"
+                                          }`}
+                                          title={tieneExcepcion ? r.motivo || "" : ""}
+                                        >
+                                          {r.user.avatar || ""} {r.user.alias || r.user.name.split(" ")[0]}
+                                          {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
+                                        </span>
+                                      )
+                                    })}
                                   </div>
                                 )}
                                 {/* Mostrar cupo disponible */}
@@ -1687,25 +1726,42 @@ export default function DashboardPage() {
                     </div>
 
                     {selectedEvento.rotativos && selectedEvento.rotativos.length > 0 ? (
-                      <div className="space-y-1">
-                        {selectedEvento.rotativos.map((r) => (
-                          <div
-                            key={r.id}
-                            className={`flex items-center justify-between p-2 rounded ${
-                              r.estado === "APROBADO" ? "bg-green-50" : "bg-yellow-50"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              {r.user.avatar && <span>{r.user.avatar}</span>}
-                              <span className="text-sm font-medium">
-                                {r.user.alias || r.user.name}
-                              </span>
+                      <div className="space-y-2">
+                        {selectedEvento.rotativos.map((r) => {
+                          const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                          return (
+                            <div
+                              key={r.id}
+                              className={`p-2 rounded border ${
+                                tieneExcepcion
+                                  ? "bg-amber-50 border-amber-200"
+                                  : r.estado === "APROBADO"
+                                    ? "bg-green-50 border-green-200"
+                                    : "bg-yellow-50 border-yellow-200"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  {r.user.avatar && <span>{r.user.avatar}</span>}
+                                  <span className="text-sm font-medium">
+                                    {r.user.alias || r.user.name}
+                                  </span>
+                                  {tieneExcepcion && (
+                                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                  )}
+                                </div>
+                                <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className="text-xs">
+                                  {r.estado}
+                                </Badge>
+                              </div>
+                              {tieneExcepcion && r.motivo && (
+                                <p className="text-xs text-amber-700 mt-1 pl-6">
+                                  {r.motivo}
+                                </p>
+                              )}
                             </div>
-                            <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className="text-xs">
-                              {r.estado}
-                            </Badge>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">Sin rotativos asignados</p>
@@ -1771,18 +1827,20 @@ export default function DashboardPage() {
               )}
 
               {/* Lista de títulos */}
-              {sidebarMode === "titulos" && isAdmin && (
+              {sidebarMode === "titulos" && (
                 <div className="space-y-2">
-                  <Button
-                    className="w-full mb-3"
-                    onClick={() => {
-                      setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupo: 4, startDate: "", endDate: "" })
-                      setSidebarMode("nuevo-titulo")
-                    }}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nuevo Título
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      className="w-full mb-3"
+                      onClick={() => {
+                        setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupo: 4, startDate: "", endDate: "" })
+                        setSidebarMode("nuevo-titulo")
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Nuevo Título
+                    </Button>
+                  )}
                   {titulos.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-4">
                       No hay títulos creados
@@ -1807,14 +1865,16 @@ export default function DashboardPage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        {isAdmin && (
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -2012,8 +2072,16 @@ export default function DashboardPage() {
                     <Input
                       type="date"
                       value={eventoForm.date}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const newDate = e.target.value
+                        // Si el año de la fecha seleccionada es diferente al cargado, cargar títulos de ese año
+                        if (newDate) {
+                          const selectedYear = parseInt(newDate.substring(0, 4))
+                          if (selectedYear !== lastFetchedYearRef.current) {
+                            lastFetchedYearRef.current = null // Forzar re-fetch
+                            await fetchTitulos(selectedYear)
+                          }
+                        }
                         // Verificar si el título actual sigue siendo válido para la nueva fecha
                         const tituloActual = titulos.find((t) => t.id === eventoForm.tituloId)
                         const tituloSigueValido = tituloActual?.startDate && tituloActual?.endDate &&

@@ -72,6 +72,8 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           estado: true,
+          motivo: true,
+          validationResults: true,
           user: {
             select: {
               id: true,

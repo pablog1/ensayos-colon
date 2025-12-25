@@ -24,8 +24,69 @@ export async function GET(req: NextRequest) {
         where: { id: targetSeasonId },
       })
       if (!seasonExists) {
-        // Si no existe la temporada para ese año, devolver lista vacía
-        return NextResponse.json([])
+        // Si no existe la temporada para ese año, buscar títulos cuyo rango
+        // de fechas incluya ese año (para títulos que cruzan años)
+        const yearStart = new Date(`${year}-01-01`)
+        const yearEnd = new Date(`${year}-12-31`)
+
+        const titulosCrossYear = await prisma.titulo.findMany({
+          where: {
+            AND: [
+              { startDate: { lte: yearEnd } },
+              { endDate: { gte: yearStart } },
+            ],
+          },
+          include: {
+            _count: {
+              select: { events: true },
+            },
+            events: {
+              select: {
+                id: true,
+                eventoType: true,
+                cupoOverride: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        })
+
+        // Calcular totales
+        const titulosConTotales = titulosCrossYear.map((titulo) => {
+          let totalRotativos = 0
+          let totalEnsayos = 0
+          let totalFunciones = 0
+
+          for (const event of titulo.events) {
+            const cupo = event.cupoOverride ?? titulo.cupo
+            totalRotativos += cupo
+            if (event.eventoType === "ENSAYO") {
+              totalEnsayos++
+            } else {
+              totalFunciones++
+            }
+          }
+
+          return {
+            id: titulo.id,
+            name: titulo.name,
+            type: titulo.type,
+            cupo: titulo.cupo,
+            description: titulo.description,
+            color: titulo.color,
+            startDate: titulo.startDate,
+            endDate: titulo.endDate,
+            seasonId: titulo.seasonId,
+            createdAt: titulo.createdAt,
+            updatedAt: titulo.updatedAt,
+            totalEventos: titulo._count.events,
+            totalEnsayos,
+            totalFunciones,
+            totalRotativos,
+          }
+        })
+
+        return NextResponse.json(titulosConTotales)
       }
     }
 

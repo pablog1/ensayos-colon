@@ -180,8 +180,14 @@ export default function SolicitudesPage() {
           })}
         </div>
       </div>
-      {s.estado === "RECHAZADO" && s.motivo && (
-        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+      {s.motivo && (
+        <div className={`text-sm p-2 rounded ${
+          s.estado === "RECHAZADO"
+            ? "text-red-600 bg-red-50"
+            : s.estado === "APROBADO"
+              ? "text-green-600 bg-green-50"
+              : "text-muted-foreground bg-muted"
+        }`}>
           <span className="font-medium">Motivo: </span>
           {s.motivo}
         </div>
@@ -224,8 +230,14 @@ export default function SolicitudesPage() {
           <span className="text-xs text-muted-foreground">
             {s.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
           </span>
-          {s.estado === "RECHAZADO" && s.motivo && (
-            <span className="text-xs text-red-600 mt-1">
+          {s.motivo && (
+            <span className={`text-xs mt-1 ${
+              s.estado === "RECHAZADO"
+                ? "text-red-600"
+                : s.estado === "APROBADO"
+                  ? "text-green-600"
+                  : "text-muted-foreground"
+            }`}>
               <span className="font-medium">Motivo: </span>
               {s.motivo}
             </span>
