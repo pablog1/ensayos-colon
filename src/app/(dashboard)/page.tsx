@@ -43,6 +43,7 @@ import {
   PanelRightOpen,
   AlertTriangle,
   Loader2,
+  Layers,
 } from "lucide-react"
 
 interface Evento {
@@ -180,6 +181,17 @@ export default function DashboardPage() {
 
   // Estado para mostrar progreso de validación
   const [validatingRule, setValidatingRule] = useState<string | null>(null)
+
+  // Estado para el diálogo de bloque completo
+  const [bloqueDialogOpen, setBloqueDialogOpen] = useState(false)
+  const [bloqueInfo, setBloqueInfo] = useState<{
+    tituloId: string
+    tituloName: string
+    totalEventos: number
+    requiereAprobacion: boolean
+    motivos: string[]
+  } | null>(null)
+  const [loadingBloque, setLoadingBloque] = useState(false)
 
   // Lista de reglas para mostrar durante validación
   const reglasValidacion = [
@@ -631,6 +643,78 @@ export default function DashboardPage() {
     setConfirmDialogOpen(false)
     setConfirmEventId(null)
     setConfirmMotivo(null)
+  }
+
+  // Handler para abrir diálogo de bloque completo
+  const handleSolicitarBloque = async (tituloId: string, tituloName: string) => {
+    setLoadingBloque(true)
+    setBloqueDialogOpen(true)
+
+    try {
+      const res = await fetch("/api/bloques/solicitar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tituloId, validate: true }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        toast.error(error.error || "Error al validar bloque")
+        setBloqueDialogOpen(false)
+        setLoadingBloque(false)
+        return
+      }
+
+      const data = await res.json()
+      setBloqueInfo({
+        tituloId,
+        tituloName,
+        totalEventos: data.totalEventos,
+        requiereAprobacion: data.requiereAprobacion,
+        motivos: data.motivos || [],
+      })
+    } catch {
+      toast.error("Error de conexión")
+      setBloqueDialogOpen(false)
+    }
+    setLoadingBloque(false)
+  }
+
+  // Handler para confirmar solicitud de bloque
+  const handleConfirmarBloque = async () => {
+    if (!bloqueInfo) return
+    setLoadingBloque(true)
+
+    try {
+      const res = await fetch("/api/bloques/solicitar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tituloId: bloqueInfo.tituloId, validate: false }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        await fetchEventos(mesActual)
+        setSidebarMode("rotativos")
+        setSelectedEvento(null)
+        toast.success(data.message)
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Error al solicitar bloque")
+      }
+    } catch {
+      toast.error("Error de conexión")
+    }
+
+    setBloqueDialogOpen(false)
+    setBloqueInfo(null)
+    setLoadingBloque(false)
+  }
+
+  // Handler para cancelar solicitud de bloque
+  const handleCancelarBloque = () => {
+    setBloqueDialogOpen(false)
+    setBloqueInfo(null)
   }
 
   // Handler para cancelar rotativo
@@ -1403,6 +1487,45 @@ export default function DashboardPage() {
                           </Button>
                         </div>
                       )}
+
+                      {/* Link para solicitar bloque completo - solo títulos cuyo rango incluye la fecha seleccionada y el usuario no tiene rotativos */}
+                      {(() => {
+                        const titulosEnRango = titulos.filter(titulo => {
+                          if (!titulo.startDate || !titulo.endDate || !selectedDate) return false
+                          // Las fechas vienen como ISO strings, crear Date objects
+                          const start = new Date(titulo.startDate)
+                          start.setHours(0, 0, 0, 0)
+                          const end = new Date(titulo.endDate)
+                          end.setHours(23, 59, 59, 999)
+                          // Normalizar selectedDate también
+                          const selected = new Date(selectedDate)
+                          selected.setHours(12, 0, 0, 0)
+                          if (!(selected >= start && selected <= end)) return false
+
+                          // Verificar si el usuario ya tiene rotativos en eventos de este título
+                          const tieneRotativosEnTitulo = eventos.some(evento =>
+                            evento.tituloId === titulo.id &&
+                            evento.rotativos?.some(r => r.user.id === userId)
+                          )
+                          return !tieneRotativosEnTitulo
+                        })
+                        if (titulosEnRango.length === 0) return null
+                        return (
+                          <div className="space-y-1">
+                            {titulosEnRango.map(titulo => (
+                              <button
+                                key={titulo.id}
+                                onClick={() => handleSolicitarBloque(titulo.id, titulo.name)}
+                                disabled={loadingBloque}
+                                className="w-full text-center text-sm text-primary hover:underline flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                              >
+                                <Layers className="w-4 h-4" />
+                                Solicitar bloque completo de {titulo.name}
+                              </button>
+                            ))}
+                          </div>
+                        )
+                      })()}
 
                       {/* Eventos del día */}
                       {eventosDelDiaSeleccionado.length > 0 && (
@@ -2349,6 +2472,81 @@ export default function DashboardPage() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para solicitar bloque completo */}
+      <Dialog open={bloqueDialogOpen} onOpenChange={setBloqueDialogOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+              <Layers className="h-8 w-8 text-blue-600" />
+            </div>
+            <DialogTitle className="text-xl">Solicitar bloque completo</DialogTitle>
+            {loadingBloque ? (
+              <DialogDescription className="text-base mt-2">
+                Validando disponibilidad...
+              </DialogDescription>
+            ) : bloqueInfo ? (
+              <DialogDescription className="text-base mt-2">
+                Vas a solicitar rotativos para todas las funciones de{" "}
+                <strong>{bloqueInfo.tituloName}</strong>
+              </DialogDescription>
+            ) : null}
+          </DialogHeader>
+
+          {loadingBloque ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : bloqueInfo ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 my-2">
+                <p className="text-sm font-medium text-blue-800">
+                  Total de eventos: {bloqueInfo.totalEventos}
+                </p>
+              </div>
+
+              {bloqueInfo.requiereAprobacion && bloqueInfo.motivos.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <p className="text-sm font-medium text-amber-800 mb-1">
+                    Esta solicitud requerirá aprobación:
+                  </p>
+                  <ul className="text-sm text-amber-700 list-disc list-inside">
+                    {bloqueInfo.motivos.map((motivo, i) => (
+                      <li key={i}>{motivo}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleCancelarBloque}
+                  className="w-full sm:w-auto"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleConfirmarBloque}
+                  className="w-full sm:w-auto"
+                  disabled={loadingBloque}
+                >
+                  {loadingBloque ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Solicitando...
+                    </>
+                  ) : bloqueInfo.requiereAprobacion ? (
+                    "Solicitar aprobación"
+                  ) : (
+                    "Confirmar solicitud"
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

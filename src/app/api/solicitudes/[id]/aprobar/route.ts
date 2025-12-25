@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createNotification } from "@/lib/services/notifications"
 
 // POST /api/solicitudes/[id]/aprobar - Aprobar rotativo pendiente (solo admin)
 export async function POST(
@@ -23,6 +24,14 @@ export async function POST(
 
   const rotativo = await prisma.rotativo.findUnique({
     where: { id },
+    include: {
+      event: {
+        select: {
+          title: true,
+          date: true,
+        },
+      },
+    },
   })
 
   if (!rotativo) {
@@ -53,6 +62,21 @@ export async function POST(
           email: true,
         },
       },
+      event: true,
+    },
+  })
+
+  // Create notification for user
+  await createNotification({
+    userId: updated.userId,
+    type: "ROTATIVO_APROBADO",
+    title: "Rotativo aprobado",
+    message: `Tu solicitud de rotativo para "${updated.event.title}" ha sido aprobada`,
+    data: {
+      rotativoId: updated.id,
+      eventId: updated.eventId,
+      eventTitle: updated.event.title,
+      eventDate: updated.event.date.toISOString(),
     },
   })
 

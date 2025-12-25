@@ -121,6 +121,11 @@ export async function GET(req: NextRequest) {
     // Usamos los métodos UTC para extraer el día correcto
     const dateStr = `${evento.date.getUTCFullYear()}-${String(evento.date.getUTCMonth() + 1).padStart(2, '0')}-${String(evento.date.getUTCDate()).padStart(2, '0')}`
 
+    // Filtrar solo rotativos activos (APROBADO o PENDIENTE) para contar el cupo usado
+    const rotativosActivos = evento.rotativos.filter(
+      r => r.estado === "APROBADO" || r.estado === "PENDIENTE"
+    )
+
     return {
       id: evento.id,
       title: evento.title,
@@ -134,9 +139,9 @@ export async function GET(req: NextRequest) {
       tituloColor: evento.titulo?.color,
       cupoEfectivo,
       cupoOverride: evento.cupoOverride,
-      rotativosUsados: evento.rotativos.length,
-      cupoDisponible: cupoEfectivo - evento.rotativos.length,
-      rotativos: evento.rotativos,
+      rotativosUsados: rotativosActivos.length,
+      cupoDisponible: cupoEfectivo - rotativosActivos.length,
+      rotativos: rotativosActivos,
     }
   })
 

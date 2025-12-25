@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createNotification } from "@/lib/services/notifications"
 
 // POST /api/solicitudes/[id]/rechazar - Rechazar rotativo pendiente (solo admin)
 export async function POST(
@@ -23,6 +24,14 @@ export async function POST(
 
   const rotativo = await prisma.rotativo.findUnique({
     where: { id },
+    include: {
+      event: {
+        select: {
+          title: true,
+          date: true,
+        },
+      },
+    },
   })
 
   if (!rotativo) {
@@ -38,6 +47,19 @@ export async function POST(
       { status: 400 }
     )
   }
+
+  // Create notification before deleting
+  await createNotification({
+    userId: rotativo.userId,
+    type: "ROTATIVO_RECHAZADO",
+    title: "Rotativo rechazado",
+    message: `Tu solicitud de rotativo para "${rotativo.event.title}" ha sido rechazada`,
+    data: {
+      eventId: rotativo.eventId,
+      eventTitle: rotativo.event.title,
+      eventDate: rotativo.event.date.toISOString(),
+    },
+  })
 
   // Al rechazar, eliminamos el rotativo
   await prisma.rotativo.delete({

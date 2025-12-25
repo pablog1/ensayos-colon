@@ -6,9 +6,12 @@ import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { MobileNav } from "./mobile-nav"
 import { ProfileModal } from "@/components/profile/profile-modal"
+import { NotificationPanel } from "@/components/notifications/notification-panel"
+import { useNotifications } from "@/hooks/use-notifications"
 
 export function Navbar() {
   const { data: session } = useSession()
+  const { userNotifications } = useNotifications()
 
   return (
     <header className="bg-[var(--burgundy)] text-white shadow-lg">
@@ -37,9 +40,10 @@ export function Navbar() {
           </div>
         </Link>
 
-        <div className="ml-auto flex items-center gap-3 md:gap-4">
+        <div className="ml-auto flex items-center gap-1 md:gap-2">
           {session?.user && (
             <>
+              <NotificationPanel unreadCount={userNotifications} />
               <ProfileModal />
               <Button
                 size="sm"

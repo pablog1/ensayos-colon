@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
     porcentajeAlMomento: r.contadorAlMomento,
     createdAt: r.createdAt,
     user: r.user,
+    motivo: r.motivo,
     // Datos adicionales del evento
     eventoId: r.event.id,
     eventoTitle: r.event.title,
