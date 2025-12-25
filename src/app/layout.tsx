@@ -13,14 +13,14 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Orquesta - Gestion de Rotativos",
-  description: "Sistema de administracion de rotativos",
+  title: "Ensayos Primeros Violines OETC",
+  description: "Sistema de gestion de ensayos y rotativos",
   manifest: "/manifest.json",
   themeColor: "#dc2626",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Rotativos",
+    title: "Ensayos OETC",
   },
 }
 

@@ -1,7 +1,7 @@
 {
-  "name": "Teatro Colon - Rotativos",
-  "short_name": "Rotativos",
-  "description": "Sistema de gestion de rotativos del Teatro Colon",
+  "name": "Ensayos Primeros Violines OETC",
+  "short_name": "Ensayos OETC",
+  "description": "Sistema de gestion de ensayos y rotativos",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
