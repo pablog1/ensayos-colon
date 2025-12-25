@@ -20,7 +20,33 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Guardar suscripción en el usuario
+    // Buscar si esta suscripción ya existe en otro usuario (mismo dispositivo)
+    // y removerla para evitar notificaciones duplicadas
+    const usersWithSameSubscription = await prisma.user.findMany({
+      where: {
+        id: { not: session.user.id },
+        pushEnabled: true,
+      },
+      select: { id: true, pushSubscription: true },
+    })
+
+    // Comparar por endpoint (identificador único de la suscripción)
+    for (const user of usersWithSameSubscription) {
+      const userSub = user.pushSubscription as { endpoint?: string } | null
+      if (userSub?.endpoint === subscription.endpoint) {
+        // Remover suscripción del otro usuario
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            pushSubscription: Prisma.DbNull,
+            pushEnabled: false,
+          },
+        })
+        console.log(`[Push] Suscripción transferida de usuario ${user.id} a ${session.user.id}`)
+      }
+    }
+
+    // Guardar suscripción en el usuario actual
     await prisma.user.update({
       where: { id: session.user.id },
       data: {

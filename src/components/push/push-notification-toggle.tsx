@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Bell, BellOff, Loader2 } from "lucide-react"
+import { Bell, BellOff, Loader2, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 
@@ -9,6 +9,7 @@ export function PushNotificationToggle() {
   const [isSupported, setIsSupported] = useState(false)
   const [isEnabled, setIsEnabled] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isTesting, setIsTesting] = useState(false)
   const [permission, setPermission] = useState<NotificationPermission>("default")
 
   useEffect(() => {
@@ -123,6 +124,28 @@ export function PushNotificationToggle() {
     }
   }
 
+  const testPush = async () => {
+    setIsTesting(true)
+
+    try {
+      const res = await fetch("/api/push/test", {
+        method: "POST",
+      })
+
+      if (res.ok) {
+        toast.success("Notificación de prueba enviada")
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Error al enviar prueba")
+      }
+    } catch (error) {
+      console.error("Error al testear:", error)
+      toast.error("Error al enviar notificación de prueba")
+    } finally {
+      setIsTesting(false)
+    }
+  }
+
   if (!isSupported) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -142,26 +165,42 @@ export function PushNotificationToggle() {
   }
 
   return (
-    <Button
-      variant={isEnabled ? "outline" : "default"}
-      size="sm"
-      onClick={isEnabled ? unsubscribeFromPush : subscribeToPush}
-      disabled={isLoading}
-      className="gap-2"
-    >
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : isEnabled ? (
-        <Bell className="h-4 w-4" />
-      ) : (
-        <BellOff className="h-4 w-4" />
+    <div className="flex items-center gap-2">
+      <Button
+        variant={isEnabled ? "outline" : "default"}
+        size="sm"
+        onClick={isEnabled ? unsubscribeFromPush : subscribeToPush}
+        disabled={isLoading}
+        className="gap-2"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isEnabled ? (
+          <Bell className="h-4 w-4" />
+        ) : (
+          <BellOff className="h-4 w-4" />
+        )}
+        {isLoading
+          ? "Procesando..."
+          : isEnabled
+            ? "Activas"
+            : "Activar"}
+      </Button>
+      {isEnabled && (
+        <button
+          onClick={testPush}
+          disabled={isTesting}
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+        >
+          {isTesting ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Send className="h-3 w-3" />
+          )}
+          Probar
+        </button>
       )}
-      {isLoading
-        ? "Procesando..."
-        : isEnabled
-          ? "Notificaciones activas"
-          : "Activar notificaciones"}
-    </Button>
+    </div>
   )
 }
 
