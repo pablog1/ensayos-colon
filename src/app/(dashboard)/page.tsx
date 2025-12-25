@@ -374,9 +374,14 @@ export default function DashboardPage() {
     }
   }
 
-  // Verificar si el usuario ya tiene rotativo en este evento
+  // Verificar si el usuario ya tiene rotativo activo en este evento
+  // (excluir rechazados y cancelados)
   const userHasRotativo = (evento: Evento) => {
-    return evento.rotativos?.some(r => r.user.id === userId)
+    return evento.rotativos?.some(r =>
+      r.user.id === userId &&
+      r.estado !== "RECHAZADO" &&
+      r.estado !== "CANCELADO"
+    )
   }
 
   // Helper para obtener colores de títulos para una fecha
@@ -559,81 +564,102 @@ export default function DashboardPage() {
 
     setSubmitting(true)
 
-    // Mostrar progreso de validación de reglas
-    const showRulesProgress = async () => {
-      for (const regla of reglasValidacion) {
-        setValidatingRule(regla)
-        await new Promise(resolve => setTimeout(resolve, 200))
+    try {
+      // Mostrar progreso de validación de reglas
+      const showRulesProgress = async () => {
+        for (const regla of reglasValidacion) {
+          setValidatingRule(regla)
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
       }
-    }
 
-    // Ejecutar validación y animación en paralelo
-    const [validationRes] = await Promise.all([
-      fetch("/api/solicitudes/validar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId: evento.id }),
-      }),
-      showRulesProgress(),
-    ])
+      // Ejecutar validación y animación en paralelo
+      const [validationRes] = await Promise.all([
+        fetch("/api/solicitudes/validar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ eventId: evento.id }),
+        }),
+        showRulesProgress(),
+      ])
 
-    setValidatingRule(null)
+      setValidatingRule(null)
 
-    if (!validationRes.ok) {
-      const error = await validationRes.json()
-      toast.error(error.error || "Error al validar")
+      if (!validationRes.ok) {
+        try {
+          const error = await validationRes.json()
+          toast.error(error.error || "Error al validar")
+        } catch {
+          toast.error("Error al procesar la respuesta del servidor")
+        }
+        setSubmitting(false)
+        return
+      }
+
+      const validation = await validationRes.json()
+
+      // Si requiere aprobación, mostrar diálogo de confirmación
+      if (validation.requiereAprobacion) {
+        setConfirmMotivo(validation.motivoTexto)
+        setConfirmEventId(evento.id)
+        setConfirmDialogOpen(true)
+        setSubmitting(false)
+        return
+      }
+
+      // Si no requiere aprobación, crear directamente
+      await crearRotativo(evento.id, false, null)
+    } catch (error) {
+      console.error("Error en handleSolicitarRotativo:", error)
+      toast.error("Error de conexión. Verifica tu conexión a internet.")
+      setValidatingRule(null)
       setSubmitting(false)
-      return
     }
-
-    const validation = await validationRes.json()
-
-    // Si requiere aprobación, mostrar diálogo de confirmación
-    if (validation.requiereAprobacion) {
-      setConfirmMotivo(validation.motivoTexto)
-      setConfirmEventId(evento.id)
-      setConfirmDialogOpen(true)
-      setSubmitting(false)
-      return
-    }
-
-    // Si no requiere aprobación, crear directamente
-    await crearRotativo(evento.id)
   }
 
   // Función para crear el rotativo (después de validación o confirmación)
-  const crearRotativo = async (eventId: string) => {
+  const crearRotativo = async (eventId: string, requiereAprobacion: boolean, motivo: string | null) => {
     setSubmitting(true)
 
-    const res = await fetch("/api/solicitudes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ eventId }),
-    })
+    try {
+      const res = await fetch("/api/solicitudes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId, requiereAprobacion, motivo }),
+      })
 
-    if (res.ok) {
-      const data = await res.json()
-      await fetchEventos(mesActual)
-      setSidebarMode("rotativos")
-      setSelectedEvento(null)
+      if (res.ok) {
+        const data = await res.json()
+        await fetchEventos(mesActual)
+        setSidebarMode("rotativos")
+        setSelectedEvento(null)
 
-      if (data.estado === "PENDIENTE") {
-        toast.success("Solicitud enviada para aprobación")
+        if (data.estado === "PENDIENTE") {
+          toast.success("Solicitud enviada para aprobación")
+        } else {
+          toast.success("Rotativo aprobado")
+        }
       } else {
-        toast.success("Rotativo aprobado")
+        try {
+          const error = await res.json()
+          toast.error(error.error || "Error al solicitar")
+        } catch {
+          toast.error("Error al procesar la respuesta del servidor")
+        }
       }
-    } else {
-      const error = await res.json()
-      toast.error(error.error || "Error al solicitar")
+    } catch (error) {
+      console.error("Error en crearRotativo:", error)
+      toast.error("Error de conexión. Verifica tu conexión a internet y recarga la página.")
+    } finally {
+      setSubmitting(false)
     }
-    setSubmitting(false)
   }
 
   // Handler para confirmar solicitud de aprobación
   const handleConfirmarSolicitud = async () => {
     if (!confirmEventId) return
     setConfirmDialogOpen(false)
-    await crearRotativo(confirmEventId)
+    await crearRotativo(confirmEventId, true, confirmMotivo)
     setConfirmEventId(null)
     setConfirmMotivo(null)
   }

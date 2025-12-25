@@ -65,10 +65,15 @@ export default function PendientesPage() {
   }
 
   const rechazar = async (id: string) => {
-    if (!confirm("¿Estás seguro de rechazar esta solicitud?")) return
+    const motivo = prompt("Motivo del rechazo (opcional):")
+
+    // Si el usuario cancela el prompt, no continuar
+    if (motivo === null) return
 
     const res = await fetch(`/api/solicitudes/${id}/rechazar`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivo: motivo || undefined }),
     })
 
     if (res.ok) {

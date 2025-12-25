@@ -189,6 +189,12 @@ export function NotificationPanel({ unreadCount }: NotificationPanelProps) {
                       <p className="text-sm text-muted-foreground mt-1">
                         {notification.message}
                       </p>
+                      {notification.type === "ROTATIVO_RECHAZADO" && notification.data?.motivo ? (
+                        <p className="text-sm text-red-600 mt-1">
+                          <span className="font-medium">Motivo: </span>
+                          {String(notification.data.motivo)}
+                        </p>
+                      ) : null}
                       <p className="text-xs text-muted-foreground mt-2">
                         {formatDistanceToNow(new Date(notification.createdAt), {
                           addSuffix: true,

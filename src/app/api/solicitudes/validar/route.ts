@@ -31,7 +31,11 @@ export async function POST(req: NextRequest) {
     where: { id: eventId },
     include: {
       titulo: true,
-      rotativos: true,
+      rotativos: {
+        where: {
+          estado: { notIn: ["RECHAZADO", "CANCELADO"] },
+        },
+      },
     },
   })
 
@@ -39,11 +43,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 })
   }
 
-  // Verificar que no exista ya un rotativo del usuario en este evento
+  // Verificar que no exista ya un rotativo activo del usuario en este evento
+  // (excluir rechazados y cancelados)
   const existente = await prisma.rotativo.findFirst({
     where: {
       userId: session.user.id,
       eventId: eventId,
+      estado: { notIn: ["RECHAZADO", "CANCELADO"] },
     },
   })
 
