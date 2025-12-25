@@ -23,6 +23,10 @@ model User {
   image         String?
   joinDate      DateTime? // Fecha de ingreso (para integrantes nuevos)
 
+  // Push Notifications
+  pushSubscription Json?     // Suscripción para Web Push Notifications
+  pushEnabled      Boolean   @default(false)
+
   accounts       Account[]
   sessions       Session[]
   solicitudes    Solicitud[] // Mantener para compatibilidad

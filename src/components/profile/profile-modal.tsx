@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { User, Key, Eye, EyeOff } from "lucide-react"
+import { User, Key, Eye, EyeOff, Bell } from "lucide-react"
+import { PushNotificationToggle } from "@/components/push/push-notification-toggle"
 
 interface ProfileData {
   name: string
@@ -284,6 +285,22 @@ export function ProfileModal() {
               </form>
             </div>
           )}
+        </div>
+
+        {/* Sección de notificaciones push */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              <div>
+                <h3 className="font-medium text-sm">Notificaciones push</h3>
+                <p className="text-xs text-muted-foreground">
+                  Recibí alertas en tu dispositivo
+                </p>
+              </div>
+            </div>
+            <PushNotificationToggle />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

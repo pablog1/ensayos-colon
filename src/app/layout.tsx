@@ -15,6 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Orquesta - Gestion de Rotativos",
   description: "Sistema de administracion de rotativos",
+  manifest: "/manifest.json",
+  themeColor: "#dc2626",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Rotativos",
+  },
 }
 
 export default function RootLayout({

@@ -1,5 +1,20 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma, type NotificationType } from "@/generated/prisma"
+import { sendPushToUser, sendPushToAdmins } from "./push-notifications"
+
+// URLs para cada tipo de notificación
+const NOTIFICATION_URLS: Record<NotificationType, string> = {
+  ROTATIVO_APROBADO: "/solicitudes",
+  ROTATIVO_RECHAZADO: "/solicitudes",
+  SOLICITUD_PENDIENTE: "/admin/solicitudes",
+  LISTA_ESPERA_CUPO: "/solicitudes",
+  ROTACION_OBLIGATORIA: "/solicitudes",
+  ALERTA_CERCANIA_MAXIMO: "/mi-balance",
+  CONSENSO_PENDIENTE: "/admin/consenso",
+  BLOQUE_APROBADO: "/solicitudes",
+  LICENCIA_REGISTRADA: "/licencias",
+  SISTEMA: "/",
+}
 
 interface CreateNotificationParams {
   userId: string
@@ -12,6 +27,7 @@ interface CreateNotificationParams {
 export async function createNotification(
   params: CreateNotificationParams
 ): Promise<void> {
+  // Crear notificación en BD
   await prisma.notification.create({
     data: {
       userId: params.userId,
@@ -21,6 +37,14 @@ export async function createNotification(
       data: params.data ? (params.data as Prisma.InputJsonValue) : Prisma.JsonNull,
     },
   })
+
+  // Enviar push notification (no esperar, fire and forget)
+  sendPushToUser(params.userId, {
+    title: params.title,
+    body: params.message,
+    url: NOTIFICATION_URLS[params.type] || "/",
+    tag: params.type,
+  }).catch((err) => console.error("[Push] Error:", err))
 }
 
 export async function notifyAdmins(params: Omit<CreateNotificationParams, "userId">): Promise<void> {
@@ -29,6 +53,7 @@ export async function notifyAdmins(params: Omit<CreateNotificationParams, "userI
     select: { id: true },
   })
 
+  // Crear notificaciones en BD
   await prisma.notification.createMany({
     data: admins.map((admin) => ({
       userId: admin.id,
@@ -38,6 +63,14 @@ export async function notifyAdmins(params: Omit<CreateNotificationParams, "userI
       data: params.data ? (params.data as Prisma.InputJsonValue) : Prisma.JsonNull,
     })),
   })
+
+  // Enviar push notifications a admins (no esperar)
+  sendPushToAdmins({
+    title: params.title,
+    body: params.message,
+    url: NOTIFICATION_URLS[params.type] || "/admin",
+    tag: params.type,
+  }).catch((err) => console.error("[Push Admins] Error:", err))
 }
 
 export async function getUserNotifications(
