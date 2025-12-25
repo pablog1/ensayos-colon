@@ -1,7 +1,7 @@
 {
-  "name": "Teatro Colón - Rotativos",
+  "name": "Teatro Colon - Rotativos",
   "short_name": "Rotativos",
-  "description": "Sistema de gestión de rotativos del Teatro Colón",
+  "description": "Sistema de gestion de rotativos del Teatro Colon",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
