@@ -17,6 +17,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { toast } from "sonner"
 import { ChevronDown, ArrowUpDown } from "lucide-react"
 
@@ -34,12 +41,16 @@ interface Solicitud {
   motivo?: string | null
 }
 
+type SortField = "createdAt" | "fecha"
+
 export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [loading, setLoading] = useState(true)
   const [showPastRequests, setShowPastRequests] = useState(false)
-  // true = ascendente (próximas primero), false = descendente (lejanas primero)
-  const [futureAscending, setFutureAscending] = useState(true)
+  // Ordenamiento: por defecto por fecha de solicitud (createdAt), descendente (más recientes primero)
+  const [futureSortField, setFutureSortField] = useState<SortField>("createdAt")
+  const [futureAscending, setFutureAscending] = useState(false)
+  const [pastSortField, setPastSortField] = useState<SortField>("createdAt")
   const [pastAscending, setPastAscending] = useState(false)
 
   useEffect(() => {
@@ -69,7 +80,7 @@ export default function SolicitudesPage() {
     }
   }
 
-  // Separate future and past requests, sorted by event date
+  // Separate future and past requests, sorted by selected field
   const { futureSolicitudes, pastSolicitudes } = useMemo(() => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -89,18 +100,24 @@ export default function SolicitudesPage() {
       }
     })
 
-    // Sort by event date
-    const sortByDate = (a: Solicitud, b: Solicitud, ascending: boolean) => {
-      const dateA = new Date(a.fecha + "T12:00:00").getTime()
-      const dateB = new Date(b.fecha + "T12:00:00").getTime()
+    // Sort by selected field
+    const sortByField = (a: Solicitud, b: Solicitud, field: SortField, ascending: boolean) => {
+      let dateA: number, dateB: number
+      if (field === "createdAt") {
+        dateA = new Date(a.createdAt).getTime()
+        dateB = new Date(b.createdAt).getTime()
+      } else {
+        dateA = new Date(a.fecha + "T12:00:00").getTime()
+        dateB = new Date(b.fecha + "T12:00:00").getTime()
+      }
       return ascending ? dateA - dateB : dateB - dateA
     }
 
-    future.sort((a, b) => sortByDate(a, b, futureAscending))
-    past.sort((a, b) => sortByDate(a, b, pastAscending))
+    future.sort((a, b) => sortByField(a, b, futureSortField, futureAscending))
+    past.sort((a, b) => sortByField(a, b, pastSortField, pastAscending))
 
     return { futureSolicitudes: future, pastSolicitudes: past }
-  }, [solicitudes, futureAscending, pastAscending])
+  }, [solicitudes, futureSortField, futureAscending, pastSortField, pastAscending])
 
   const estadoBadgeVariant = (estado: string) => {
     switch (estado) {
@@ -146,12 +163,22 @@ export default function SolicitudesPage() {
           {s.estado}
         </Badge>
       </div>
-      <div className="text-sm text-muted-foreground">
-        {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        })}
+      <div className="text-sm space-y-1">
+        <div className="text-muted-foreground">
+          <span className="font-medium">Evento: </span>
+          {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+        </div>
+        <div className="text-muted-foreground text-xs">
+          <span className="font-medium">Solicitado: </span>
+          {new Date(s.createdAt).toLocaleDateString("es-ES", {
+            day: "numeric",
+            month: "short",
+          })}
+        </div>
       </div>
       {s.estado === "RECHAZADO" && s.motivo && (
         <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -176,6 +203,12 @@ export default function SolicitudesPage() {
   // Component to render solicitud row (desktop)
   const SolicitudRow = ({ s }: { s: Solicitud }) => (
     <TableRow key={s.id}>
+      <TableCell className="text-muted-foreground text-sm">
+        {new Date(s.createdAt).toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "short",
+        })}
+      </TableCell>
       <TableCell>
         {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
           weekday: "short",
@@ -230,20 +263,34 @@ export default function SolicitudesPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle>Solicitudes Futuras</CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setFutureAscending(!futureAscending)}
-              className="gap-1 text-muted-foreground"
-              title={futureAscending ? "Mostrando próximas primero" : "Mostrando lejanas primero"}
-            >
-              <ArrowUpDown className="h-4 w-4" />
-              <span className="text-xs hidden sm:inline">
-                {futureAscending ? "Próximas primero" : "Lejanas primero"}
-              </span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select
+                value={futureSortField}
+                onValueChange={(value: SortField) => setFutureSortField(value)}
+              >
+                <SelectTrigger className="w-[160px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="createdAt">Fecha solicitud</SelectItem>
+                  <SelectItem value="fecha">Fecha evento</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFutureAscending(!futureAscending)}
+                className="gap-1 text-muted-foreground"
+                title={futureAscending ? "Antiguas primero" : "Recientes primero"}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="text-xs hidden sm:inline">
+                  {futureAscending ? "Antiguas primero" : "Recientes primero"}
+                </span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -265,7 +312,8 @@ export default function SolicitudesPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Solicitado</TableHead>
+                      <TableHead>Fecha Evento</TableHead>
                       <TableHead>Evento</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Acciones</TableHead>
@@ -297,13 +345,25 @@ export default function SolicitudesPage() {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-end mb-3 gap-2">
+                  <Select
+                    value={pastSortField}
+                    onValueChange={(value: SortField) => setPastSortField(value)}
+                  >
+                    <SelectTrigger className="w-[160px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="createdAt">Fecha solicitud</SelectItem>
+                      <SelectItem value="fecha">Fecha evento</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setPastAscending(!pastAscending)}
                     className="gap-1 text-muted-foreground"
-                    title={pastAscending ? "Mostrando antiguas primero" : "Mostrando recientes primero"}
+                    title={pastAscending ? "Antiguas primero" : "Recientes primero"}
                   >
                     <ArrowUpDown className="h-4 w-4" />
                     <span className="text-xs hidden sm:inline">
@@ -323,7 +383,8 @@ export default function SolicitudesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Fecha</TableHead>
+                        <TableHead>Solicitado</TableHead>
+                        <TableHead>Fecha Evento</TableHead>
                         <TableHead>Evento</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead>Acciones</TableHead>
