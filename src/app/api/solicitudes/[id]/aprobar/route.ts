@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/services/notifications"
+import { createAuditLog } from "@/lib/services/audit"
 
 // POST /api/solicitudes/[id]/aprobar - Aprobar rotativo pendiente (solo admin)
 export async function POST(
@@ -77,6 +78,19 @@ export async function POST(
       eventId: updated.eventId,
       eventTitle: updated.event.title,
       eventDate: updated.event.date.toISOString(),
+    },
+  })
+
+  // Create audit log
+  await createAuditLog({
+    action: "ROTATIVO_APROBADO",
+    entityType: "Rotativo",
+    entityId: updated.id,
+    userId: session.user.id,
+    targetUserId: updated.userId,
+    details: {
+      evento: updated.event.title,
+      fecha: updated.event.date.toISOString(),
     },
   })
 

@@ -61,7 +61,22 @@ export async function getAuditLogs(options?: {
     prisma.auditLog.count({ where }),
   ])
 
-  return { logs, total }
+  // Obtener información de usuarios
+  const userIds = [...new Set(logs.flatMap(log => [log.userId, log.targetUserId].filter(Boolean)))]
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds as string[] } },
+    select: { id: true, name: true, alias: true },
+  })
+  const userMap = new Map(users.map(u => [u.id, u]))
+
+  // Agregar datos de usuario a los logs
+  const logsWithUsers = logs.map(log => ({
+    ...log,
+    user: userMap.get(log.userId) || null,
+    targetUser: log.targetUserId ? userMap.get(log.targetUserId) || null : null,
+  }))
+
+  return { logs: logsWithUsers, total }
 }
 
 export async function getEntityHistory(entityType: string, entityId: string) {

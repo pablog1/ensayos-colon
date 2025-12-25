@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
+import { createAuditLog } from "@/lib/services/audit"
 
 // Helper: Obtener número de semana del año
 function getWeekNumber(date: Date): number {
@@ -449,8 +450,26 @@ export async function POST(req: NextRequest) {
           id: true,
           title: true,
           date: true,
+          titulo: {
+            select: { name: true },
+          },
         },
       },
+    },
+  })
+
+  // Registrar en audit log
+  await createAuditLog({
+    action: "ROTATIVO_CREADO",
+    entityType: "Rotativo",
+    entityId: rotativo.id,
+    userId: session.user.id,
+    details: {
+      evento: rotativo.event.title,
+      titulo: rotativo.event.titulo?.name,
+      fecha: rotativo.event.date,
+      estado: rotativo.estado,
+      requiereAprobacion,
     },
   })
 

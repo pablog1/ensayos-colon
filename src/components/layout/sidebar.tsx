@@ -16,6 +16,7 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  History,
 } from "lucide-react"
 
 const navItems = [
@@ -60,6 +61,12 @@ const navItems = [
     label: "Configuración",
     icon: Settings,
     roles: ["ADMIN"],
+  },
+  {
+    href: "/logs",
+    label: "Logs",
+    icon: History,
+    roles: ["ADMIN", "INTEGRANTE"],
   },
 ]
 

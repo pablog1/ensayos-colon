@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createAuditLog } from "@/lib/services/audit"
 
 // DELETE /api/solicitudes/[id] - Cancelar rotativo
 export async function DELETE(
@@ -18,7 +19,7 @@ export async function DELETE(
     where: { id },
     include: {
       event: {
-        select: { date: true },
+        select: { date: true, title: true },
       },
     },
   })
@@ -45,6 +46,18 @@ export async function DELETE(
       { status: 400 }
     )
   }
+
+  // Create audit log before deleting
+  await createAuditLog({
+    action: "ROTATIVO_CANCELADO",
+    entityType: "Rotativo",
+    entityId: id,
+    userId: session.user.id,
+    details: {
+      evento: rotativo.event.title,
+      fecha: rotativo.event.date.toISOString(),
+    },
+  })
 
   // Eliminar el rotativo
   await prisma.rotativo.delete({

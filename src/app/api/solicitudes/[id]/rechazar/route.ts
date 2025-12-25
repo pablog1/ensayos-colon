@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/services/notifications"
+import { createAuditLog } from "@/lib/services/audit"
 
 // POST /api/solicitudes/[id]/rechazar - Rechazar rotativo pendiente (solo admin)
 export async function POST(
@@ -58,6 +59,19 @@ export async function POST(
       eventId: rotativo.eventId,
       eventTitle: rotativo.event.title,
       eventDate: rotativo.event.date.toISOString(),
+    },
+  })
+
+  // Create audit log before deleting
+  await createAuditLog({
+    action: "ROTATIVO_RECHAZADO",
+    entityType: "Rotativo",
+    entityId: id,
+    userId: session.user.id,
+    targetUserId: rotativo.userId,
+    details: {
+      evento: rotativo.event.title,
+      fecha: rotativo.event.date.toISOString(),
     },
   })
 
