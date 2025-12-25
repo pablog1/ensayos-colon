@@ -91,6 +91,60 @@ export async function POST(req: NextRequest) {
   const motivosAprobacion: string[] = []
 
   // ============================================
+  // REGLA: SOBRECUPO (siempre activa)
+  // Si el usuario ya está en su máximo o lo superaría, requiere aprobación
+  // ============================================
+  if (evento.seasonId) {
+    // Obtener todos los títulos de la temporada con sus eventos para calcular cupos totales
+    const titulos = await prisma.titulo.findMany({
+      where: { seasonId: evento.seasonId },
+      include: {
+        events: {
+          select: {
+            id: true,
+            cupoOverride: true,
+          },
+        },
+      },
+    })
+
+    // Calcular total de cupos disponibles en la temporada
+    let totalCuposDisponibles = 0
+    for (const titulo of titulos) {
+      for (const ev of titulo.events) {
+        const cupo = ev.cupoOverride ?? titulo.cupo
+        totalCuposDisponibles += cupo
+      }
+    }
+
+    // Contar total de integrantes
+    const totalIntegrantes = await prisma.user.count()
+
+    // Calcular máximo por integrante
+    const maximoPorIntegrante = totalIntegrantes > 0
+      ? Math.round(totalCuposDisponibles / totalIntegrantes)
+      : 0
+
+    // Contar rotativos actuales del usuario en la temporada (APROBADO o PENDIENTE)
+    const rotativosUsuarioTemporada = await prisma.rotativo.count({
+      where: {
+        userId: session.user.id,
+        estado: { in: ["APROBADO", "PENDIENTE"] },
+        event: {
+          seasonId: evento.seasonId,
+        },
+      },
+    })
+
+    // Si ya está en su máximo o lo superaría, requiere aprobación
+    if (rotativosUsuarioTemporada >= maximoPorIntegrante) {
+      motivosAprobacion.push(
+        `Excede cupo máximo de temporada (${rotativosUsuarioTemporada + 1}/${maximoPorIntegrante})`
+      )
+    }
+  }
+
+  // ============================================
   // REGLA: FINES_SEMANA_MAX
   // ============================================
   const reglaFinesSemana = await prisma.ruleConfig.findUnique({

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BarChart3, Users, Calendar, Clock } from "lucide-react"
+import { BarChart3, Users, Calendar, Clock, AlertTriangle } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface CuposUsuarioTemporada {
@@ -212,7 +212,10 @@ export default function EstadisticasPage() {
                 {stats.personal.cuposTemporada.restantes > 0 ? (
                   <Badge className="bg-green-100 text-green-800">Podés solicitar más</Badge>
                 ) : stats.personal.cuposTemporada.consumidos > stats.personal.cuposTemporada.maximoAsignado ? (
-                  <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                  </span>
                 ) : (
                   <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
                 )}
@@ -281,7 +284,10 @@ export default function EstadisticasPage() {
                         {i.cuposTemporada.restantes > 0 ? (
                           <Badge className="bg-green-100 text-green-800">Disponible</Badge>
                         ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
-                          <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                          <span className="flex items-center gap-1">
+                            <AlertTriangle className="w-4 h-4 text-orange-600" />
+                            <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                          </span>
                         ) : (
                           <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
                         )}
@@ -362,7 +368,10 @@ export default function EstadisticasPage() {
                             {i.cuposTemporada.restantes > 0 ? (
                               <Badge className="bg-green-100 text-green-800">Disponible</Badge>
                             ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
-                              <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                              <span className="inline-flex items-center gap-1">
+                                <AlertTriangle className="w-4 h-4 text-orange-600" />
+                                <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                              </span>
                             ) : (
                               <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
                             )}

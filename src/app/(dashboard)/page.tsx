@@ -716,7 +716,7 @@ export default function DashboardPage() {
         setSelectedEvento(null)
 
         if (data.estado === "PENDIENTE") {
-          toast.success("Solicitud enviada para aprobación")
+          toast.warning("Solicitud enviada para aprobación")
         } else {
           toast.success("Rotativo aprobado")
         }

@@ -26,7 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           toast: "!py-5 !px-6 !text-base !gap-4",
           title: "!text-base !font-medium",
           description: "!text-sm",
-          closeButton: "!bg-background !border-border hover:!bg-muted !size-6",
+          closeButton: "!bg-background !border-border hover:!bg-muted !size-8 !right-2 !top-2 [&>svg]:!size-4",
           success: "!bg-green-100 !border-green-300 !text-green-900",
           error: "!bg-red-100 !border-red-300 !text-red-900",
           info: "!bg-yellow-100 !border-yellow-300 !text-yellow-900",
