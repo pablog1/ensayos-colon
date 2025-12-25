@@ -49,20 +49,40 @@ export async function POST(
     )
   }
 
-  // Create notification before deleting
+  // Obtener motivo de rechazo del body (opcional)
+  let motivoRechazo: string | null = null
+  try {
+    const body = await req.json()
+    motivoRechazo = body.motivo || null
+  } catch {
+    // No body provided, that's ok
+  }
+
+  // Actualizar estado a RECHAZADO (no eliminar)
+  const updated = await prisma.rotativo.update({
+    where: { id },
+    data: {
+      estado: "RECHAZADO",
+      rechazadoPor: session.user.id,
+      motivo: motivoRechazo || rotativo.motivo,
+    },
+  })
+
+  // Create notification
   await createNotification({
     userId: rotativo.userId,
     type: "ROTATIVO_RECHAZADO",
     title: "Rotativo rechazado",
-    message: `Tu solicitud de rotativo para "${rotativo.event.title}" ha sido rechazada`,
+    message: `Tu solicitud de rotativo para "${rotativo.event.title}" ha sido rechazada${motivoRechazo ? `: ${motivoRechazo}` : ""}`,
     data: {
       eventId: rotativo.eventId,
       eventTitle: rotativo.event.title,
       eventDate: rotativo.event.date.toISOString(),
+      motivo: motivoRechazo,
     },
   })
 
-  // Create audit log before deleting
+  // Create audit log
   await createAuditLog({
     action: "ROTATIVO_RECHAZADO",
     entityType: "Rotativo",
@@ -72,13 +92,9 @@ export async function POST(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
+      motivo: motivoRechazo,
     },
   })
 
-  // Al rechazar, eliminamos el rotativo
-  await prisma.rotativo.delete({
-    where: { id },
-  })
-
-  return NextResponse.json({ success: true })
+  return NextResponse.json(updated)
 }

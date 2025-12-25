@@ -154,7 +154,7 @@ export default function PendientesPage() {
                     <div>
                       <span className="text-muted-foreground">Rotativo: </span>
                       <span className="font-medium">
-                        {new Date(s.fecha).toLocaleDateString("es-ES", {
+                        {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
                           weekday: "short",
                           day: "numeric",
                           month: "short",

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
+import { notifyAdmins } from "@/lib/services/notifications"
 
 // Helper: Obtener número de semana del año
 function getWeekNumber(date: Date): number {
@@ -472,6 +473,24 @@ export async function POST(req: NextRequest) {
       requiereAprobacion,
     },
   })
+
+  // Notificar a admins si requiere aprobación
+  if (requiereAprobacion) {
+    const userName = rotativo.user.alias || rotativo.user.name
+    await notifyAdmins({
+      type: "SOLICITUD_PENDIENTE",
+      title: "Nueva solicitud pendiente",
+      message: `${userName} solicitó rotativo para "${rotativo.event.title}" y requiere aprobación`,
+      data: {
+        rotativoId: rotativo.id,
+        eventId: rotativo.eventId,
+        eventTitle: rotativo.event.title,
+        userId: rotativo.userId,
+        userName,
+        motivo: motivoFinal,
+      },
+    })
+  }
 
   return NextResponse.json(rotativo)
 }
