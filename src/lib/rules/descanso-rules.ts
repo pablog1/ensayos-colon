@@ -1,5 +1,22 @@
 import { prisma } from "@/lib/prisma"
 
+export interface CuposTemporada {
+  totalCuposDisponibles: number     // Suma de slots de todos los eventos
+  cuposConsumidos: number           // Rotativos aprobados
+  cuposRestantes: number            // totalCuposDisponibles - cuposConsumidos
+  maximoPorIntegrante: number       // totalCuposDisponibles / totalIntegrantes
+  totalIntegrantes: number
+  seasonId: string | null
+  seasonName: string | null
+}
+
+export interface CuposUsuario {
+  maximoAsignado: number            // maximoPorIntegrante
+  consumidos: number                // Rotativos aprobados del usuario en la temporada
+  restantes: number                 // maximoAsignado - consumidos
+  porcentajeUsado: number           // (consumidos / maximoAsignado) * 100
+}
+
 export interface DescansoStats {
   userId: string
   mes: Date
@@ -187,4 +204,155 @@ export async function obtenerEstadisticasGenerales(mesStr: string) {
     solicitudesPendientes,
     integrantes: estadisticasPorUsuario,
   }
+}
+
+/**
+ * Calcula los cupos de la temporada activa
+ * Suma los slots de todos los eventos y calcula cuántos están consumidos
+ */
+export async function obtenerCuposTemporada(): Promise<CuposTemporada> {
+  // Obtener temporada activa
+  const season = await prisma.season.findFirst({
+    where: { isActive: true },
+  })
+
+  if (!season) {
+    return {
+      totalCuposDisponibles: 0,
+      cuposConsumidos: 0,
+      cuposRestantes: 0,
+      maximoPorIntegrante: 0,
+      totalIntegrantes: 0,
+      seasonId: null,
+      seasonName: null,
+    }
+  }
+
+  // Obtener todos los titulos con sus eventos
+  const titulos = await prisma.titulo.findMany({
+    where: { seasonId: season.id },
+    include: {
+      events: {
+        select: {
+          id: true,
+          cupoOverride: true,
+        },
+      },
+    },
+  })
+
+  // Calcular total de cupos disponibles
+  let totalCuposDisponibles = 0
+  for (const titulo of titulos) {
+    for (const evento of titulo.events) {
+      const cupo = evento.cupoOverride ?? titulo.cupo
+      totalCuposDisponibles += cupo
+    }
+  }
+
+  // Contar rotativos aprobados de la temporada
+  const cuposConsumidos = await prisma.rotativo.count({
+    where: {
+      estado: "APROBADO",
+      event: {
+        seasonId: season.id,
+      },
+    },
+  })
+
+  // Total de integrantes
+  const totalIntegrantes = await prisma.user.count({
+    where: { role: "INTEGRANTE" },
+  })
+
+  const cuposRestantes = totalCuposDisponibles - cuposConsumidos
+  const maximoPorIntegrante = totalIntegrantes > 0
+    ? Math.round(totalCuposDisponibles / totalIntegrantes)
+    : 0
+
+  return {
+    totalCuposDisponibles,
+    cuposConsumidos,
+    cuposRestantes,
+    maximoPorIntegrante,
+    totalIntegrantes,
+    seasonId: season.id,
+    seasonName: season.name,
+  }
+}
+
+/**
+ * Calcula los cupos de un usuario específico para la temporada activa
+ */
+export async function obtenerCuposUsuario(userId: string): Promise<CuposUsuario> {
+  const cuposTemporada = await obtenerCuposTemporada()
+
+  if (!cuposTemporada.seasonId) {
+    return {
+      maximoAsignado: 0,
+      consumidos: 0,
+      restantes: 0,
+      porcentajeUsado: 0,
+    }
+  }
+
+  // Contar rotativos aprobados del usuario en la temporada
+  const consumidos = await prisma.rotativo.count({
+    where: {
+      userId,
+      estado: "APROBADO",
+      event: {
+        seasonId: cuposTemporada.seasonId,
+      },
+    },
+  })
+
+  const maximoAsignado = cuposTemporada.maximoPorIntegrante
+  const restantes = Math.max(0, maximoAsignado - consumidos)
+  const porcentajeUsado = maximoAsignado > 0
+    ? Math.round((consumidos / maximoAsignado) * 100)
+    : 0
+
+  return {
+    maximoAsignado,
+    consumidos,
+    restantes,
+    porcentajeUsado,
+  }
+}
+
+/**
+ * Obtiene los rotativos de temporada de todos los usuarios de forma eficiente
+ * Retorna un mapa de userId -> cantidad de rotativos aprobados en la temporada
+ */
+export async function obtenerRotativosTemporadaPorUsuario(): Promise<Record<string, number>> {
+  // Obtener temporada activa
+  const season = await prisma.season.findFirst({
+    where: { isActive: true },
+  })
+
+  if (!season) {
+    return {}
+  }
+
+  // Agrupar rotativos por usuario
+  const rotativos = await prisma.rotativo.groupBy({
+    by: ['userId'],
+    where: {
+      estado: "APROBADO",
+      event: {
+        seasonId: season.id,
+      },
+    },
+    _count: {
+      id: true,
+    },
+  })
+
+  const porUsuario: Record<string, number> = {}
+  for (const r of rotativos) {
+    porUsuario[r.userId] = r._count.id
+  }
+
+  return porUsuario
 }

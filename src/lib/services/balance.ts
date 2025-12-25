@@ -1,5 +1,40 @@
 import { prisma } from "@/lib/prisma"
 
+/**
+ * Calcula el máximo proyectado basado en los cupos reales de todos los eventos
+ * de la temporada dividido por la cantidad de integrantes
+ */
+async function calcularMaxProyectadoReal(seasonId: string): Promise<number> {
+  // Obtener todos los titulos con sus eventos
+  const titulos = await prisma.titulo.findMany({
+    where: { seasonId },
+    include: {
+      events: {
+        select: {
+          cupoOverride: true,
+        },
+      },
+    },
+  })
+
+  // Calcular total de cupos disponibles sumando los slots de cada evento
+  let totalCuposDisponibles = 0
+  for (const titulo of titulos) {
+    for (const evento of titulo.events) {
+      const cupo = evento.cupoOverride ?? titulo.cupo
+      totalCuposDisponibles += cupo
+    }
+  }
+
+  // Total de integrantes (todos los usuarios son integrantes, incluyendo ADMIN)
+  const totalIntegrantes = await prisma.user.count()
+
+  // Máximo por integrante = total cupos / cantidad de integrantes
+  return totalIntegrantes > 0
+    ? Math.round(totalCuposDisponibles / totalIntegrantes)
+    : 0
+}
+
 interface UpdateBalanceParams {
   incrementRotativos?: boolean
   incrementObligatorios?: boolean
@@ -18,9 +53,7 @@ export async function updateUserBalance(
 
   if (!balance) {
     // Crear balance si no existe
-    const season = await prisma.season.findUnique({
-      where: { id: seasonId },
-    })
+    const maxProyectado = await calcularMaxProyectadoReal(seasonId)
 
     await prisma.userSeasonBalance.create({
       data: {
@@ -28,7 +61,7 @@ export async function updateUserBalance(
         seasonId,
         rotativosTomados: params.incrementRotativos ? 1 : 0,
         rotativosObligatorios: params.incrementObligatorios ? 1 : 0,
-        maxProyectado: 50, // Valor por defecto
+        maxProyectado,
         finesDeSemanaMes: params.isWeekend && params.eventDate
           ? { [params.eventDate.toISOString().slice(0, 7)]: 1 }
           : {},
@@ -145,20 +178,8 @@ export async function recalculateBalance(userId: string, seasonId: string): Prom
     },
   }) > 0
 
-  // Calcular maximo proyectado
-  const season = await prisma.season.findUnique({
-    where: { id: seasonId },
-  })
-
-  const totalIntegrantes = await prisma.user.count({
-    where: { role: "INTEGRANTE" },
-  })
-
-  // Formula: (Dias a trabajar × Cupo promedio) / Cantidad integrantes
-  const cupoDiarioPromedio = 3 // Promedio entre opera (4) y concierto (2)
-  const maxProyectado = totalIntegrantes > 0
-    ? Math.round((season?.workingDays ?? 250) * cupoDiarioPromedio / totalIntegrantes)
-    : 50
+  // Calcular maximo proyectado basado en cupos reales
+  const maxProyectado = await calcularMaxProyectadoReal(seasonId)
 
   await prisma.userSeasonBalance.upsert({
     where: { userId_seasonId: { userId, seasonId } },

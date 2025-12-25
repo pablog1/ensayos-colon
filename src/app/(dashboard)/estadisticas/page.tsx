@@ -22,31 +22,41 @@ import {
 } from "@/components/ui/select"
 import { BarChart3, Users, Calendar, Clock } from "lucide-react"
 
+interface CuposUsuarioTemporada {
+  maximoAsignado: number
+  consumidos: number
+  usadosPasados: number    // Ya utilizados (eventos pasados)
+  usadosFuturos: number    // Reservados (eventos futuros)
+  restantes: number
+  porcentajeUsado: number
+}
+
 interface Stats {
-  mes: string
+  temporada: {
+    id: string
+    name: string
+    year: number
+  } | null
   totalIntegrantes: number
-  promedioDescansos: number
-  limiteMaximo: number
   solicitudesPendientes: number
   integrantes: {
     id: string
     nombre: string
     email: string
-    descansosAprobados: number
-    porcentajeVsPromedio: number
-    puedesolicitarMas: boolean
+    cuposTemporada: CuposUsuarioTemporada
   }[]
-  // Solo para integrantes (no admin)
-  currentUserId?: string
-  personal?: {
-    descansosAprobados: number
-    porcentajeVsPromedio: number
-    puedesolicitarMas: boolean
-    descansosRestantesPermitidos: number
+  currentUserId: string
+  cuposTemporada: {
+    totalCuposDisponibles: number
+    cuposConsumidos: number
+    cuposUsadosPasados: number
+    cuposUsadosFuturos: number
+    cuposRestantes: number
+    maximoPorIntegrante: number
+    porcentajeUsado: number
   }
-  grupo?: {
-    promedioDescansos: number
-    limiteMaximo: number
+  personal: {
+    cuposTemporada: CuposUsuarioTemporada
   }
 }
 
@@ -54,57 +64,27 @@ export default function EstadisticasPage() {
   const { data: session } = useSession()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-  })
+  const currentYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString())
 
   useEffect(() => {
     fetchStats()
-  }, [selectedMonth])
+  }, [selectedYear])
 
   const fetchStats = async () => {
     setLoading(true)
-    const res = await fetch(`/api/estadisticas?mes=${selectedMonth}`)
+    const res = await fetch(`/api/estadisticas?year=${selectedYear}`)
     const data = await res.json()
     setStats(data)
     setLoading(false)
   }
 
-  // Generar meses: 12 meses hacia atrás + todos los meses hasta diciembre 2026
-  const months = (() => {
-    const result: { value: string; label: string }[] = []
-    const now = new Date()
-
-    // Meses futuros hasta diciembre 2026
-    const endDate = new Date(2026, 11) // Diciembre 2026
-    const futureDate = new Date(now.getFullYear(), now.getMonth())
-    while (futureDate <= endDate) {
-      result.push({
-        value: `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, "0")}`,
-        label: futureDate.toLocaleDateString("es-ES", {
-          month: "long",
-          year: "numeric",
-        }),
-      })
-      futureDate.setMonth(futureDate.getMonth() + 1)
-    }
-
-    // Meses pasados (12 meses hacia atrás desde el mes anterior al actual)
-    const pastDate = new Date(now.getFullYear(), now.getMonth() - 1)
-    for (let i = 0; i < 12; i++) {
-      result.push({
-        value: `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, "0")}`,
-        label: pastDate.toLocaleDateString("es-ES", {
-          month: "long",
-          year: "numeric",
-        }),
-      })
-      pastDate.setMonth(pastDate.getMonth() - 1)
-    }
-
-    return result
-  })()
+  // Generar años: anterior, actual, siguiente
+  const years = [
+    { value: (currentYear - 1).toString(), label: `Temporada ${currentYear - 1}` },
+    { value: currentYear.toString(), label: `Temporada ${currentYear}` },
+    { value: (currentYear + 1).toString(), label: `Temporada ${currentYear + 1}` },
+  ]
 
   if (loading) {
     return (
@@ -122,25 +102,35 @@ export default function EstadisticasPage() {
           <div>
             <h1 className="text-2xl font-bold">Estadísticas</h1>
             <p className="text-muted-foreground">
-              Resumen de rotativos del período
+              Resumen de rotativos de la temporada
             </p>
           </div>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
           <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {months.map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
+            {years.map((y) => (
+              <SelectItem key={y.value} value={y.value}>
+                {y.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {stats && (
+      {stats && !stats.temporada && (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">No hay temporada para el año {selectedYear}</p>
+            <p className="text-muted-foreground">Seleccioná otro año o esperá a que se cree la temporada.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {stats && stats.temporada && (
         <>
           {/* Cards de estadísticas generales - visible para todos */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -160,12 +150,18 @@ export default function EstadisticasPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
                   <BarChart3 className="w-4 h-4" />
-                  Promedio del grupo
+                  Máximo por integrante
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">{stats.promedioDescansos}</p>
-                <p className="text-xs text-muted-foreground">rotativos este mes</p>
+              <CardContent className="space-y-3">
+                <p className="text-3xl font-bold">{stats.cuposTemporada.maximoPorIntegrante}</p>
+                <div className="space-y-2">
+                  <Progress value={stats.personal.cuposTemporada.porcentajeUsado} className="h-2" />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span className="text-primary font-medium">{stats.personal.cuposTemporada.consumidos} usados</span>
+                    <span className="text-green-600 font-medium">{stats.personal.cuposTemporada.restantes} disponibles</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -173,12 +169,19 @@ export default function EstadisticasPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  Máximo por temporada
+                  Cupos temporada
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-bold">~50</p>
-                <p className="text-xs text-muted-foreground">rotativos por año</p>
+              <CardContent className="space-y-3">
+                <p className="text-3xl font-bold">{stats.cuposTemporada.totalCuposDisponibles}</p>
+                <div className="space-y-2">
+                  <Progress value={stats.cuposTemporada.porcentajeUsado} className="h-2" />
+                  <div className="grid grid-cols-3 text-xs text-muted-foreground">
+                    <span title="Rotativos de eventos ya pasados">{stats.cuposTemporada.cuposUsadosPasados} usados</span>
+                    <span title="Rotativos de eventos futuros" className="text-center">{stats.cuposTemporada.cuposUsadosFuturos} reservados</span>
+                    <span className="text-green-600 text-right">{stats.cuposTemporada.cuposRestantes} disponibles</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -198,49 +201,55 @@ export default function EstadisticasPage() {
             </Card>
           </div>
 
-          {/* Card personal para integrantes (no admin) */}
-          {stats.personal && (
-            <Card className="border-primary/50 bg-primary/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <span className="text-primary">Tus rotativos</span>
-                  {stats.personal.puedesolicitarMas ? (
-                    <Badge className="bg-green-100 text-green-800">Podés solicitar más</Badge>
-                  ) : (
-                    <Badge variant="destructive">En el límite</Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-background rounded-lg text-center">
-                    <div className="text-2xl font-bold text-primary">
-                      {stats.personal.descansosAprobados}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Tomados</div>
+          {/* Card personal para todos (ADMIN e INTEGRANTE) */}
+          <Card className="border-primary/50 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-primary">Tus rotativos</span>
+                {stats.personal.cuposTemporada.restantes > 0 ? (
+                  <Badge className="bg-green-100 text-green-800">Podés solicitar más</Badge>
+                ) : stats.personal.cuposTemporada.consumidos > stats.personal.cuposTemporada.maximoAsignado ? (
+                  <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                ) : (
+                  <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 bg-background rounded-lg text-center">
+                  <div className="text-2xl font-bold text-muted-foreground">
+                    {stats.personal.cuposTemporada.usadosPasados}
                   </div>
-                  <div className="p-3 bg-background rounded-lg text-center">
-                    <div className="text-2xl font-bold text-green-600">
-                      {stats.personal.descansosRestantesPermitidos}
-                    </div>
-                    <div className="text-xs text-muted-foreground">Disponibles</div>
+                  <div className="text-xs text-muted-foreground">Usados</div>
+                </div>
+                <div className="p-3 bg-background rounded-lg text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {stats.personal.cuposTemporada.usadosFuturos}
                   </div>
-                  <div className="p-3 bg-background rounded-lg text-center col-span-2">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Progreso anual</span>
-                        <span>{stats.personal.descansosAprobados} de ~50</span>
-                      </div>
-                      <Progress
-                        value={Math.min(100, (stats.personal.descansosAprobados / 50) * 100)}
-                        className="h-2"
-                      />
+                  <div className="text-xs text-muted-foreground">Reservados</div>
+                </div>
+                <div className="p-3 bg-background rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {stats.personal.cuposTemporada.restantes}
+                  </div>
+                  <div className="text-xs text-muted-foreground">Disponibles</div>
+                </div>
+                <div className="p-3 bg-background rounded-lg text-center">
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Progreso</span>
+                      <span>{stats.personal.cuposTemporada.consumidos} de {stats.cuposTemporada.maximoPorIntegrante}</span>
                     </div>
+                    <Progress
+                      value={Math.min(100, stats.personal.cuposTemporada.porcentajeUsado)}
+                      className="h-2"
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Tabla de todos los integrantes - visible para todos */}
           <Card>
@@ -251,8 +260,6 @@ export default function EstadisticasPage() {
               {/* Vista mobile: Cards */}
               <div className="md:hidden space-y-3">
                 {stats.integrantes.map((i) => {
-                  const maxAnual = 50
-                  const progreso = Math.min(100, (i.descansosAprobados / maxAnual) * 100)
                   const isCurrentUser = stats.currentUserId === i.id
 
                   return (
@@ -268,25 +275,34 @@ export default function EstadisticasPage() {
                           </p>
                           <p className="text-sm text-muted-foreground truncate">{i.email}</p>
                         </div>
-                        <div className="text-right">
-                          <span className="text-2xl font-bold">{i.descansosAprobados}</span>
-                          <p className="text-xs text-muted-foreground">rotativos</p>
+                        {i.cuposTemporada.restantes > 0 ? (
+                          <Badge className="bg-green-100 text-green-800">Disponible</Badge>
+                        ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
+                          <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="p-2 bg-muted/50 rounded">
+                          <div className="text-lg font-bold text-muted-foreground">{i.cuposTemporada.usadosPasados}</div>
+                          <div className="text-xs text-muted-foreground">Usados</div>
+                        </div>
+                        <div className="p-2 bg-muted/50 rounded">
+                          <div className="text-lg font-bold text-primary">{i.cuposTemporada.usadosFuturos}</div>
+                          <div className="text-xs text-muted-foreground">Reservados</div>
+                        </div>
+                        <div className="p-2 bg-muted/50 rounded">
+                          <div className="text-lg font-bold text-green-600">{i.cuposTemporada.restantes}</div>
+                          <div className="text-xs text-muted-foreground">Libres</div>
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <Progress value={progreso} className="h-2 flex-1" />
-                          <span className="text-xs text-muted-foreground w-10">
-                            {progreso.toFixed(0)}%
-                          </span>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Progreso</span>
+                          <span>{i.cuposTemporada.consumidos} de {i.cuposTemporada.maximoAsignado}</span>
                         </div>
-                      </div>
-                      <div>
-                        {i.puedesolicitarMas ? (
-                          <Badge className="bg-green-100 text-green-800">Disponible</Badge>
-                        ) : (
-                          <Badge variant="destructive">En el límite</Badge>
-                        )}
+                        <Progress value={Math.min(100, i.cuposTemporada.porcentajeUsado)} className="h-2" />
                       </div>
                     </div>
                   )
@@ -299,16 +315,15 @@ export default function EstadisticasPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead className="text-center">Rotativos</TableHead>
-                      <TableHead className="text-center">Progreso anual</TableHead>
+                      <TableHead className="text-center">Usados</TableHead>
+                      <TableHead className="text-center">Reservados</TableHead>
+                      <TableHead className="text-center">Libres</TableHead>
+                      <TableHead className="text-center">Progreso</TableHead>
                       <TableHead className="text-center">Estado</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {stats.integrantes.map((i) => {
-                      const maxAnual = 50
-                      const progreso = Math.min(100, (i.descansosAprobados / maxAnual) * 100)
                       const isCurrentUser = stats.currentUserId === i.id
 
                       return (
@@ -317,23 +332,36 @@ export default function EstadisticasPage() {
                             {i.nombre}
                             {isCurrentUser && <span className="text-primary ml-2">(Vos)</span>}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">{i.email}</TableCell>
                           <TableCell className="text-center">
-                            <span className="text-lg font-semibold">{i.descansosAprobados}</span>
+                            <span className="text-lg font-semibold text-muted-foreground">
+                              {i.cuposTemporada.usadosPasados}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-lg font-semibold text-primary">
+                              {i.cuposTemporada.usadosFuturos}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="text-lg font-semibold text-green-600">
+                              {i.cuposTemporada.restantes}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Progress value={progreso} className="h-2 flex-1" />
-                              <span className="text-xs text-muted-foreground w-12">
-                                {progreso.toFixed(0)}%
+                              <Progress value={Math.min(100, i.cuposTemporada.porcentajeUsado)} className="h-2 flex-1" />
+                              <span className="text-xs text-muted-foreground w-16">
+                                {i.cuposTemporada.consumidos}/{i.cuposTemporada.maximoAsignado}
                               </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            {i.puedesolicitarMas ? (
+                            {i.cuposTemporada.restantes > 0 ? (
                               <Badge className="bg-green-100 text-green-800">Disponible</Badge>
+                            ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
+                              <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
                             ) : (
-                              <Badge variant="destructive">En el límite</Badge>
+                              <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
                             )}
                           </TableCell>
                         </TableRow>
