@@ -178,6 +178,18 @@ export default function DashboardPage() {
   const [confirmMotivo, setConfirmMotivo] = useState<string | null>(null)
   const [confirmEventId, setConfirmEventId] = useState<string | null>(null)
 
+  // Estado para mostrar progreso de validación
+  const [validatingRule, setValidatingRule] = useState<string | null>(null)
+
+  // Lista de reglas para mostrar durante validación
+  const reglasValidacion = [
+    "Verificando plazo de solicitud...",
+    "Verificando fines de semana...",
+    "Verificando límite anual...",
+    "Verificando ensayos dobles...",
+    "Verificando funciones por título...",
+  ]
+
   // Horarios predefinidos según tipo de evento
   const getHorariosPredefinidos = (tipo: "ENSAYO" | "FUNCION", fecha?: string) => {
     // Determinar día de la semana (0=Dom, 1=Lun, 2=Mar, 3=Mie, 4=Jue, 5=Vie, 6=Sab)
@@ -535,12 +547,25 @@ export default function DashboardPage() {
 
     setSubmitting(true)
 
-    // Paso 1: Validar si requiere aprobación
-    const validationRes = await fetch("/api/solicitudes/validar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ eventId: evento.id }),
-    })
+    // Mostrar progreso de validación de reglas
+    const showRulesProgress = async () => {
+      for (const regla of reglasValidacion) {
+        setValidatingRule(regla)
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+    }
+
+    // Ejecutar validación y animación en paralelo
+    const [validationRes] = await Promise.all([
+      fetch("/api/solicitudes/validar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: evento.id }),
+      }),
+      showRulesProgress(),
+    ])
+
+    setValidatingRule(null)
 
     if (!validationRes.ok) {
       const error = await validationRes.json()
@@ -1513,20 +1538,27 @@ export default function DashboardPage() {
                   {/* Acciones */}
                   <div className="space-y-2 pt-2 border-t">
                     {!userHasRotativo(selectedEvento) && selectedEvento.cupoDisponible > 0 && (
-                      <Button
-                        className="w-full"
-                        onClick={() => handleSolicitarRotativo(selectedEvento)}
-                        disabled={submitting}
-                      >
-                        {submitting ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Validando reglas...
-                          </>
-                        ) : (
-                          "Solicitar Rotativo"
+                      <div className="space-y-2">
+                        <Button
+                          className="w-full"
+                          onClick={() => handleSolicitarRotativo(selectedEvento)}
+                          disabled={submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Validando...
+                            </>
+                          ) : (
+                            "Solicitar Rotativo"
+                          )}
+                        </Button>
+                        {validatingRule && (
+                          <p className="text-xs text-muted-foreground text-center animate-pulse">
+                            {validatingRule}
+                          </p>
                         )}
-                      </Button>
+                      </div>
                     )}
                     {userHasRotativo(selectedEvento) && (
                       <Button
