@@ -173,9 +173,10 @@ export default function DashboardPage() {
 
   const [submitting, setSubmitting] = useState(false)
 
-  // Estado para el diálogo de rotativo pendiente
-  const [pendingDialogOpen, setPendingDialogOpen] = useState(false)
-  const [pendingMotivo, setPendingMotivo] = useState<string | null>(null)
+  // Estado para el diálogo de confirmación de rotativo
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [confirmMotivo, setConfirmMotivo] = useState<string | null>(null)
+  const [confirmEventId, setConfirmEventId] = useState<string | null>(null)
 
   // Horarios predefinidos según tipo de evento
   const getHorariosPredefinidos = (tipo: "ENSAYO" | "FUNCION", fecha?: string) => {
@@ -520,7 +521,7 @@ export default function DashboardPage() {
     }
   }
 
-  // Handler para solicitar rotativo
+  // Handler para solicitar rotativo - primero valida, luego pide confirmación si es necesario
   const handleSolicitarRotativo = async (evento: Evento) => {
     if (userHasRotativo(evento)) {
       toast.error("Ya tienes un rotativo en este evento")
@@ -533,12 +534,44 @@ export default function DashboardPage() {
     }
 
     setSubmitting(true)
+
+    // Paso 1: Validar si requiere aprobación
+    const validationRes = await fetch("/api/solicitudes/validar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventId: evento.id }),
+    })
+
+    if (!validationRes.ok) {
+      const error = await validationRes.json()
+      toast.error(error.error || "Error al validar")
+      setSubmitting(false)
+      return
+    }
+
+    const validation = await validationRes.json()
+
+    // Si requiere aprobación, mostrar diálogo de confirmación
+    if (validation.requiereAprobacion) {
+      setConfirmMotivo(validation.motivoTexto)
+      setConfirmEventId(evento.id)
+      setConfirmDialogOpen(true)
+      setSubmitting(false)
+      return
+    }
+
+    // Si no requiere aprobación, crear directamente
+    await crearRotativo(evento.id)
+  }
+
+  // Función para crear el rotativo (después de validación o confirmación)
+  const crearRotativo = async (eventId: string) => {
+    setSubmitting(true)
+
     const res = await fetch("/api/solicitudes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        eventId: evento.id,
-      }),
+      body: JSON.stringify({ eventId }),
     })
 
     if (res.ok) {
@@ -547,10 +580,8 @@ export default function DashboardPage() {
       setSidebarMode("rotativos")
       setSelectedEvento(null)
 
-      // Verificar si el rotativo quedó pendiente de aprobación
       if (data.estado === "PENDIENTE") {
-        setPendingMotivo(data.motivo)
-        setPendingDialogOpen(true)
+        toast.success("Solicitud enviada para aprobación")
       } else {
         toast.success("Rotativo aprobado")
       }
@@ -559,6 +590,22 @@ export default function DashboardPage() {
       toast.error(error.error || "Error al solicitar")
     }
     setSubmitting(false)
+  }
+
+  // Handler para confirmar solicitud de aprobación
+  const handleConfirmarSolicitud = async () => {
+    if (!confirmEventId) return
+    setConfirmDialogOpen(false)
+    await crearRotativo(confirmEventId)
+    setConfirmEventId(null)
+    setConfirmMotivo(null)
+  }
+
+  // Handler para cancelar solicitud de aprobación
+  const handleCancelarSolicitud = () => {
+    setConfirmDialogOpen(false)
+    setConfirmEventId(null)
+    setConfirmMotivo(null)
   }
 
   // Handler para cancelar rotativo
@@ -2227,32 +2274,47 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Dialog de rotativo pendiente de aprobación */}
-      <Dialog open={pendingDialogOpen} onOpenChange={setPendingDialogOpen}>
+      {/* Dialog de confirmación para solicitar aprobación */}
+      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <DialogContent showCloseButton={false} className="sm:max-w-md">
           <DialogHeader className="text-center sm:text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
               <AlertTriangle className="h-8 w-8 text-amber-600" />
             </div>
-            <DialogTitle className="text-xl">Rotativo pendiente de aprobación</DialogTitle>
+            <DialogTitle className="text-xl">Confirmación requerida</DialogTitle>
             <DialogDescription className="text-base mt-2">
-              Tu solicitud fue registrada pero requiere aprobación.
+              Tu solicitud precisaría aprobación, ¿confirmás que deseás continuar con la misma?
             </DialogDescription>
           </DialogHeader>
 
-          {pendingMotivo && (
+          {confirmMotivo && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 my-2">
               <p className="text-sm font-medium text-amber-800 mb-1">Motivo:</p>
-              <p className="text-sm text-amber-700">{pendingMotivo}</p>
+              <p className="text-sm text-amber-700">{confirmMotivo}</p>
             </div>
           )}
 
-          <DialogFooter className="sm:justify-center">
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
-              onClick={() => setPendingDialogOpen(false)}
+              variant="outline"
+              onClick={handleCancelarSolicitud}
               className="w-full sm:w-auto"
             >
-              Entendido
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmarSolicitud}
+              className="w-full sm:w-auto"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Solicitando...
+                </>
+              ) : (
+                "Solicitar aprobación"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
