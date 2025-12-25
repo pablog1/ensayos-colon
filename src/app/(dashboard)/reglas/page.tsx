@@ -171,7 +171,6 @@ const friendlyRules: Record<string, {
     details: [
       "Se busca entre quienes más rotativos hayan tomado",
       "Así se equilibra el balance del grupo",
-      "La cobertura se descuenta del contador de rotativos",
     ],
   },
   LICENCIAS: {

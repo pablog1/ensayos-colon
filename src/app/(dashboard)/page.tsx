@@ -35,6 +35,7 @@ import {
   Theater,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Calendar,
   Clock,
@@ -45,6 +46,11 @@ import {
   Loader2,
   Layers,
 } from "lucide-react"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 interface Evento {
   id: string
@@ -1851,59 +1857,104 @@ export default function DashboardPage() {
               )}
 
               {/* Lista de títulos */}
-              {sidebarMode === "titulos" && (
-                <div className="space-y-2">
-                  {isAdmin && (
-                    <Button
-                      className="w-full mb-3"
-                      onClick={() => {
-                        setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupo: 4, startDate: "", endDate: "" })
-                        setSidebarMode("nuevo-titulo")
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Nuevo Título
-                    </Button>
-                  )}
-                  {titulos.length === 0 ? (
-                    <p className="text-muted-foreground text-sm text-center py-4">
-                      No hay títulos creados
-                    </p>
-                  ) : (
-                    titulos.map((titulo) => (
+              {sidebarMode === "titulos" && (() => {
+                const hoy = new Date()
+                hoy.setHours(0, 0, 0, 0)
+
+                // Ordenar por startDate (de más viejo a más nuevo)
+                const titulosOrdenados = [...titulos].sort((a, b) => {
+                  const dateA = a.startDate ? new Date(a.startDate).getTime() : 0
+                  const dateB = b.startDate ? new Date(b.startDate).getTime() : 0
+                  return dateA - dateB
+                })
+
+                // Separar vigentes y pasados
+                const titulosVigentes = titulosOrdenados.filter(t => {
+                  if (!t.endDate) return true
+                  const endDate = new Date(t.endDate)
+                  endDate.setHours(0, 0, 0, 0)
+                  return endDate >= hoy
+                })
+
+                const titulosPasados = titulosOrdenados.filter(t => {
+                  if (!t.endDate) return false
+                  const endDate = new Date(t.endDate)
+                  endDate.setHours(0, 0, 0, 0)
+                  return endDate < hoy
+                })
+
+                const renderTitulo = (titulo: typeof titulos[0]) => (
+                  <div
+                    key={titulo.id}
+                    className="flex items-center justify-between p-3 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
                       <div
-                        key={titulo.id}
-                        className="flex items-center justify-between p-3 rounded-lg border"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div
-                            className="w-4 h-4 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: titulo.color || "#6b7280" }}
-                          />
-                          <div className="min-w-0">
-                            <p className="font-medium truncate">{titulo.name}</p>
-                            {titulo.startDate && titulo.endDate && (
-                              <p className="text-xs text-muted-foreground">
-                                {titulo.startDate.substring(0, 10).split('-').reverse().join('-')} → {titulo.endDate.substring(0, 10).split('-').reverse().join('-')}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {isAdmin && (
-                          <div className="flex gap-1">
-                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
-                              <Pencil className="w-4 h-4" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: titulo.color || "#6b7280" }}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{titulo.name}</p>
+                        {titulo.startDate && titulo.endDate && (
+                          <p className="text-xs text-muted-foreground">
+                            {titulo.startDate.substring(0, 10).split('-').reverse().join('-')} → {titulo.endDate.substring(0, 10).split('-').reverse().join('-')}
+                          </p>
                         )}
                       </div>
-                    ))
-                  )}
-                </div>
-              )}
+                    </div>
+                    {isAdmin && (
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )
+
+                return (
+                  <div className="space-y-2">
+                    {isAdmin && (
+                      <Button
+                        className="w-full mb-3"
+                        onClick={() => {
+                          setTituloForm({ name: "", type: "OPERA", color: "#3b82f6", cupo: 4, startDate: "", endDate: "" })
+                          setSidebarMode("nuevo-titulo")
+                        }}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Nuevo Título
+                      </Button>
+                    )}
+                    {titulos.length === 0 ? (
+                      <p className="text-muted-foreground text-sm text-center py-4">
+                        No hay títulos creados
+                      </p>
+                    ) : (
+                      <>
+                        {/* Títulos vigentes */}
+                        {titulosVigentes.map(renderTitulo)}
+
+                        {/* Títulos pasados en colapsable */}
+                        {titulosPasados.length > 0 && (
+                          <Collapsible className="mt-4">
+                            <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                              <ChevronDown className="w-4 h-4 transition-transform duration-200 [&[data-state=open]]:rotate-180" />
+                              <span>Títulos pasados ({titulosPasados.length})</span>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-2 pt-2">
+                              {titulosPasados.map(renderTitulo)}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Formulario nuevo título */}
               {sidebarMode === "nuevo-titulo" && isAdmin && (
