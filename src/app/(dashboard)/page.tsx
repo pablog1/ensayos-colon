@@ -1423,6 +1423,11 @@ export default function DashboardPage() {
                     </Button>
                   </div>
 
+                  {/* Texto de ayuda */}
+                  <p className="text-xs text-muted-foreground">
+                    Para solicitar un rotativo, seleccioná un día en el calendario y elegí el evento desde la pestaña Eventos.
+                  </p>
+
                   {/* Lista de rotativos */}
                   {rotativosFiltrados.length === 0 ? (
                     <p className="text-muted-foreground text-sm text-center py-4">
