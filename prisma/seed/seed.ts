@@ -9,18 +9,17 @@ async function main() {
   const password = await bcrypt.hash("admin123", 10)
 
   // 4 Administradores (que también son integrantes/músicos)
-  // Avatares: caras de personas (10 hombres, 10 mujeres en total)
   const admins = [
-    { email: "admin@orquesta.com", name: "Roberto Giménez", alias: "Roberto", avatar: "👨" },
-    { email: "concertino@orquesta.com", name: "Alejandra Vidal", alias: "Ale", avatar: "👩" },
-    { email: "jefe.seccion@orquesta.com", name: "Fernando Acosta", alias: "Fer", avatar: "🧔" },
-    { email: "coordinador@orquesta.com", name: "Claudia Méndez", alias: "Clau", avatar: "👩‍🦱" },
+    { email: "admin@orquesta.com", name: "Roberto Giménez", alias: "Roberto" },
+    { email: "concertino@orquesta.com", name: "Alejandra Vidal", alias: "Ale" },
+    { email: "jefe.seccion@orquesta.com", name: "Fernando Acosta", alias: "Fer" },
+    { email: "coordinador@orquesta.com", name: "Claudia Méndez", alias: "Clau" },
   ]
 
   for (const data of admins) {
     const user = await prisma.user.upsert({
       where: { email: data.email },
-      update: { alias: data.alias, avatar: data.avatar },
+      update: { alias: data.alias },
       create: {
         ...data,
         password,
@@ -30,27 +29,27 @@ async function main() {
     console.log(`Admin created: ${user.email} (${data.alias})`)
   }
 
-  // 16 Integrantes (músicos) - para completar 20 usuarios (10 hombres, 10 mujeres)
+  // 16 Integrantes (músicos) - para completar 20 usuarios
   const integrantes = [
-    // Mujeres (6 más para completar 10)
-    { email: "violin1@orquesta.com", name: "María García", alias: "Mari", avatar: "👩‍🦰" },
-    { email: "violin3@orquesta.com", name: "Ana Martínez", alias: "Anita", avatar: "👧" },
-    { email: "violin5@orquesta.com", name: "Laura Fernández", alias: "Lau", avatar: "👩‍🦳" },
-    { email: "violin7@orquesta.com", name: "Sofía Díaz", alias: "Sofi", avatar: "💁‍♀️" },
-    { email: "violin9@orquesta.com", name: "Lucía Ruiz", alias: "Lu", avatar: "🙋‍♀️" },
-    { email: "violin11@orquesta.com", name: "Paula Herrera", alias: "Pau", avatar: "👵" },
-    // Hombres (8 más para completar 10)
-    { email: "violin2@orquesta.com", name: "Juan López", alias: "Juancho", avatar: "👨‍🦱" },
-    { email: "violin4@orquesta.com", name: "Carlos Rodríguez", alias: "Carlitos", avatar: "👨‍🦳" },
-    { email: "violin6@orquesta.com", name: "Pedro Sánchez", alias: "Pete", avatar: "👴" },
-    { email: "violin8@orquesta.com", name: "Miguel Torres", alias: "Migue", avatar: "👨‍🦲" },
-    { email: "violin10@orquesta.com", name: "Diego Morales", alias: "Dieguito", avatar: "🧑" },
-    { email: "viola1@orquesta.com", name: "Martín Pérez", alias: "Tín", avatar: "👦" },
-    { email: "viola2@orquesta.com", name: "Andrés Castro", alias: "Andy", avatar: "🧔‍♂️" },
-    { email: "cello1@orquesta.com", name: "Gabriel Romero", alias: "Gabi", avatar: "👨‍🦰" },
+    // Mujeres
+    { email: "violin1@orquesta.com", name: "María García", alias: "Mari" },
+    { email: "violin3@orquesta.com", name: "Ana Martínez", alias: "Anita" },
+    { email: "violin5@orquesta.com", name: "Laura Fernández", alias: "Lau" },
+    { email: "violin7@orquesta.com", name: "Sofía Díaz", alias: "Sofi" },
+    { email: "violin9@orquesta.com", name: "Lucía Ruiz", alias: "Lu" },
+    { email: "violin11@orquesta.com", name: "Paula Herrera", alias: "Pau" },
+    // Hombres
+    { email: "violin2@orquesta.com", name: "Juan López", alias: "Juancho" },
+    { email: "violin4@orquesta.com", name: "Carlos Rodríguez", alias: "Carlitos" },
+    { email: "violin6@orquesta.com", name: "Pedro Sánchez", alias: "Pete" },
+    { email: "violin8@orquesta.com", name: "Miguel Torres", alias: "Migue" },
+    { email: "violin10@orquesta.com", name: "Diego Morales", alias: "Dieguito" },
+    { email: "viola1@orquesta.com", name: "Martín Pérez", alias: "Tín" },
+    { email: "viola2@orquesta.com", name: "Andrés Castro", alias: "Andy" },
+    { email: "cello1@orquesta.com", name: "Gabriel Romero", alias: "Gabi" },
     // Mujeres adicionales
-    { email: "viola3@orquesta.com", name: "Valentina Suárez", alias: "Vale", avatar: "👩‍🦲" },
-    { email: "cello2@orquesta.com", name: "Camila Ortiz", alias: "Cami", avatar: "🧕" },
+    { email: "viola3@orquesta.com", name: "Valentina Suárez", alias: "Vale" },
+    { email: "cello2@orquesta.com", name: "Camila Ortiz", alias: "Cami" },
   ]
 
   const createdUsers: Array<{ id: string; name: string }> = []
@@ -58,7 +57,7 @@ async function main() {
   for (const data of integrantes) {
     const user = await prisma.user.upsert({
       where: { email: data.email },
-      update: { alias: data.alias, avatar: data.avatar },
+      update: { alias: data.alias },
       create: {
         ...data,
         password,

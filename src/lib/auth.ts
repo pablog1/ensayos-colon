@@ -43,7 +43,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           role: user.role,
           alias: user.alias,
-          avatar: user.avatar,
         }
       },
     }),
@@ -54,17 +53,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role as string
         token.id = user.id as string
         token.alias = user.alias as string | null
-        token.avatar = user.avatar as string | null
       }
       // Refrescar datos del usuario cuando se llama update()
       if (trigger === "update") {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.id },
-          select: { alias: true, avatar: true },
+          select: { alias: true },
         })
         if (dbUser) {
           token.alias = dbUser.alias
-          token.avatar = dbUser.avatar
         }
       }
       return token
@@ -74,7 +71,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = token.role as string
         session.user.id = token.id as string
         session.user.alias = token.alias as string | null
-        session.user.avatar = token.avatar as string | null
       }
       return session
     },

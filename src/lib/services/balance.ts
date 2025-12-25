@@ -213,7 +213,7 @@ export async function getAllBalances(seasonId: string) {
     where: { seasonId },
     include: {
       user: {
-        select: { id: true, name: true, email: true, alias: true, avatar: true },
+        select: { id: true, name: true, email: true, alias: true },
       },
     },
     orderBy: { rotativosTomados: "desc" },

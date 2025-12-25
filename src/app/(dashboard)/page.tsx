@@ -77,7 +77,6 @@ interface Evento {
       id: string
       name: string
       alias: string | null
-      avatar: string | null
     }
   }[]
 }
@@ -90,7 +89,6 @@ interface Solicitud {
     id: string
     name: string
     alias: string | null
-    avatar: string | null
   }
 }
 
@@ -199,6 +197,11 @@ export default function DashboardPage() {
 
   // Ref para cancelar fetches anteriores y evitar race conditions
   const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Estado para el diálogo de eliminación de evento con doble confirmación
+  const [deleteEventoDialogOpen, setDeleteEventoDialogOpen] = useState(false)
+  const [deleteEventoTarget, setDeleteEventoTarget] = useState<Evento | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState("")
 
   // Estado para el diálogo de bloque completo
   const [bloqueDialogOpen, setBloqueDialogOpen] = useState(false)
@@ -597,12 +600,24 @@ export default function DashboardPage() {
       return
     }
 
-    if (!confirm(`¿Eliminar este evento de "${evento.tituloName}"?`)) return
+    // Abrir diálogo de confirmación doble
+    setDeleteEventoTarget(evento)
+    setDeleteConfirmText("")
+    setDeleteEventoDialogOpen(true)
+  }
 
-    const res = await fetch(`/api/calendario/${evento.id}`, { method: "DELETE" })
+  const confirmDeleteEvento = async () => {
+    if (!deleteEventoTarget) return
+
+    const res = await fetch(`/api/calendario/${deleteEventoTarget.id}`, { method: "DELETE" })
 
     if (res.ok) {
-      toast.success("Evento eliminado")
+      const rotativosCount = deleteEventoTarget.rotativos?.length || 0
+      toast.success(
+        rotativosCount > 0
+          ? `Evento eliminado junto con ${rotativosCount} rotativo${rotativosCount > 1 ? 's' : ''}`
+          : "Evento eliminado"
+      )
       fetchEventos(mesActual)
       setSelectedEvento(null)
       setSidebarMode("eventos")
@@ -610,6 +625,10 @@ export default function DashboardPage() {
       const error = await res.json()
       toast.error(error.error || "Error al eliminar")
     }
+
+    setDeleteEventoDialogOpen(false)
+    setDeleteEventoTarget(null)
+    setDeleteConfirmText("")
   }
 
   // Handler para solicitar rotativo - primero valida, luego pide confirmación si es necesario
@@ -1001,7 +1020,7 @@ export default function DashboardPage() {
                           }`}
                           title={tieneExcepcion ? r.motivo || "" : ""}
                         >
-                          {r.user.avatar || ""}{r.user.alias || r.user.name.split(" ")[0]}
+                          {r.user.alias || r.user.name.split(" ")[0]}
                           {tieneExcepcion && <AlertTriangle className="w-2.5 h-2.5" />}
                         </span>
                       )
@@ -1266,7 +1285,6 @@ export default function DashboardPage() {
                                                     }`}
                                                     title={tieneExcepcion ? r.motivo || "" : ""}
                                                   >
-                                                    {r.user.avatar && <span className="mr-1">{r.user.avatar}</span>}
                                                     {r.user.alias || r.user.name.split(" ")[0]}
                                                     {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
                                                   </span>
@@ -1582,7 +1600,6 @@ export default function DashboardPage() {
                                       {r.evento.eventoType === "FUNCION" ? "F" : "E"}
                                     </span>
                                   )}
-                                  {r.user.avatar && <span>{r.user.avatar}</span>}
                                   <span className="font-medium text-sm truncate">
                                     {r.user.alias || r.user.name}
                                   </span>
@@ -1718,7 +1735,7 @@ export default function DashboardPage() {
                                           }`}
                                           title={tieneExcepcion ? r.motivo || "" : ""}
                                         >
-                                          {r.user.avatar || ""} {r.user.alias || r.user.name.split(" ")[0]}
+                                          {r.user.alias || r.user.name.split(" ")[0]}
                                           {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
                                         </span>
                                       )
@@ -1802,7 +1819,6 @@ export default function DashboardPage() {
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  {r.user.avatar && <span>{r.user.avatar}</span>}
                                   <span className="text-sm font-medium">
                                     {r.user.alias || r.user.name}
                                   </span>
@@ -1874,11 +1890,11 @@ export default function DashboardPage() {
                       <div className="flex gap-2">
                         <Button variant="outline" className="flex-1" onClick={() => openEditEvento(selectedEvento)}>
                           <Pencil className="w-4 h-4 mr-1" />
-                          Editar
+                          Editar Evento
                         </Button>
                         <Button variant="destructive" className="flex-1" onClick={() => handleDeleteEvento(selectedEvento)}>
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Eliminar
+                          Eliminar Evento
                         </Button>
                       </div>
                     )}
@@ -2774,6 +2790,72 @@ export default function DashboardPage() {
               </DialogFooter>
             </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmación para eliminar evento */}
+      <Dialog open={deleteEventoDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteEventoDialogOpen(false)
+          setDeleteEventoTarget(null)
+          setDeleteConfirmText("")
+        }
+      }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-8 w-8 text-red-600" />
+            </div>
+            <DialogTitle className="text-xl">Eliminar Evento</DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              {deleteEventoTarget && (
+                <>
+                  ¿Estás seguro de eliminar el evento <strong>{deleteEventoTarget.tituloName}</strong> del{" "}
+                  <strong>{formatInArgentina(deleteEventoTarget.date, "d 'de' MMMM")}</strong>?
+                  {deleteEventoTarget.rotativos && deleteEventoTarget.rotativos.length > 0 && (
+                    <span className="block mt-2 text-red-600 font-medium">
+                      Se eliminarán también {deleteEventoTarget.rotativos.length} rotativo{deleteEventoTarget.rotativos.length > 1 ? 's' : ''} asociado{deleteEventoTarget.rotativos.length > 1 ? 's' : ''}.
+                    </span>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 my-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Para confirmar, escribe <strong className="text-foreground">Eliminar</strong> en el campo:
+            </p>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="Escribe 'Eliminar' para confirmar"
+              className="text-center"
+            />
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteEventoDialogOpen(false)
+                setDeleteEventoTarget(null)
+                setDeleteConfirmText("")
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteEvento}
+              disabled={deleteConfirmText !== "Eliminar"}
+              className="w-full sm:w-auto"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Eliminar Evento
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

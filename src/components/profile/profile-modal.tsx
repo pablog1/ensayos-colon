@@ -14,19 +14,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { User, Key, Eye, EyeOff } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-const AVATARS = [
-  // Mujeres - variedad de pelo
-  "👩🏻‍🦱", "👩🏼‍🦱", "👩🏽‍🦱", "👩🏾‍🦱", "👩🏻", "👩🏼", "👩🏽", "👩🏾", "👧🏼", "👧🏽",
-  // Hombres - variedad de pelo
-  "👨🏻‍🦱", "👨🏼‍🦱", "👨🏽‍🦱", "👨🏾‍🦱", "👨🏻", "👨🏼", "👨🏽", "👨🏾", "🧔🏼", "🧔🏽",
-]
 
 interface ProfileData {
   name: string
   alias: string | null
-  avatar: string | null
 }
 
 export function ProfileModal() {
@@ -36,7 +27,6 @@ export function ProfileModal() {
   const [profile, setProfile] = useState<ProfileData>({
     name: "",
     alias: "",
-    avatar: null,
   })
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -64,7 +54,6 @@ export function ProfileModal() {
       setProfile({
         name: data.user.name || "",
         alias: data.user.alias || "",
-        avatar: data.user.avatar || null,
       })
     }
   }
@@ -136,7 +125,6 @@ export function ProfileModal() {
 
   const userName = session?.user?.name?.split(" ")[0] || "Usuario"
   const userAlias = session?.user?.alias
-  const displayAvatar = session?.user?.avatar
   const roleLabel = session?.user?.role === "ADMIN" ? "Admin" : "Integrante"
 
   return (
@@ -144,11 +132,7 @@ export function ProfileModal() {
       <DialogTrigger asChild>
         <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors">
           <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-            {displayAvatar ? (
-              <span className="text-lg">{displayAvatar}</span>
-            ) : (
-              <User className="w-4 h-4 text-[var(--burgundy)]" />
-            )}
+            <User className="w-4 h-4 text-[var(--burgundy)]" />
           </div>
           <div className="text-left hidden sm:block">
             <p className="text-sm font-medium text-white/90">
@@ -187,37 +171,6 @@ export function ProfileModal() {
             <p className="text-xs text-muted-foreground">
               Se mostrará en el calendario en lugar de tu nombre completo
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Avatar</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {AVATARS.map((avatar) => (
-                <button
-                  key={avatar}
-                  type="button"
-                  onClick={() => setProfile({ ...profile, avatar })}
-                  className={cn(
-                    "text-2xl p-2 rounded-lg border-2 transition-all hover:scale-110",
-                    profile.avatar === avatar
-                      ? "border-[var(--gold)] bg-[var(--gold)]/10"
-                      : "border-transparent hover:border-gray-300"
-                  )}
-                >
-                  {avatar}
-                </button>
-              ))}
-            </div>
-            {profile.avatar && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setProfile({ ...profile, avatar: null })}
-              >
-                Quitar avatar
-              </Button>
-            )}
           </div>
 
           <div className="flex justify-end gap-2">

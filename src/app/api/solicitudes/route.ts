@@ -57,7 +57,6 @@ export async function GET(req: NextRequest) {
           name: true,
           email: true,
           alias: true,
-          avatar: true,
         },
       },
       event: {
@@ -209,7 +208,6 @@ export async function POST(req: NextRequest) {
               id: true,
               name: true,
               alias: true,
-              avatar: true,
             },
           },
           event: {
@@ -240,7 +238,6 @@ export async function POST(req: NextRequest) {
               id: true,
               name: true,
               alias: true,
-              avatar: true,
             },
           },
           event: {

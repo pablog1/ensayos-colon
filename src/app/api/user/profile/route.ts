@@ -2,14 +2,6 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-// Lista de avatares disponibles (caras con variedad de pelo)
-export const AVATARS = [
-  // Mujeres - variedad de pelo
-  "👩🏻‍🦱", "👩🏼‍🦱", "👩🏽‍🦱", "👩🏾‍🦱", "👩🏻", "👩🏼", "👩🏽", "👩🏾", "👧🏼", "👧🏽",
-  // Hombres - variedad de pelo
-  "👨🏻‍🦱", "👨🏼‍🦱", "👨🏽‍🦱", "👨🏾‍🦱", "👨🏻", "👨🏼", "👨🏽", "👨🏾", "🧔🏼", "🧔🏽",
-]
-
 export async function GET() {
   const session = await auth()
   if (!session?.user?.id) {
@@ -23,11 +15,10 @@ export async function GET() {
       name: true,
       email: true,
       alias: true,
-      avatar: true,
     },
   })
 
-  return NextResponse.json({ user, avatars: AVATARS })
+  return NextResponse.json({ user })
 }
 
 export async function PATCH(request: Request) {
@@ -37,7 +28,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json()
-  const { alias, avatar, name } = body
+  const { alias, name } = body
 
   // Validar nombre (mínimo 2 caracteres si se proporciona)
   if (name !== undefined && name.trim().length < 2) {
@@ -55,18 +46,9 @@ export async function PATCH(request: Request) {
     )
   }
 
-  // Validar avatar (debe estar en la lista o ser null)
-  if (avatar && !AVATARS.includes(avatar)) {
-    return NextResponse.json(
-      { error: "Avatar no válido" },
-      { status: 400 }
-    )
-  }
-
-  const updateData: { alias?: string | null; avatar?: string | null; name?: string } = {}
+  const updateData: { alias?: string | null; name?: string } = {}
 
   if (alias !== undefined) updateData.alias = alias || null
-  if (avatar !== undefined) updateData.avatar = avatar || null
   if (name !== undefined && name.trim().length >= 2) updateData.name = name.trim()
 
   const updatedUser = await prisma.user.update({
@@ -77,7 +59,6 @@ export async function PATCH(request: Request) {
       name: true,
       email: true,
       alias: true,
-      avatar: true,
     },
   })
 

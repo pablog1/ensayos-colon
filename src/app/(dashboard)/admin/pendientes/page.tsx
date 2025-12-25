@@ -28,7 +28,6 @@ interface SolicitudPendiente {
     name: string
     email: string
     alias?: string | null
-    avatar?: string | null
   }
 }
 
@@ -172,9 +171,6 @@ export default function PendientesPage() {
                 >
                   {/* Header: Usuario */}
                   <div className="flex items-center gap-3">
-                    {s.user.avatar && (
-                      <span className="text-2xl">{s.user.avatar}</span>
-                    )}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">
                         {s.user.alias || s.user.name}
