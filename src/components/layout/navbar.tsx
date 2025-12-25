@@ -8,6 +8,7 @@ import { MobileNav } from "./mobile-nav"
 import { ProfileModal } from "@/components/profile/profile-modal"
 import { NotificationPanel } from "@/components/notifications/notification-panel"
 import { useNotifications } from "@/hooks/use-notifications"
+import { DebugDatePicker } from "@/components/debug/debug-date-picker"
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -40,7 +41,12 @@ export function Navbar() {
           </div>
         </Link>
 
-        <div className="ml-auto flex items-center gap-1 md:gap-2">
+        <div className="ml-auto flex items-center gap-2 md:gap-4">
+          {/* Debug date picker */}
+          <div className="hidden md:block">
+            <DebugDatePicker />
+          </div>
+
           {session?.user && (
             <>
               <NotificationPanel unreadCount={userNotifications} />

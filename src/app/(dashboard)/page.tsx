@@ -27,6 +27,7 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { formatInArgentina, toISOFromArgentina } from "@/lib/date-utils"
+import { useDebugDate } from "@/contexts/debug-date-context"
 import {
   Plus,
   Pencil,
@@ -125,6 +126,7 @@ type SidebarMode =
 
 export default function DashboardPage() {
   const { data: session } = useSession()
+  const { debugDate } = useDebugDate()
   const isAdmin = session?.user?.role === "ADMIN"
   const userId = session?.user?.id
 
@@ -134,6 +136,11 @@ export default function DashboardPage() {
   const [titulos, setTitulos] = useState<Titulo[]>([])
   const [loading, setLoading] = useState(true)
   const [mesActual, setMesActual] = useState(new Date())
+
+  // Actualizar mesActual cuando cambia la fecha de debug
+  useEffect(() => {
+    setMesActual(new Date(debugDate))
+  }, [debugDate])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedEvento, setSelectedEvento] = useState<Evento | null>(null)
   const [vistaCalendario, setVistaCalendario] = useState<"mes" | "semana">("mes")
@@ -484,7 +491,7 @@ export default function DashboardPage() {
   const handleDeleteTitulo = async (titulo: Titulo) => {
     // Validar que la fecha de fin del titulo no haya pasado (si está disponible)
     if (titulo.endDate) {
-      const now = new Date()
+      const now = new Date(debugDate)
       now.setHours(0, 0, 0, 0)
       const tituloEndDate = new Date(titulo.endDate)
       tituloEndDate.setHours(0, 0, 0, 0)
@@ -580,7 +587,7 @@ export default function DashboardPage() {
 
   const handleDeleteEvento = async (evento: Evento) => {
     // Validar que el evento no haya pasado
-    const now = new Date()
+    const now = new Date(debugDate)
     now.setHours(0, 0, 0, 0)
     const eventoDate = new Date(evento.date)
     eventoDate.setHours(0, 0, 0, 0)
@@ -909,7 +916,7 @@ export default function DashboardPage() {
 
   // Obtener las fechas de la semana actual (martes a domingo, sin lunes)
   const getSemanaActual = () => {
-    const fechaBase = selectedDate || new Date()
+    const fechaBase = selectedDate || new Date(debugDate)
     const dayOfWeek = fechaBase.getDay()
     // Ajustar para que martes sea el primer día
     const diff = dayOfWeek === 0 ? -5 : dayOfWeek === 1 ? 1 : 2 - dayOfWeek
@@ -926,7 +933,7 @@ export default function DashboardPage() {
   }
 
   const navegarSemana = (direccion: number) => {
-    const nuevaFecha = new Date(selectedDate || new Date())
+    const nuevaFecha = new Date(selectedDate || new Date(debugDate))
     nuevaFecha.setDate(nuevaFecha.getDate() + (direccion * 7))
     setSelectedDate(nuevaFecha)
     // Actualizar mes si cambia
@@ -1126,7 +1133,7 @@ export default function DashboardPage() {
                       <button
                         className="text-xs md:text-sm text-primary hover:underline font-medium px-2 py-1"
                         onClick={() => {
-                          const hoy = new Date()
+                          const hoy = new Date(debugDate)
                           setSelectedDate(hoy)
                           setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
                         }}
@@ -1181,7 +1188,7 @@ export default function DashboardPage() {
                           }
 
                           return diasConEventos.map(({ date, eventos }) => {
-                            const isToday = date.toDateString() === new Date().toDateString()
+                            const isToday = date.toDateString() === debugDate.toDateString()
                             const tituloColors = getTituloColorsForDate(date)
 
                             return (
@@ -1337,7 +1344,7 @@ export default function DashboardPage() {
                           }
 
                           return cells.map((cell, idx) => {
-                            const isToday = cell.date.toDateString() === new Date().toDateString()
+                            const isToday = cell.date.toDateString() === debugDate.toDateString()
                             const isSelected = selectedDate?.toDateString() === cell.date.toDateString()
 
                             return (
@@ -1371,7 +1378,7 @@ export default function DashboardPage() {
                       {/* Celdas de la semana */}
                       <div className="grid grid-cols-6 border-l border-r border-b border-border">
                         {getSemanaActual().filter(dia => dia.getDay() !== 1).map((dia, idx) => {
-                          const isToday = dia.toDateString() === new Date().toDateString()
+                          const isToday = dia.toDateString() === debugDate.toDateString()
                           const isSelected = selectedDate?.toDateString() === dia.toDateString()
 
                           return (
@@ -1858,7 +1865,7 @@ export default function DashboardPage() {
 
               {/* Lista de títulos */}
               {sidebarMode === "titulos" && (() => {
-                const hoy = new Date()
+                const hoy = new Date(debugDate)
                 hoy.setHours(0, 0, 0, 0)
 
                 // Ordenar por startDate (de más viejo a más nuevo)

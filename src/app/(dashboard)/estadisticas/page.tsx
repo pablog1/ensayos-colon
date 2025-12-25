@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { BarChart3, Users, Calendar, Clock } from "lucide-react"
+import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface CuposUsuarioTemporada {
   maximoAsignado: number
@@ -62,18 +63,20 @@ interface Stats {
 
 export default function EstadisticasPage() {
   const { data: session } = useSession()
+  const { debugDate } = useDebugDate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const currentYear = new Date().getFullYear()
+  const currentYear = debugDate.getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
 
   useEffect(() => {
     fetchStats()
-  }, [selectedYear])
+  }, [selectedYear, debugDate])
 
   const fetchStats = async () => {
     setLoading(true)
-    const res = await fetch(`/api/estadisticas?year=${selectedYear}`)
+    const debugDateStr = debugDate.toISOString().split('T')[0]
+    const res = await fetch(`/api/estadisticas?year=${selectedYear}&debugDate=${debugDateStr}`)
     const data = await res.json()
     setStats(data)
     setLoading(false)

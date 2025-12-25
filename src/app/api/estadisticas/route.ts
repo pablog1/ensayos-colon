@@ -11,7 +11,11 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const yearParam = searchParams.get("year")
-  const year = yearParam ? parseInt(yearParam) : new Date().getFullYear()
+  const debugDateParam = searchParams.get("debugDate")
+
+  // Usar fecha de debug si se proporciona, o la fecha actual
+  const baseDate = debugDateParam ? new Date(debugDateParam) : new Date()
+  const year = yearParam ? parseInt(yearParam) : baseDate.getFullYear()
 
   // Buscar la temporada del año solicitado
   // Asumimos que el nombre de la temporada incluye el año (ej: "Temporada 2025")
@@ -82,7 +86,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const hoy = new Date()
+  // Usar la fecha de debug o la fecha actual para determinar "hoy"
+  const hoy = new Date(baseDate)
   hoy.setHours(0, 0, 0, 0)
 
   // Contar rotativos aprobados de la temporada - pasados (ya utilizados)
