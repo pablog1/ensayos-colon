@@ -112,20 +112,15 @@ const ruleUIConfig: Record<string, {
     icon: Calendar,
     friendlyName: "Máximo de rotativos por temporada",
     shortDescription: "Límite anual calculado automáticamente para cada músico",
-    explanation: "Este número se calcula automáticamente usando la fórmula: (Días de trabajo × Cupo diario) ÷ Cantidad de músicos. Actualmente es aproximadamente 50 rotativos por año. Este cálculo asegura que todos tengan las mismas oportunidades.",
+    explanation: "Este número se calcula automáticamente usando la fórmula: (Días de trabajo × Cupo diario) ÷ Cantidad de músicos. El cálculo se actualiza según la programación de cada temporada para asegurar que todos tengan las mismas oportunidades.",
     editable: false,
-    renderValue: (value) => {
-      if (!value || typeof value !== "object") return null
-      const config = value as { baseAnual: number }
+    renderValue: () => {
       return (
         <div className="flex items-center gap-4">
-          <div className="text-center p-4 bg-primary/10 rounded-lg">
-            <div className="text-3xl font-bold text-primary">~{config.baseAnual}</div>
-            <div className="text-sm text-muted-foreground">rotativos/año</div>
-          </div>
           <div className="text-sm text-muted-foreground flex-1">
             <p className="font-medium mb-1">Cálculo automático:</p>
             <p>Días de trabajo × Cupo ÷ Músicos</p>
+            <p className="text-xs mt-1">El valor se muestra en el balance de cada usuario</p>
           </div>
         </div>
       )

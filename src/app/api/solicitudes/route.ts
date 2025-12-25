@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
-import { notifyAdmins } from "@/lib/services/notifications"
+import { notifyAdmins, notifyAlertaCercania } from "@/lib/services/notifications"
 
 // GET /api/solicitudes - Lista rotativos del usuario
 export async function GET(req: NextRequest) {
@@ -289,6 +289,65 @@ export async function POST(req: NextRequest) {
         },
       })
       console.log("[POST /api/solicitudes] Notificación enviada")
+    }
+
+    // Verificar si el usuario está cerca del máximo y enviar alerta (solo si fue aprobado)
+    if (nuevoEstado === "APROBADO") {
+      try {
+        const temporadaActiva = await prisma.season.findFirst({
+          where: { isActive: true },
+        })
+
+        if (temporadaActiva) {
+          const balance = await prisma.userSeasonBalance.findUnique({
+            where: {
+              userId_seasonId: {
+                userId: session.user.id,
+                seasonId: temporadaActiva.id,
+              },
+            },
+          })
+
+          if (balance) {
+            const maxEfectivo = balance.maxAjustadoManual ?? balance.maxProyectado
+            const totalActual =
+              balance.rotativosTomados +
+              balance.rotativosObligatorios +
+              balance.rotativosPorLicencia
+
+            // Obtener umbral de alerta (default 90%)
+            const reglaUmbral = await prisma.ruleConfig.findUnique({
+              where: { key: "ALERTA_UMBRAL" },
+            })
+            const umbral = reglaUmbral?.enabled ? parseInt(reglaUmbral.value) || 90 : 90
+
+            const porcentaje = (totalActual / maxEfectivo) * 100
+
+            // Determinar nivel de alerta
+            let nivelAlerta: "CERCANIA" | "LIMITE" | "EXCESO" | null = null
+            if (totalActual > maxEfectivo) {
+              nivelAlerta = "EXCESO"
+            } else if (porcentaje >= umbral) {
+              nivelAlerta = "LIMITE"
+            } else if (porcentaje >= umbral - 10) {
+              nivelAlerta = "CERCANIA"
+            }
+
+            // Enviar notificación si hay alerta
+            if (nivelAlerta) {
+              await notifyAlertaCercania({
+                userId: session.user.id,
+                totalActual,
+                maxProyectado: maxEfectivo,
+                porcentaje,
+                nivelAlerta,
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[POST /api/solicitudes] Error al verificar alerta de cercanía:", error)
+      }
     }
 
     console.log("[POST /api/solicitudes] Enviando respuesta. Tiempo total:", Date.now() - startTime, "ms")

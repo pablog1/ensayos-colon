@@ -77,21 +77,9 @@ const friendlyRules: Record<string, {
     summary: "Máximo de rotativos que podés tomar en una temporada",
     details: [
       "Se calcula automáticamente para que sea justo para todos",
-      "El número es aproximadamente 50 rotativos por año",
-      "Depende de los días de trabajo y la cantidad de músicos",
+      "El límite se ajusta según los días de trabajo y la cantidad de músicos",
+      "Podés ver tu límite personal en tu perfil de balance",
     ],
-    getValue: (value) => {
-      if (!value || typeof value !== "object") return null
-      const config = value as { baseAnual: number }
-      return (
-        <div className="flex items-center gap-3 mt-3">
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <div className="text-2xl font-bold text-green-700">~{config.baseAnual}</div>
-            <div className="text-xs text-green-600">por año</div>
-          </div>
-        </div>
-      )
-    },
   },
   FINES_SEMANA_MAX: {
     icon: CalendarDays,

@@ -96,3 +96,119 @@ export async function markAllAsRead(userId: string): Promise<void> {
     data: { read: true },
   })
 }
+
+// ============================================
+// Notificaciones específicas para equidad y rotativos
+// ============================================
+
+/**
+ * Notificar al usuario cuando se le asigna una rotación obligatoria
+ */
+export async function notifyRotacionObligatoria(params: {
+  userId: string
+  eventTitle: string
+  eventDate: Date
+  eventId: string
+  rotativoId: string
+  diasHastaEvento: number
+  motivo?: string
+}): Promise<void> {
+  await createNotification({
+    userId: params.userId,
+    type: "ROTACION_OBLIGATORIA",
+    title: "Rotación obligatoria asignada",
+    message: `Se te ha asignado rotativo obligatorio para "${params.eventTitle}" (${params.diasHastaEvento} días restantes)`,
+    data: {
+      eventId: params.eventId,
+      eventTitle: params.eventTitle,
+      eventDate: params.eventDate.toISOString(),
+      rotativoId: params.rotativoId,
+      diasHastaEvento: params.diasHastaEvento,
+      motivo: params.motivo || "Asignación automática por falta de voluntarios",
+    },
+  })
+}
+
+/**
+ * Notificar al usuario cuando está cerca del máximo proyectado
+ */
+export async function notifyAlertaCercania(params: {
+  userId: string
+  totalActual: number
+  maxProyectado: number
+  porcentaje: number
+  nivelAlerta: "CERCANIA" | "LIMITE" | "EXCESO"
+}): Promise<void> {
+  const mensajes = {
+    CERCANIA: `Estás en ${params.porcentaje.toFixed(0)}% de tu máximo anual (${params.totalActual}/${params.maxProyectado} rotativos)`,
+    LIMITE: `Has alcanzado el umbral del máximo anual (${params.totalActual}/${params.maxProyectado} rotativos)`,
+    EXCESO: `Has superado tu máximo anual proyectado (${params.totalActual}/${params.maxProyectado} rotativos)`,
+  }
+
+  await createNotification({
+    userId: params.userId,
+    type: "ALERTA_CERCANIA_MAXIMO",
+    title: params.nivelAlerta === "EXCESO" ? "Máximo superado" : "Cerca del máximo anual",
+    message: mensajes[params.nivelAlerta],
+    data: {
+      totalActual: params.totalActual,
+      maxProyectado: params.maxProyectado,
+      porcentaje: params.porcentaje,
+      nivelAlerta: params.nivelAlerta,
+    },
+  })
+}
+
+/**
+ * Notificar a admins sobre usuarios que están muy por debajo del promedio
+ */
+export async function notifyAdminsUsuarioPorDebajo(params: {
+  userId: string
+  userName: string
+  totalRotativos: number
+  promedioGrupo: number
+  diferencia: number
+}): Promise<void> {
+  await notifyAdmins({
+    type: "SISTEMA",
+    title: "Usuario por debajo del promedio",
+    message: `${params.userName} tiene ${params.totalRotativos} rotativos, ${params.diferencia} menos que el promedio del grupo (${params.promedioGrupo.toFixed(1)})`,
+    data: {
+      userId: params.userId,
+      userName: params.userName,
+      totalRotativos: params.totalRotativos,
+      promedioGrupo: params.promedioGrupo,
+      diferencia: params.diferencia,
+    },
+  })
+}
+
+/**
+ * Notificar a admins cuando se asigna rotación obligatoria
+ */
+export async function notifyAdminsRotacionObligatoriaAsignada(params: {
+  userId: string
+  userName: string
+  eventTitle: string
+  eventDate: Date
+  eventId: string
+  rotativoId: string
+  asignadoPorId: string
+  asignadoPorNombre: string
+}): Promise<void> {
+  await notifyAdmins({
+    type: "ROTACION_OBLIGATORIA",
+    title: "Rotación obligatoria asignada",
+    message: `${params.asignadoPorNombre} asignó rotativo obligatorio a ${params.userName} para "${params.eventTitle}"`,
+    data: {
+      userId: params.userId,
+      userName: params.userName,
+      eventId: params.eventId,
+      eventTitle: params.eventTitle,
+      eventDate: params.eventDate.toISOString(),
+      rotativoId: params.rotativoId,
+      asignadoPorId: params.asignadoPorId,
+      asignadoPorNombre: params.asignadoPorNombre,
+    },
+  })
+}
