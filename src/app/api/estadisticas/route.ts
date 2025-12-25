@@ -20,13 +20,11 @@ export async function GET(req: NextRequest) {
     ? mesParam
     : `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
 
-  if (session.user.role === "ADMIN") {
-    // Admin ve estadisticas de todos
-    const stats = await obtenerEstadisticasGenerales(mesStr)
-    return NextResponse.json(stats)
-  } else {
-    // Integrante ve sus propias estadisticas y el promedio
-    // Crear fecha para la función existente
+  // Todos los usuarios ven las estadísticas generales
+  const stats = await obtenerEstadisticasGenerales(mesStr)
+
+  // Para integrantes, agregar también sus datos personales y su userId
+  if (session.user.role !== "ADMIN") {
     const [year, month] = mesStr.split('-').map(Number)
     const mes = new Date(Date.UTC(year, month - 1, 1))
 
@@ -36,7 +34,8 @@ export async function GET(req: NextRequest) {
     )
 
     return NextResponse.json({
-      mes: mesStr,
+      ...stats,
+      currentUserId: session.user.id,
       personal: {
         descansosAprobados: statsPersonales.descansosAprobados,
         porcentajeVsPromedio:
@@ -52,4 +51,6 @@ export async function GET(req: NextRequest) {
       },
     })
   }
+
+  return NextResponse.json(stats)
 }

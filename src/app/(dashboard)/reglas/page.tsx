@@ -57,13 +57,16 @@ const friendlyRules: Record<string, {
         BALLET: "Ballet",
       }
       return (
-        <div className="grid grid-cols-3 gap-2 mt-3">
-          {Object.entries(cupos).map(([tipo, cantidad]) => (
-            <div key={tipo} className="text-center p-2 bg-blue-50 rounded-lg">
-              <div className="text-xl font-bold text-blue-700">{cantidad}</div>
-              <div className="text-xs text-blue-600">{labels[tipo] || tipo}</div>
-            </div>
-          ))}
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {Object.entries(cupos).map(([tipo, cantidad]) => (
+              <div key={tipo} className="text-center p-2 bg-blue-50 rounded-lg">
+                <div className="text-xl font-bold text-blue-700">{cantidad}</div>
+                <div className="text-xs text-blue-600">{labels[tipo] || tipo}</div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">* modificables según orgánico requerido</p>
         </div>
       )
     },

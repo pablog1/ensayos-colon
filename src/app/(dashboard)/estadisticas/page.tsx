@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select"
 import { BarChart3, Users, Calendar, Clock } from "lucide-react"
 
-interface StatsAdmin {
+interface Stats {
   mes: string
   totalIntegrantes: number
   promedioDescansos: number
@@ -36,17 +36,15 @@ interface StatsAdmin {
     porcentajeVsPromedio: number
     puedesolicitarMas: boolean
   }[]
-}
-
-interface StatsIntegrante {
-  mes: string
-  personal: {
+  // Solo para integrantes (no admin)
+  currentUserId?: string
+  personal?: {
     descansosAprobados: number
     porcentajeVsPromedio: number
     puedesolicitarMas: boolean
     descansosRestantesPermitidos: number
   }
-  grupo: {
+  grupo?: {
     promedioDescansos: number
     limiteMaximo: number
   }
@@ -54,7 +52,7 @@ interface StatsIntegrante {
 
 export default function EstadisticasPage() {
   const { data: session } = useSession()
-  const [stats, setStats] = useState<StatsAdmin | StatsIntegrante | null>(null)
+  const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -73,19 +71,40 @@ export default function EstadisticasPage() {
     setLoading(false)
   }
 
-  const isAdmin = session?.user?.role === "ADMIN"
+  // Generar meses: 12 meses hacia atrás + todos los meses hasta diciembre 2026
+  const months = (() => {
+    const result: { value: string; label: string }[] = []
+    const now = new Date()
 
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const date = new Date()
-    date.setMonth(date.getMonth() - i)
-    return {
-      value: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
-      label: date.toLocaleDateString("es-ES", {
-        month: "long",
-        year: "numeric",
-      }),
+    // Meses futuros hasta diciembre 2026
+    const endDate = new Date(2026, 11) // Diciembre 2026
+    const futureDate = new Date(now.getFullYear(), now.getMonth())
+    while (futureDate <= endDate) {
+      result.push({
+        value: `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, "0")}`,
+        label: futureDate.toLocaleDateString("es-ES", {
+          month: "long",
+          year: "numeric",
+        }),
+      })
+      futureDate.setMonth(futureDate.getMonth() + 1)
     }
-  })
+
+    // Meses pasados (12 meses hacia atrás desde el mes anterior al actual)
+    const pastDate = new Date(now.getFullYear(), now.getMonth() - 1)
+    for (let i = 0; i < 12; i++) {
+      result.push({
+        value: `${pastDate.getFullYear()}-${String(pastDate.getMonth() + 1).padStart(2, "0")}`,
+        label: pastDate.toLocaleDateString("es-ES", {
+          month: "long",
+          year: "numeric",
+        }),
+      })
+      pastDate.setMonth(pastDate.getMonth() - 1)
+    }
+
+    return result
+  })()
 
   if (loading) {
     return (
@@ -121,9 +140,9 @@ export default function EstadisticasPage() {
         </Select>
       </div>
 
-      {isAdmin && stats && "integrantes" in stats ? (
-        // Vista Admin
+      {stats && (
         <>
+          {/* Cards de estadísticas generales - visible para todos */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardHeader className="pb-2">
@@ -179,6 +198,51 @@ export default function EstadisticasPage() {
             </Card>
           </div>
 
+          {/* Card personal para integrantes (no admin) */}
+          {stats.personal && (
+            <Card className="border-primary/50 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-primary">Tus rotativos</span>
+                  {stats.personal.puedesolicitarMas ? (
+                    <Badge className="bg-green-100 text-green-800">Podés solicitar más</Badge>
+                  ) : (
+                    <Badge variant="destructive">En el límite</Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-3 bg-background rounded-lg text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {stats.personal.descansosAprobados}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Tomados</div>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {stats.personal.descansosRestantesPermitidos}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Disponibles</div>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg text-center col-span-2">
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Progreso anual</span>
+                        <span>{stats.personal.descansosAprobados} de ~50</span>
+                      </div>
+                      <Progress
+                        value={Math.min(100, (stats.personal.descansosAprobados / 50) * 100)}
+                        className="h-2"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Tabla de todos los integrantes - visible para todos */}
           <Card>
             <CardHeader>
               <CardTitle>Rotativos por integrante</CardTitle>
@@ -189,12 +253,19 @@ export default function EstadisticasPage() {
                 {stats.integrantes.map((i) => {
                   const maxAnual = 50
                   const progreso = Math.min(100, (i.descansosAprobados / maxAnual) * 100)
+                  const isCurrentUser = stats.currentUserId === i.id
 
                   return (
-                    <div key={i.id} className="border rounded-lg p-4 space-y-3">
+                    <div
+                      key={i.id}
+                      className={`border rounded-lg p-4 space-y-3 ${isCurrentUser ? "border-primary bg-primary/5" : ""}`}
+                    >
                       <div className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium">{i.nombre}</p>
+                          <p className="font-medium">
+                            {i.nombre}
+                            {isCurrentUser && <span className="text-primary ml-2">(Vos)</span>}
+                          </p>
                           <p className="text-sm text-muted-foreground truncate">{i.email}</p>
                         </div>
                         <div className="text-right">
@@ -238,10 +309,14 @@ export default function EstadisticasPage() {
                     {stats.integrantes.map((i) => {
                       const maxAnual = 50
                       const progreso = Math.min(100, (i.descansosAprobados / maxAnual) * 100)
+                      const isCurrentUser = stats.currentUserId === i.id
 
                       return (
-                        <TableRow key={i.id}>
-                          <TableCell className="font-medium">{i.nombre}</TableCell>
+                        <TableRow key={i.id} className={isCurrentUser ? "bg-primary/10" : ""}>
+                          <TableCell className="font-medium">
+                            {i.nombre}
+                            {isCurrentUser && <span className="text-primary ml-2">(Vos)</span>}
+                          </TableCell>
                           <TableCell className="text-muted-foreground">{i.email}</TableCell>
                           <TableCell className="text-center">
                             <span className="text-lg font-semibold">{i.descansosAprobados}</span>
@@ -270,91 +345,7 @@ export default function EstadisticasPage() {
             </CardContent>
           </Card>
         </>
-      ) : stats && "personal" in stats ? (
-        // Vista Integrante
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Tus rotativos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Progreso visual */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progreso anual</span>
-                  <span className="font-medium">
-                    {stats.personal.descansosAprobados} de ~50
-                  </span>
-                </div>
-                <Progress
-                  value={Math.min(100, (stats.personal.descansosAprobados / 50) * 100)}
-                  className="h-3"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-muted/50 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-primary">
-                    {stats.personal.descansosAprobados}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Tomados</div>
-                </div>
-                <div className="p-4 bg-muted/50 rounded-lg text-center">
-                  <div className="text-3xl font-bold text-green-600">
-                    {stats.personal.descansosRestantesPermitidos}
-                  </div>
-                  <div className="text-sm text-muted-foreground">Disponibles</div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                {stats.personal.puedesolicitarMas ? (
-                  <Badge className="bg-green-100 text-green-800 text-sm py-1 px-3">
-                    Podés solicitar más rotativos
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive" className="text-sm py-1 px-3">
-                    Alcanzaste tu límite anual
-                  </Badge>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Estadísticas del grupo</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-blue-800">Promedio del grupo</span>
-                  <span className="text-2xl font-bold text-blue-700">
-                    {stats.grupo.promedioDescansos}
-                  </span>
-                </div>
-                <p className="text-sm text-blue-600 mt-1">
-                  rotativos tomados este mes
-                </p>
-              </div>
-
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Máximo por temporada</span>
-                  <span className="text-2xl font-bold">~50</span>
-                </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  rotativos por año por persona
-                </p>
-              </div>
-
-              <p className="text-xs text-muted-foreground pt-2">
-                El máximo se calcula automáticamente para que todos tengan las mismas oportunidades.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : null}
+      )}
     </div>
   )
 }

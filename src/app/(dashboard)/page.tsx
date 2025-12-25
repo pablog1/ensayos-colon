@@ -476,6 +476,19 @@ export default function DashboardPage() {
   }
 
   const handleDeleteTitulo = async (titulo: Titulo) => {
+    // Validar que la fecha de fin del titulo no haya pasado (si está disponible)
+    if (titulo.endDate) {
+      const now = new Date()
+      now.setHours(0, 0, 0, 0)
+      const tituloEndDate = new Date(titulo.endDate)
+      tituloEndDate.setHours(0, 0, 0, 0)
+
+      if (tituloEndDate < now) {
+        toast.error("No se puede eliminar un título cuya fecha de fin ya pasó")
+        return
+      }
+    }
+
     if (!confirm(`¿Eliminar "${titulo.name}"? Se eliminarán todos sus eventos.`)) return
 
     const res = await fetch(`/api/titulos/${titulo.id}`, { method: "DELETE" })
@@ -560,6 +573,17 @@ export default function DashboardPage() {
   }
 
   const handleDeleteEvento = async (evento: Evento) => {
+    // Validar que el evento no haya pasado
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const eventoDate = new Date(evento.date)
+    eventoDate.setHours(0, 0, 0, 0)
+
+    if (eventoDate < now) {
+      toast.error("No se puede eliminar un evento cuya fecha ya pasó")
+      return
+    }
+
     if (!confirm(`¿Eliminar este evento de "${evento.tituloName}"?`)) return
 
     const res = await fetch(`/api/calendario/${evento.id}`, { method: "DELETE" })

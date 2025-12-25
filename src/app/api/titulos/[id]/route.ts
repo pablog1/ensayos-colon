@@ -234,6 +234,19 @@ export async function DELETE(
     )
   }
 
+  // Validar que la fecha de fin del titulo no haya pasado
+  const now = new Date()
+  now.setHours(0, 0, 0, 0) // Normalizar a medianoche para comparar solo fechas
+  const tituloEndDate = new Date(titulo.endDate)
+  tituloEndDate.setHours(0, 0, 0, 0)
+
+  if (tituloEndDate < now) {
+    return NextResponse.json(
+      { error: "No se puede eliminar un título cuya fecha de fin ya pasó" },
+      { status: 400 }
+    )
+  }
+
   // Eliminar titulo (los eventos se eliminan en cascada)
   await prisma.titulo.delete({
     where: { id },

@@ -163,6 +163,8 @@ export default function TitulosPage() {
   }
 
   const handleDelete = async (titulo: Titulo) => {
+    // Nota: El título no tiene endDate en esta interfaz, pero la validación se hace en el backend
+    // La API rechazará la eliminación si la fecha de fin ya pasó
     if (
       !confirm(
         `¿Eliminar "${titulo.name}"? Se eliminarán todos sus eventos (${titulo.totalEventos}).`

@@ -231,6 +231,19 @@ export async function DELETE(
       )
     }
 
+    // Validar que el evento no haya pasado
+    const now = new Date()
+    now.setHours(0, 0, 0, 0) // Normalizar a medianoche para comparar solo fechas
+    const eventoDate = new Date(evento.date)
+    eventoDate.setHours(0, 0, 0, 0)
+
+    if (eventoDate < now) {
+      return NextResponse.json(
+        { error: "No se puede eliminar un evento cuya fecha ya pasó" },
+        { status: 400 }
+      )
+    }
+
     // Advertir si hay rotativos asignados
     if (evento._count.rotativos > 0) {
       // Eliminar rotativos asociados primero
