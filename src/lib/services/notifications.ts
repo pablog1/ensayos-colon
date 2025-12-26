@@ -2,16 +2,16 @@ import { prisma } from "@/lib/prisma"
 import { Prisma, type NotificationType } from "@/generated/prisma"
 import { sendPushToUser, sendPushToAdmins } from "./push-notifications"
 
-// URLs para cada tipo de notificación
+// URLs para cada tipo de notificación - todas van a home por ahora
 const NOTIFICATION_URLS: Record<NotificationType, string> = {
-  ROTATIVO_APROBADO: "/solicitudes",
-  ROTATIVO_RECHAZADO: "/solicitudes",
-  SOLICITUD_PENDIENTE: "/admin/pendientes",
-  LISTA_ESPERA_CUPO: "/solicitudes",
+  ROTATIVO_APROBADO: "/",
+  ROTATIVO_RECHAZADO: "/",
+  SOLICITUD_PENDIENTE: "/",
+  LISTA_ESPERA_CUPO: "/",
   ROTACION_OBLIGATORIA: "/",
-  ALERTA_CERCANIA_MAXIMO: "/estadisticas",
-  CONSENSO_PENDIENTE: "/admin/pendientes",
-  BLOQUE_APROBADO: "/solicitudes",
+  ALERTA_CERCANIA_MAXIMO: "/",
+  CONSENSO_PENDIENTE: "/",
+  BLOQUE_APROBADO: "/",
   LICENCIA_REGISTRADA: "/",
   SISTEMA: "/",
 }
