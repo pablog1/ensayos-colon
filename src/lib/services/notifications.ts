@@ -6,13 +6,13 @@ import { sendPushToUser, sendPushToAdmins } from "./push-notifications"
 const NOTIFICATION_URLS: Record<NotificationType, string> = {
   ROTATIVO_APROBADO: "/solicitudes",
   ROTATIVO_RECHAZADO: "/solicitudes",
-  SOLICITUD_PENDIENTE: "/admin/solicitudes",
+  SOLICITUD_PENDIENTE: "/admin/pendientes",
   LISTA_ESPERA_CUPO: "/solicitudes",
-  ROTACION_OBLIGATORIA: "/solicitudes",
-  ALERTA_CERCANIA_MAXIMO: "/mi-balance",
-  CONSENSO_PENDIENTE: "/admin/consenso",
+  ROTACION_OBLIGATORIA: "/",
+  ALERTA_CERCANIA_MAXIMO: "/estadisticas",
+  CONSENSO_PENDIENTE: "/admin/pendientes",
   BLOQUE_APROBADO: "/solicitudes",
-  LICENCIA_REGISTRADA: "/licencias",
+  LICENCIA_REGISTRADA: "/",
   SISTEMA: "/",
 }
 
