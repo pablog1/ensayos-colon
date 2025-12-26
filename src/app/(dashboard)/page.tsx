@@ -638,10 +638,7 @@ export default function DashboardPage() {
       return
     }
 
-    if (evento.cupoDisponible <= 0) {
-      toast.error("No hay cupo disponible")
-      return
-    }
+    // Nota: Ya no bloqueamos por cupo, el backend maneja la lista de espera
 
     setSubmitting(true)
 
@@ -715,7 +712,9 @@ export default function DashboardPage() {
         setSidebarMode("rotativos")
         setSelectedEvento(null)
 
-        if (data.estado === "PENDIENTE") {
+        if (data.estado === "EN_ESPERA") {
+          toast.info(`Agregado a lista de espera (posición ${data.posicionEnEspera})`)
+        } else if (data.estado === "PENDIENTE") {
           toast.warning("Solicitud enviada para aprobación")
         } else {
           toast.success("Rotativo aprobado")

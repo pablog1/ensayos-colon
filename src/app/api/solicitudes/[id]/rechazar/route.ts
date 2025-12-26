@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/services/notifications"
 import { createAuditLog } from "@/lib/services/audit"
+import { promoteFromWaitingList } from "@/lib/services/waiting-list"
 
 // POST /api/solicitudes/[id]/rechazar - Rechazar rotativo pendiente (solo admin)
 export async function POST(
@@ -95,6 +96,9 @@ export async function POST(
       motivo: motivoRechazo,
     },
   })
+
+  // Promover desde lista de espera si hay alguien esperando
+  await promoteFromWaitingList(rotativo.eventId)
 
   return NextResponse.json(updated)
 }

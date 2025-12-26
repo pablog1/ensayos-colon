@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/services/audit"
+import { promoteFromWaitingList, removeFromWaitingList } from "@/lib/services/waiting-list"
 
 // DELETE /api/solicitudes/[id] - Cancelar rotativo
 export async function DELETE(
@@ -51,6 +52,10 @@ export async function DELETE(
     )
   }
 
+  // Guardar info antes de eliminar
+  const eventId = rotativo.eventId
+  const estadoAnterior = rotativo.estado
+
   // Create audit log before deleting
   await createAuditLog({
     action: "ROTATIVO_CANCELADO",
@@ -63,10 +68,20 @@ export async function DELETE(
     },
   })
 
+  // Si el rotativo estaba en espera, removerlo de la lista de espera
+  if (estadoAnterior === "EN_ESPERA") {
+    await removeFromWaitingList(rotativo.userId, eventId)
+  }
+
   // Eliminar el rotativo
   await prisma.rotativo.delete({
     where: { id },
   })
+
+  // Si el rotativo liberó un cupo (estaba APROBADO o PENDIENTE), promover desde lista de espera
+  if (estadoAnterior === "APROBADO" || estadoAnterior === "PENDIENTE") {
+    await promoteFromWaitingList(eventId)
+  }
 
   return NextResponse.json({ success: true })
 }

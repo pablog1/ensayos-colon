@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
 import { notifyAdmins, notifyAlertaCercania } from "@/lib/services/notifications"
+import { addToWaitingList } from "@/lib/services/waiting-list"
 
 // GET /api/solicitudes - Lista rotativos del usuario
 export async function GET(req: NextRequest) {
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
         titulo: true,
         rotativos: {
           where: {
-            estado: { notIn: ["RECHAZADO", "CANCELADO"] },
+            estado: { notIn: ["RECHAZADO", "CANCELADO", "EN_ESPERA"] },
           },
         },
       },
@@ -162,13 +163,8 @@ export async function POST(req: NextRequest) {
     )
     const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 
-    // Verificar cupo disponible
-    if (evento.rotativos.length >= cupoEfectivo) {
-      return NextResponse.json(
-        { error: "No hay cupo disponible en este evento" },
-        { status: 400 }
-      )
-    }
+    // Verificar si hay cupo disponible
+    const sinCupo = evento.rotativos.length >= cupoEfectivo
 
     // Verificar fecha pasada (validación básica que siempre debe hacerse)
     // Usar UTC para evitar problemas de timezone entre servidor y cliente
@@ -183,12 +179,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Usar los valores de validación pasados por el cliente
-    // (validados previamente por /api/solicitudes/validar)
-    const nuevoEstado = requiereAprobacion ? "PENDIENTE" : "APROBADO"
+    // Determinar estado del rotativo
+    // Si no hay cupo, va a lista de espera
+    // Si requiere aprobación, queda pendiente
+    // Si no, se aprueba directamente
+    let nuevoEstado: "EN_ESPERA" | "PENDIENTE" | "APROBADO"
+    if (sinCupo) {
+      nuevoEstado = "EN_ESPERA"
+    } else if (requiereAprobacion) {
+      nuevoEstado = "PENDIENTE"
+    } else {
+      nuevoEstado = "APROBADO"
+    }
     const motivoFinal = motivo || null
 
-    console.log("[POST /api/solicitudes] Creando rotativo con estado:", nuevoEstado)
+    console.log("[POST /api/solicitudes] Creando rotativo con estado:", nuevoEstado, "sinCupo:", sinCupo)
 
     let rotativo
     if (rotativoAReutilizar) {
@@ -256,9 +261,26 @@ export async function POST(req: NextRequest) {
 
     console.log("[POST /api/solicitudes] Rotativo creado:", rotativo.id, "en", Date.now() - startTime, "ms")
 
+    // Si está en espera, agregar a lista de espera
+    let posicionEnEspera: number | null = null
+    if (nuevoEstado === "EN_ESPERA") {
+      const temporadaActiva = await prisma.season.findFirst({
+        where: { isActive: true },
+      })
+      if (temporadaActiva) {
+        const { position } = await addToWaitingList(
+          session.user.id,
+          eventId,
+          temporadaActiva.id
+        )
+        posicionEnEspera = position
+        console.log("[POST /api/solicitudes] Agregado a lista de espera, posición:", position)
+      }
+    }
+
     // Registrar en audit log
     await createAuditLog({
-      action: "ROTATIVO_CREADO",
+      action: nuevoEstado === "EN_ESPERA" ? "ROTATIVO_EN_ESPERA" : "ROTATIVO_CREADO",
       entityType: "Rotativo",
       entityId: rotativo.id,
       userId: session.user.id,
@@ -267,12 +289,13 @@ export async function POST(req: NextRequest) {
         titulo: rotativo.event.titulo?.name,
         fecha: rotativo.event.date,
         estado: rotativo.estado,
+        posicionEnEspera,
         requiereAprobacion: requiereAprobacion || false,
       },
     })
 
-    // Notificar a admins si requiere aprobación
-    if (requiereAprobacion) {
+    // Notificar a admins si requiere aprobación (solo si no está en espera)
+    if (requiereAprobacion && nuevoEstado === "PENDIENTE") {
       const userName = rotativo.user.alias || rotativo.user.name
       console.log("[POST /api/solicitudes] Notificando a admins...")
       await notifyAdmins({
@@ -358,6 +381,7 @@ export async function POST(req: NextRequest) {
       eventId: rotativo.eventId,
       userId: rotativo.userId,
       motivo: rotativo.motivo,
+      posicionEnEspera,
     })
   } catch (error) {
     console.error("[POST /api/solicitudes] Error:", error)
