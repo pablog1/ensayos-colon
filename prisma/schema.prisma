@@ -398,6 +398,7 @@ model AuditLog {
   targetUserId String?     // A quien afecta (si aplica)
   details      Json?       // Datos adicionales
   ipAddress    String?
+  isCritical   Boolean     @default(false) // Accion critica de admin
 
   createdAt DateTime @default(now())
 
@@ -405,6 +406,7 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([userId])
   @@index([createdAt])
+  @@index([isCritical])
   @@map("audit_logs")
 }
 
@@ -523,6 +525,10 @@ enum AuditAction {
   ROTATIVO_CANCELADO
   ROTATIVO_ASIGNADO
   ROTATIVO_OBLIGATORIO_ASIGNADO
+  ROTATIVO_CREADO_EN_NOMBRE
+  ROTATIVO_ELIMINADO_ADMIN
+  ROTATIVO_PASADO_CREADO
+  ROTATIVO_PASADO_ELIMINADO
   BLOQUE_SOLICITADO
   BLOQUE_APROBADO
   BLOQUE_CANCELADO

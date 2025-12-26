@@ -20,11 +20,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { eventId } = body
+  const { eventId, userId: targetUserId } = body
 
   if (!eventId) {
     return NextResponse.json({ error: "eventId es requerido" }, { status: 400 })
   }
+
+  // Determine which user to validate for
+  // Only admins can validate on behalf of another user
+  const isAdmin = session.user.role === "ADMIN"
+  const isValidatingForOther = targetUserId && isAdmin && targetUserId !== session.user.id
+  const userIdToValidate = isValidatingForOther ? targetUserId : session.user.id
 
   // Verificar que el evento existe
   const evento = await prisma.event.findUnique({
@@ -47,7 +53,7 @@ export async function POST(req: NextRequest) {
   // (excluir rechazados y cancelados)
   const existente = await prisma.rotativo.findFirst({
     where: {
-      userId: session.user.id,
+      userId: userIdToValidate,
       eventId: eventId,
       estado: { notIn: ["RECHAZADO", "CANCELADO"] },
     },
@@ -55,7 +61,7 @@ export async function POST(req: NextRequest) {
 
   if (existente) {
     return NextResponse.json(
-      { error: "Ya tienes un rotativo en este evento" },
+      { error: isValidatingForOther ? "El usuario ya tiene un rotativo en este evento" : "Ya tienes un rotativo en este evento" },
       { status: 400 }
     )
   }
@@ -75,12 +81,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Verificar fecha pasada (validación básica que siempre debe hacerse)
+  // Verificar fecha pasada (solo para usuarios normales, admins pueden crear en fechas pasadas)
   const ahora = new Date()
   const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
   const eventoDate = new Date(evento.date)
   const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
-  if (fechaEventoUTC < hoyUTC) {
+  if (fechaEventoUTC < hoyUTC && !isValidatingForOther) {
     return NextResponse.json(
       { error: "No se pueden solicitar rotativos para fechas pasadas" },
       { status: 400 }
@@ -128,7 +134,7 @@ export async function POST(req: NextRequest) {
     // Contar rotativos actuales del usuario en la temporada (APROBADO o PENDIENTE)
     const rotativosUsuarioTemporada = await prisma.rotativo.count({
       where: {
-        userId: session.user.id,
+        userId: userIdToValidate,
         estado: { in: ["APROBADO", "PENDIENTE"] },
         event: {
           seasonId: evento.seasonId,
@@ -165,7 +171,7 @@ export async function POST(req: NextRequest) {
 
       const rotativosFinDeSemana = await prisma.rotativo.findMany({
         where: {
-          userId: session.user.id,
+          userId: userIdToValidate,
           estado: { in: ["APROBADO", "PENDIENTE"] },
           event: {
             date: { gte: inicioMes, lte: finMes },
@@ -208,7 +214,7 @@ export async function POST(req: NextRequest) {
       const balance = await prisma.userSeasonBalance.findUnique({
         where: {
           userId_seasonId: {
-            userId: session.user.id,
+            userId: userIdToValidate,
             seasonId: temporadaActiva.id,
           },
         },
@@ -267,7 +273,7 @@ export async function POST(req: NextRequest) {
           const eventIdsEnDiasDobles = diasDobles.flatMap((d) => d.eventIds)
           const rotativosEnDiasDobles = await prisma.rotativo.count({
             where: {
-              userId: session.user.id,
+              userId: userIdToValidate,
               eventId: { in: eventIdsEnDiasDobles },
               estado: { in: ["APROBADO", "PENDIENTE"] },
             },
@@ -301,7 +307,7 @@ export async function POST(req: NextRequest) {
 
       const funcionesUsuarioEnTitulo = await prisma.rotativo.count({
         where: {
-          userId: session.user.id,
+          userId: userIdToValidate,
           event: { tituloId: evento.tituloId, eventoType: "FUNCION" },
         },
       })

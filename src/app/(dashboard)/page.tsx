@@ -214,6 +214,16 @@ export default function DashboardPage() {
   } | null>(null)
   const [loadingBloque, setLoadingBloque] = useState(false)
 
+  // Estado para el diálogo de gestión de rotativos (admin)
+  const [gestionDialogOpen, setGestionDialogOpen] = useState(false)
+  const [gestionEvento, setGestionEvento] = useState<Evento | null>(null)
+  const [gestionUserId, setGestionUserId] = useState("")
+  const [gestionMotivo, setGestionMotivo] = useState("")
+  const [gestionAdvertencias, setGestionAdvertencias] = useState<string[]>([])
+  const [gestionLoading, setGestionLoading] = useState(false)
+  const [integrantes, setIntegrantes] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [deleteRotativoId, setDeleteRotativoId] = useState<string | null>(null)
+
   // Lista de reglas para mostrar durante validación
   const reglasValidacion = [
     "Verificando plazo de solicitud...",
@@ -291,6 +301,20 @@ export default function DashboardPage() {
     }
   }, [])
 
+  // Fetch integrantes para el diálogo de gestión (admin)
+  const fetchIntegrantes = useCallback(async () => {
+    if (!isAdmin) return
+    const res = await fetch("/api/integrantes")
+    if (res.ok) {
+      const data = await res.json()
+      setIntegrantes(data.map((i: { id: string; name: string; email: string }) => ({
+        id: i.id,
+        name: i.name,
+        email: i.email,
+      })))
+    }
+  }, [isAdmin])
+
   const fetchEventos = useCallback(async (mes: Date) => {
     // Cancelar fetch anterior si existe para evitar race conditions
     if (abortControllerRef.current) {
@@ -339,6 +363,11 @@ export default function DashboardPage() {
     fetchSolicitudes(mesActual)
     fetchTitulos(mesActual.getFullYear())
   }, [mesActual, fetchEventos, fetchSolicitudes, fetchTitulos])
+
+  // Cargar integrantes una sola vez para admins
+  useEffect(() => {
+    fetchIntegrantes()
+  }, [fetchIntegrantes])
 
   const getEventosDelDia = (date: Date): Evento[] => {
     const fechaKey = format(date, "yyyy-MM-dd")
@@ -749,6 +778,115 @@ export default function DashboardPage() {
     setConfirmDialogOpen(false)
     setConfirmEventId(null)
     setConfirmMotivo(null)
+  }
+
+  // Handler para abrir diálogo de gestión de rotativos (admin)
+  const handleOpenGestionDialog = (evento: Evento) => {
+    setGestionEvento(evento)
+    setGestionUserId("")
+    setGestionMotivo("")
+    setGestionAdvertencias([])
+    setDeleteRotativoId(null)
+    setGestionDialogOpen(true)
+  }
+
+  // Handler para validar y crear rotativo en nombre de otro usuario
+  const handleGestionValidar = async () => {
+    if (!gestionEvento || !gestionUserId) return
+
+    setGestionLoading(true)
+    try {
+      const res = await fetch("/api/solicitudes/validar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventId: gestionEvento.id, userId: gestionUserId }),
+      })
+
+      if (!res.ok) {
+        const error = await res.json()
+        toast.error(error.error)
+        setGestionLoading(false)
+        return
+      }
+
+      const data = await res.json()
+
+      if (data.requiereAprobacion && data.motivos.length > 0) {
+        setGestionAdvertencias(data.motivos)
+        setGestionLoading(false)
+        return
+      }
+
+      await handleGestionCrear()
+    } catch {
+      toast.error("Error al validar")
+      setGestionLoading(false)
+    }
+  }
+
+  // Handler para crear rotativo en nombre de otro usuario
+  const handleGestionCrear = async () => {
+    if (!gestionEvento || !gestionUserId) return
+
+    setGestionLoading(true)
+    try {
+      const res = await fetch("/api/solicitudes/crear-en-nombre", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: gestionEvento.id,
+          userId: gestionUserId,
+          motivo: gestionMotivo || undefined,
+          advertenciasIgnoradas: gestionAdvertencias,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        toast.success(data.message)
+        setGestionDialogOpen(false)
+        fetchEventos(mesActual)
+      } else {
+        const error = await res.json()
+        toast.error(error.error)
+      }
+    } catch {
+      toast.error("Error al crear rotativo")
+    } finally {
+      setGestionLoading(false)
+    }
+  }
+
+  // Handler para eliminar rotativo desde el diálogo de gestión
+  const handleGestionEliminar = async (rotativoId: string) => {
+    setGestionLoading(true)
+    try {
+      const res = await fetch(`/api/solicitudes/${rotativoId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ motivo: "Eliminado por administrador" }),
+      })
+
+      if (res.ok) {
+        toast.success("Rotativo eliminado")
+        setDeleteRotativoId(null)
+        fetchEventos(mesActual)
+        // Actualizar gestionEvento para reflejar el cambio
+        if (gestionEvento) {
+          setGestionEvento({
+            ...gestionEvento,
+            rotativos: gestionEvento.rotativos.filter(r => r.id !== rotativoId),
+          })
+        }
+      } else {
+        const error = await res.json()
+        toast.error(error.error)
+      }
+    } catch {
+      toast.error("Error al eliminar rotativo")
+    } finally {
+      setGestionLoading(false)
+    }
   }
 
   // Handler para abrir diálogo de bloque completo
@@ -1886,13 +2024,22 @@ export default function DashboardPage() {
                       </Button>
                     )}
                     {isAdmin && (
-                      <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1" onClick={() => openEditEvento(selectedEvento)}>
-                          <Pencil className="w-4 h-4 mr-1" />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 pt-2">
+                          <div className="h-px flex-1 bg-border" />
+                          <span className="text-xs text-muted-foreground">Acciones de admin</span>
+                          <div className="h-px flex-1 bg-border" />
+                        </div>
+                        <Button variant="outline" className="w-full" onClick={() => handleOpenGestionDialog(selectedEvento)}>
+                          <Users className="w-4 h-4 mr-2" />
+                          Gestionar Rotativos
+                        </Button>
+                        <Button variant="outline" className="w-full" onClick={() => openEditEvento(selectedEvento)}>
+                          <Pencil className="w-4 h-4 mr-2" />
                           Editar Evento
                         </Button>
-                        <Button variant="destructive" className="flex-1" onClick={() => handleDeleteEvento(selectedEvento)}>
-                          <Trash2 className="w-4 h-4 mr-1" />
+                        <Button variant="destructive" className="w-full" onClick={() => handleDeleteEvento(selectedEvento)}>
+                          <Trash2 className="w-4 h-4 mr-2" />
                           Eliminar Evento
                         </Button>
                       </div>
@@ -2854,6 +3001,123 @@ export default function DashboardPage() {
               <Trash2 className="w-4 h-4 mr-2" />
               Eliminar Evento
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de gestión de rotativos (admin) */}
+      <Dialog open={gestionDialogOpen} onOpenChange={setGestionDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Gestionar Rotativos</DialogTitle>
+            <DialogDescription>
+              {gestionEvento && (
+                <>
+                  {gestionEvento.tituloName} - {formatInArgentina(gestionEvento.date, "EEEE d 'de' MMMM")}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Sección: Rotativos existentes */}
+            {gestionEvento && gestionEvento.rotativos.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm text-muted-foreground">Rotativos actuales</h4>
+                <div className="space-y-2">
+                  {gestionEvento.rotativos.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{r.user.alias || r.user.name}</span>
+                        <Badge variant={r.estado === "APROBADO" ? "default" : r.estado === "PENDIENTE" ? "secondary" : "outline"} className="text-xs">
+                          {r.estado}
+                        </Badge>
+                      </div>
+                      {deleteRotativoId === r.id ? (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="destructive" onClick={() => handleGestionEliminar(r.id)} disabled={gestionLoading}>
+                            Confirmar
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setDeleteRotativoId(null)}>
+                            No
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => setDeleteRotativoId(r.id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sección: Crear nuevo rotativo */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-sm text-muted-foreground">Crear rotativo</h4>
+
+              <div className="space-y-2">
+                <Label>Integrante</Label>
+                <Select value={gestionUserId} onValueChange={(v) => { setGestionUserId(v); setGestionAdvertencias([]) }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar integrante..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {integrantes
+                      .filter(i => !gestionEvento?.rotativos.some(r => r.user.id === i.id))
+                      .map((i) => (
+                        <SelectItem key={i.id} value={i.id}>
+                          {i.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Motivo (opcional)</Label>
+                <Input
+                  value={gestionMotivo}
+                  onChange={(e) => setGestionMotivo(e.target.value)}
+                  placeholder="Ej: Corrección de error..."
+                />
+              </div>
+
+              {gestionAdvertencias.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                  <div className="flex items-center gap-2 text-amber-800 font-medium mb-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Advertencias
+                  </div>
+                  <ul className="text-sm text-amber-700 space-y-1">
+                    {gestionAdvertencias.map((adv, i) => (
+                      <li key={i}>• {adv}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-amber-600 mt-2">
+                    Puedes continuar ignorando estas advertencias.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGestionDialogOpen(false)}>
+              Cerrar
+            </Button>
+            {gestionAdvertencias.length > 0 ? (
+              <Button onClick={handleGestionCrear} disabled={!gestionUserId || gestionLoading}>
+                {gestionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Crear de todas formas
+              </Button>
+            ) : (
+              <Button onClick={handleGestionValidar} disabled={!gestionUserId || gestionLoading}>
+                {gestionLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Crear Rotativo
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

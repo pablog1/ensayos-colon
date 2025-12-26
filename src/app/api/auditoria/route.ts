@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   const entityType = searchParams.get("entityType")
   const entityId = searchParams.get("entityId")
   const userId = searchParams.get("userId")
+  const isCriticalStr = searchParams.get("isCritical")
   const limit = parseInt(searchParams.get("limit") ?? "100")
   const offset = parseInt(searchParams.get("offset") ?? "0")
 
@@ -24,12 +25,14 @@ export async function GET(req: NextRequest) {
 
   const startDate = startDateStr ? new Date(startDateStr) : undefined
   const endDate = endDateStr ? new Date(endDateStr) : undefined
+  const isCritical = isCriticalStr === "true" ? true : isCriticalStr === "false" ? false : undefined
 
   const { logs, total } = await getAuditLogs({
     action: action ?? undefined,
     entityType: entityType ?? undefined,
     entityId: entityId ?? undefined,
     userId: userId ?? undefined,
+    isCritical,
     startDate,
     endDate,
     limit,

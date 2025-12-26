@@ -24,26 +24,34 @@ interface AuditLog {
   userId: string
   targetUserId: string | null
   details: Record<string, unknown> | null
+  isCritical: boolean
   createdAt: string
   user?: {
     name: string
     alias: string | null
+    email: string
   }
   targetUser?: {
     name: string
     alias: string | null
+    email: string
   }
 }
 
 // Categorías de logs
-const LOG_CATEGORIES: Record<string, { label: string; actions: string[] }> = {
+const LOG_CATEGORIES: Record<string, { label: string; actions: string[]; isCritical?: boolean }> = {
   all: {
     label: "Todos",
     actions: [],
   },
+  critical: {
+    label: "Críticos",
+    actions: [],
+    isCritical: true,
+  },
   rotativos: {
     label: "Rotativos",
-    actions: ["ROTATIVO_CREADO", "ROTATIVO_APROBADO", "ROTATIVO_RECHAZADO", "ROTATIVO_CANCELADO", "ROTATIVO_ASIGNADO"],
+    actions: ["ROTATIVO_CREADO", "ROTATIVO_APROBADO", "ROTATIVO_RECHAZADO", "ROTATIVO_CANCELADO", "ROTATIVO_ASIGNADO", "ROTATIVO_CREADO_EN_NOMBRE", "ROTATIVO_ELIMINADO_ADMIN", "ROTATIVO_PASADO_CREADO", "ROTATIVO_PASADO_ELIMINADO"],
   },
   bloques: {
     label: "Bloques",
@@ -65,9 +73,12 @@ const LOG_CATEGORIES: Record<string, { label: string; actions: string[] }> = {
 
 // Función para generar descripción amigable del log
 function getLogDescription(log: AuditLog): string {
-  const userName = log.user?.alias || log.user?.name || "Alguien"
-  const targetName = log.targetUser?.alias || log.targetUser?.name
   const details = log.details || {}
+  // Usar alias, name, email (parte antes de @), o realizadoPor de details como fallback
+  const realizadoPor = details.realizadoPor as string | undefined
+  const getEmailName = (email?: string) => email?.split("@")[0] || null
+  const userName = log.user?.alias || log.user?.name || getEmailName(log.user?.email) || realizadoPor || "Alguien"
+  const targetName = log.targetUser?.alias || log.targetUser?.name || getEmailName(log.targetUser?.email)
 
   const evento = details.evento as string || ""
   const titulo = details.titulo as string || ""
@@ -88,6 +99,14 @@ function getLogDescription(log: AuditLog): string {
       return `${userName} canceló su rotativo para ${evento || titulo || "un evento"}`
     case "ROTATIVO_ASIGNADO":
       return `Se asignó rotativo a ${targetName || "un usuario"} para ${evento || titulo || "un evento"}`
+    case "ROTATIVO_CREADO_EN_NOMBRE":
+      return `${userName} creó rotativo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}`
+    case "ROTATIVO_ELIMINADO_ADMIN":
+      return `${userName} eliminó el rotativo de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${motivo ? ` (${motivo})` : ""}`
+    case "ROTATIVO_PASADO_CREADO":
+      return `${userName} creó rotativo retroactivo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}`
+    case "ROTATIVO_PASADO_ELIMINADO":
+      return `${userName} eliminó rotativo pasado de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${motivo ? ` (${motivo})` : ""}`
 
     case "BLOQUE_SOLICITADO":
       return `${userName} solicitó bloque completo de ${titulo || "un título"}`
@@ -156,7 +175,11 @@ function getLogDescription(log: AuditLog): string {
 }
 
 // Colores de badges por tipo de acción
-function getActionColor(action: string): string {
+function getActionColor(action: string, isCritical?: boolean): string {
+  // Acciones críticas de admin tienen color especial
+  if (isCritical || action.includes("_ADMIN") || action.includes("_PASADO_") || action.includes("_EN_NOMBRE")) {
+    return "bg-red-100 text-red-800 border border-red-300"
+  }
   if (action.includes("CREADO") || action.includes("SOLICITADO")) {
     return "bg-blue-100 text-blue-800"
   }
@@ -186,6 +209,10 @@ function getActionLabel(action: string): string {
     ROTATIVO_RECHAZADO: "Rechazado",
     ROTATIVO_CANCELADO: "Cancelado",
     ROTATIVO_ASIGNADO: "Asignado",
+    ROTATIVO_CREADO_EN_NOMBRE: "Admin creó",
+    ROTATIVO_ELIMINADO_ADMIN: "Admin eliminó",
+    ROTATIVO_PASADO_CREADO: "Retroactivo",
+    ROTATIVO_PASADO_ELIMINADO: "Eliminado pasado",
     BLOQUE_SOLICITADO: "Bloque",
     BLOQUE_APROBADO: "Aprobado",
     BLOQUE_CANCELADO: "Cancelado",
@@ -222,14 +249,20 @@ export default function LogsPage() {
         limit: "500",
       })
 
+      // Si es categoría crítica, filtrar por isCritical en el servidor
+      const categoryConfig = LOG_CATEGORIES[category]
+      if (categoryConfig?.isCritical) {
+        params.set("isCritical", "true")
+      }
+
       const res = await fetch(`/api/auditoria?${params}`)
       if (res.ok) {
         const data = await res.json()
 
         // Filtrar por categoría del lado del cliente si es necesario
         let filteredLogs = data.logs
-        if (category !== "all") {
-          const actions = LOG_CATEGORIES[category].actions
+        if (category !== "all" && !categoryConfig?.isCritical) {
+          const actions = categoryConfig.actions
           filteredLogs = data.logs.filter((log: AuditLog) => actions.includes(log.action))
         }
 
@@ -307,14 +340,20 @@ export default function LogsPage() {
         limit: "10000",
       })
 
+      // Si es categoría crítica, filtrar por isCritical en el servidor
+      const categoryConfig = LOG_CATEGORIES[category]
+      if (categoryConfig?.isCritical) {
+        params.set("isCritical", "true")
+      }
+
       const res = await fetch(`/api/auditoria?${params}`)
       if (res.ok) {
         const data = await res.json()
 
         // Filtrar por categoría si es necesario
         let filteredLogs = data.logs
-        if (category !== "all") {
-          const actions = LOG_CATEGORIES[category].actions
+        if (category !== "all" && !categoryConfig?.isCritical) {
+          const actions = categoryConfig.actions
           filteredLogs = data.logs.filter((log: AuditLog) => actions.includes(log.action))
         }
 
@@ -420,11 +459,14 @@ export default function LogsPage() {
               {/* Vista mobile */}
               <div className="md:hidden space-y-3">
                 {logs.map((log) => (
-                  <div key={log.id} className="border rounded-lg p-3 space-y-2">
+                  <div key={log.id} className={`border rounded-lg p-3 space-y-2 ${log.isCritical ? "bg-red-50 border-red-200" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
-                      <Badge className={getActionColor(log.action)}>
-                        {getActionLabel(log.action)}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        {log.isCritical && <span className="text-red-600 font-bold text-sm">!</span>}
+                        <Badge className={getActionColor(log.action, log.isCritical)}>
+                          {getActionLabel(log.action)}
+                        </Badge>
+                      </div>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {format(new Date(log.createdAt), "dd/MM HH:mm")}
                       </span>
@@ -448,14 +490,17 @@ export default function LogsPage() {
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
-                      <TableRow key={log.id}>
+                      <TableRow key={log.id} className={log.isCritical ? "bg-red-50" : ""}>
                         <TableCell className="text-sm text-muted-foreground">
                           {format(new Date(log.createdAt), "dd/MM HH:mm", { locale: es })}
                         </TableCell>
                         <TableCell>
-                          <Badge className={getActionColor(log.action)}>
-                            {getActionLabel(log.action)}
-                          </Badge>
+                          <div className="flex items-center gap-1">
+                            {log.isCritical && <span className="text-red-600 font-bold">!</span>}
+                            <Badge className={getActionColor(log.action, log.isCritical)}>
+                              {getActionLabel(log.action)}
+                            </Badge>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {getLogDescription(log)}

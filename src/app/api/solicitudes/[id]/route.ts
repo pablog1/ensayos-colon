@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/services/audit"
 import { promoteFromWaitingList, removeFromWaitingList } from "@/lib/services/waiting-list"
+import type { AuditAction } from "@/generated/prisma"
 
 // DELETE /api/solicitudes/[id] - Cancelar rotativo
 export async function DELETE(
@@ -16,11 +17,23 @@ export async function DELETE(
 
   const { id } = await params
 
+  // Get request body for reason (optional for admins)
+  let motivoEliminacion: string | undefined
+  try {
+    const body = await req.json()
+    motivoEliminacion = body.motivo
+  } catch {
+    // No body provided, that's fine
+  }
+
   const rotativo = await prisma.rotativo.findUnique({
     where: { id },
     include: {
       event: {
         select: { date: true, title: true },
+      },
+      user: {
+        select: { id: true, name: true, alias: true },
       },
     },
   })
@@ -32,24 +45,42 @@ export async function DELETE(
     )
   }
 
-  // Solo el dueño o admin puede cancelar
-  if (rotativo.userId !== session.user.id && session.user.role !== "ADMIN") {
+  // Check permissions
+  const isOwner = rotativo.userId === session.user.id
+  const isAdmin = session.user.role === "ADMIN"
+
+  if (!isOwner && !isAdmin) {
     return NextResponse.json(
       { error: "No tienes permiso para cancelar este rotativo" },
       { status: 403 }
     )
   }
 
-  // No permitir cancelar eventos pasados (usar UTC para evitar problemas de timezone)
+  // Check if event is in the past (usar UTC para evitar problemas de timezone)
   const ahora = new Date()
   const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
   const eventoDate = new Date(rotativo.event.date)
   const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
-  if (fechaEventoUTC < hoyUTC) {
+  const esEventoPasado = fechaEventoUTC < hoyUTC
+
+  // Only restrict past events for non-admins
+  if (esEventoPasado && !isAdmin) {
     return NextResponse.json(
       { error: "No se puede cancelar un rotativo de un evento pasado" },
       { status: 400 }
     )
+  }
+
+  // Determine if this is a critical action
+  const eliminaAjeno = !isOwner && isAdmin
+  const isCritical = eliminaAjeno || esEventoPasado
+
+  // Determine audit action
+  let auditAction: AuditAction = "ROTATIVO_CANCELADO"
+  if (esEventoPasado) {
+    auditAction = "ROTATIVO_PASADO_ELIMINADO"
+  } else if (eliminaAjeno) {
+    auditAction = "ROTATIVO_ELIMINADO_ADMIN"
   }
 
   // Guardar info antes de eliminar
@@ -58,13 +89,20 @@ export async function DELETE(
 
   // Create audit log before deleting
   await createAuditLog({
-    action: "ROTATIVO_CANCELADO",
+    action: auditAction,
     entityType: "Rotativo",
     entityId: id,
     userId: session.user.id,
+    targetUserId: eliminaAjeno ? rotativo.userId : undefined,
+    isCritical,
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
+      esEventoPasado,
+      eliminaAjeno,
+      usuarioAfectado: rotativo.user.alias || rotativo.user.name,
+      motivoEliminacion,
+      realizadoPor: session.user.name || session.user.email,
     },
   })
 

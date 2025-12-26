@@ -9,6 +9,7 @@ interface CreateAuditLogParams {
   targetUserId?: string
   details?: Record<string, unknown>
   ipAddress?: string
+  isCritical?: boolean
 }
 
 export async function createAuditLog(params: CreateAuditLogParams): Promise<void> {
@@ -21,6 +22,7 @@ export async function createAuditLog(params: CreateAuditLogParams): Promise<void
       targetUserId: params.targetUserId ?? null,
       details: params.details ? (params.details as Prisma.InputJsonValue) : Prisma.JsonNull,
       ipAddress: params.ipAddress ?? null,
+      isCritical: params.isCritical ?? false,
     },
   })
 }
@@ -33,6 +35,7 @@ export async function getAuditLogs(options?: {
   targetUserId?: string
   startDate?: Date
   endDate?: Date
+  isCritical?: boolean
   limit?: number
   offset?: number
 }) {
@@ -43,6 +46,7 @@ export async function getAuditLogs(options?: {
   if (options?.entityId) where.entityId = options.entityId
   if (options?.userId) where.userId = options.userId
   if (options?.targetUserId) where.targetUserId = options.targetUserId
+  if (options?.isCritical !== undefined) where.isCritical = options.isCritical
 
   if (options?.startDate || options?.endDate) {
     where.createdAt = {
@@ -65,7 +69,7 @@ export async function getAuditLogs(options?: {
   const userIds = [...new Set(logs.flatMap(log => [log.userId, log.targetUserId].filter(Boolean)))]
   const users = await prisma.user.findMany({
     where: { id: { in: userIds as string[] } },
-    select: { id: true, name: true, alias: true },
+    select: { id: true, name: true, alias: true, email: true },
   })
   const userMap = new Map(users.map(u => [u.id, u]))
 
