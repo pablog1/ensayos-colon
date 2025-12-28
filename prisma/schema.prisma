@@ -31,10 +31,12 @@ model User {
   sessions       Session[]
   solicitudes    Solicitud[] // Mantener para compatibilidad
   rotativos      Rotativo[]
-  blocksAssigned Block[]     @relation("BlockAssignment")
-  waitingList    WaitingListEntry[]
-  licenses       License[]
-  balances       UserSeasonBalance[]
+  blocksAssigned  Block[]     @relation("BlockAssignment")
+  waitingList     WaitingListEntry[]
+  licenses        License[]
+  licensesCreated License[]   @relation("LicenseCreatedBy")
+  notesCreated    Note[]      @relation("NoteCreatedBy")
+  balances        UserSeasonBalance[]
   notifications  Notification[]
 
   createdAt DateTime @default(now())
@@ -206,6 +208,7 @@ model Event {
   titulo      Titulo?   @relation(fields: [tituloId], references: [id], onDelete: Cascade)
   rotativos   Rotativo[]
   waitingList WaitingListEntry[]
+  notes       Note[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -216,6 +219,33 @@ model Event {
   @@index([eventType])
   @@index([tituloId])
   @@map("events")
+}
+
+// ============================================
+// NOTAS DEL CALENDARIO
+// ============================================
+
+model Note {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  title       String
+  description String?
+  color       String   @default("#6b7280") // Color hex por defecto (gris)
+
+  // Relacion opcional con evento
+  eventId String?
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  // Quien creo la nota
+  createdById String
+  createdBy   User   @relation("NoteCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([eventId])
+  @@map("notes")
 }
 
 // ============================================
@@ -310,25 +340,31 @@ model WaitingListEntry {
 // ============================================
 
 model License {
-  id          String      @id @default(cuid())
+  id          String           @id @default(cuid())
   userId      String
   seasonId    String
-  startDate   DateTime    @db.Date
-  endDate     DateTime    @db.Date
+  startDate   DateTime         @db.Date
+  endDate     DateTime         @db.Date
   type        LicenseType
   description String?
+  estado      EstadoSolicitud  @default(PENDIENTE)
+
+  // Quien creo la licencia (puede ser el usuario o un admin)
+  createdById String?
 
   // Calculo de rotativos promedio durante la licencia
   rotativosCalculados Float @default(0)
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  season Season @relation(fields: [seasonId], references: [id])
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  season    Season  @relation(fields: [seasonId], references: [id])
+  createdBy User?   @relation("LicenseCreatedBy", fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([seasonId])
+  @@index([estado])
   @@map("licenses")
 }
 
@@ -477,6 +513,7 @@ enum RotativoEstado {
   CANCELADO
   EN_ESPERA
   ASIGNADO
+  CANCELACION_PENDIENTE  // Cancelacion solicitada con menos de 1 dia de anticipacion
 }
 
 enum RotativoTipo {

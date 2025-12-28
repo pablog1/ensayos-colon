@@ -46,7 +46,10 @@ import {
   AlertTriangle,
   Loader2,
   Layers,
+  Printer,
+  StickyNote,
 } from "lucide-react"
+import jsPDF from "jspdf"
 import {
   Collapsible,
   CollapsibleContent,
@@ -116,11 +119,24 @@ type SidebarMode =
   | "rotativos"
   | "eventos"
   | "titulos"
+  | "notas"
   | "nuevo-titulo"
   | "editar-titulo"
   | "nuevo-evento"
   | "editar-evento"
   | "detalle-evento"
+  | "nueva-nota"
+  | "editar-nota"
+
+interface Nota {
+  id: string
+  date: string
+  title: string
+  description: string | null
+  color: string
+  eventId: string | null
+  createdAt: string
+}
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -151,6 +167,16 @@ export default function DashboardPage() {
   const [editingEvento, setEditingEvento] = useState<Evento | null>(null)
   const [verSoloMios, setVerSoloMios] = useState(true)
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
+
+  // Estado para notas
+  const [notas, setNotas] = useState<Nota[]>([])
+  const [editingNota, setEditingNota] = useState<Nota | null>(null)
+  const [notaForm, setNotaForm] = useState({
+    title: "",
+    description: "",
+    color: "#6b7280",
+    date: "",
+  })
 
   // Configuración por defecto según dispositivo
   useEffect(() => {
@@ -319,6 +345,17 @@ export default function DashboardPage() {
     }
   }, [isAdmin])
 
+  // Fetch notas del mes (solo admin)
+  const fetchNotas = useCallback(async (mes: Date) => {
+    if (!isAdmin) return
+    const mesStr = format(mes, "yyyy-MM")
+    const res = await fetch(`/api/notas?mes=${mesStr}`)
+    if (res.ok) {
+      const data = await res.json()
+      setNotas(data)
+    }
+  }, [isAdmin])
+
   const fetchEventos = useCallback(async (mes: Date) => {
     // Cancelar fetch anterior si existe para evitar race conditions
     if (abortControllerRef.current) {
@@ -366,7 +403,8 @@ export default function DashboardPage() {
     fetchEventos(mesActual)
     fetchSolicitudes(mesActual)
     fetchTitulos(mesActual.getFullYear())
-  }, [mesActual, fetchEventos, fetchSolicitudes, fetchTitulos])
+    fetchNotas(mesActual)
+  }, [mesActual, fetchEventos, fetchSolicitudes, fetchTitulos, fetchNotas])
 
   // Polling para actualizar eventos automáticamente (cada 30 segundos)
   // Esto permite ver cambios cuando alguien es promovido de lista de espera
@@ -388,6 +426,10 @@ export default function DashboardPage() {
     return eventosPorFecha[fechaKey] || []
   }
 
+  const getNotasDelDia = (date: Date): Nota[] => {
+    const fechaKey = format(date, "yyyy-MM-dd")
+    return notas.filter(n => n.date.substring(0, 10) === fechaKey)
+  }
 
   const getEventColor = (evento: Evento) => {
     if (evento.tituloColor) {
@@ -561,6 +603,98 @@ export default function DashboardPage() {
       const error = await res.json()
       toast.error(error.error || "Error al eliminar")
     }
+  }
+
+  // Handlers para notas
+  const handleCreateNota = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!notaForm.title || !notaForm.date) {
+      toast.error("Título y fecha son requeridos")
+      return
+    }
+    setSubmitting(true)
+
+    try {
+      const res = await fetch("/api/notas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notaForm.title,
+          description: notaForm.description || null,
+          color: notaForm.color,
+          date: notaForm.date,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success("Nota creada")
+        fetchNotas(mesActual)
+        setSidebarMode("notas")
+        setNotaForm({ title: "", description: "", color: "#6b7280", date: "" })
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Error al crear nota")
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleUpdateNota = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingNota) return
+    setSubmitting(true)
+
+    try {
+      const res = await fetch(`/api/notas/${editingNota.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: notaForm.title,
+          description: notaForm.description || null,
+          color: notaForm.color,
+          date: notaForm.date,
+        }),
+      })
+
+      if (res.ok) {
+        toast.success("Nota actualizada")
+        fetchNotas(mesActual)
+        setSidebarMode("notas")
+        setEditingNota(null)
+        setNotaForm({ title: "", description: "", color: "#6b7280", date: "" })
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Error al actualizar nota")
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteNota = async (nota: Nota) => {
+    if (!confirm(`¿Eliminar la nota "${nota.title}"?`)) return
+
+    const res = await fetch(`/api/notas/${nota.id}`, { method: "DELETE" })
+
+    if (res.ok) {
+      toast.success("Nota eliminada")
+      fetchNotas(mesActual)
+    } else {
+      const error = await res.json()
+      toast.error(error.error || "Error al eliminar")
+    }
+  }
+
+  const startEditNota = (nota: Nota) => {
+    setEditingNota(nota)
+    setNotaForm({
+      title: nota.title,
+      description: nota.description || "",
+      color: nota.color,
+      date: nota.date.substring(0, 10),
+    })
+    setSidebarMode("editar-nota")
   }
 
   // Handlers para eventos
@@ -1108,6 +1242,162 @@ export default function DashboardPage() {
     }
   }
 
+  const handlePrintCalendar = () => {
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    })
+
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 10
+    const contentWidth = pageWidth - (margin * 2)
+
+    // Título del mes
+    const mesNombre = format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
+    pdf.setFontSize(24)
+    pdf.setFont("helvetica", "bold")
+    pdf.text(mesNombre, pageWidth / 2, 15, { align: "center" })
+
+    // Días de la semana (sin lunes)
+    const diasSemana = ["Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    const cellWidth = contentWidth / 6
+    const headerY = 25
+
+    pdf.setFontSize(12)
+    pdf.setFont("helvetica", "bold")
+    diasSemana.forEach((dia, i) => {
+      const x = margin + (i * cellWidth) + (cellWidth / 2)
+      pdf.text(dia, x, headerY, { align: "center" })
+    })
+
+    // Calcular días del mes (igual que en la grilla)
+    const primerDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
+    const ultimoDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
+
+    let diaSemana = primerDiaMes.getDay()
+    if (diaSemana === 0) diaSemana = 7
+    if (diaSemana === 1) diaSemana = 8
+    const diasAnteriores = diaSemana - 2
+
+    const diasCalendario: Date[] = []
+    for (let i = diasAnteriores; i > 0; i--) {
+      const fecha = new Date(primerDiaMes)
+      fecha.setDate(fecha.getDate() - i)
+      diasCalendario.push(fecha)
+    }
+    for (let i = 1; i <= ultimoDiaMes.getDate(); i++) {
+      diasCalendario.push(new Date(mesActual.getFullYear(), mesActual.getMonth(), i))
+    }
+    while (diasCalendario.length < 36) {
+      const ultimaFecha = diasCalendario[diasCalendario.length - 1]
+      const siguiente = new Date(ultimaFecha)
+      siguiente.setDate(siguiente.getDate() + 1)
+      diasCalendario.push(siguiente)
+    }
+
+    // Dibujar grilla
+    const startY = 30
+    const cellHeight = (pageHeight - startY - margin) / 6
+    let currentY = startY
+
+    for (let semana = 0; semana < 6; semana++) {
+      for (let dia = 0; dia < 6; dia++) {
+        const index = semana * 6 + dia
+        const fecha = diasCalendario[index]
+        const x = margin + (dia * cellWidth)
+        const y = currentY
+
+        // Borde de la celda
+        pdf.setDrawColor(150, 150, 150)
+        pdf.setLineWidth(0.5)
+        pdf.rect(x, y, cellWidth, cellHeight)
+
+        // Color de fondo para días del mes actual
+        const esMesActual = fecha.getMonth() === mesActual.getMonth()
+        if (!esMesActual) {
+          pdf.setFillColor(245, 245, 245)
+          pdf.rect(x, y, cellWidth, cellHeight, "F")
+        }
+
+        // Número del día
+        pdf.setFontSize(11)
+        pdf.setFont("helvetica", esMesActual ? "bold" : "normal")
+        pdf.setTextColor(esMesActual ? 0 : 150)
+        pdf.text(fecha.getDate().toString(), x + 2, y + 5)
+
+        // Eventos del día
+        const eventosDelDia = getEventosDelDia(fecha)
+        if (eventosDelDia.length > 0) {
+          pdf.setFontSize(8)
+          pdf.setFont("helvetica", "normal")
+          pdf.setTextColor(0)
+
+          let eventoY = y + 10
+          const maxEventos = 3
+
+          eventosDelDia.slice(0, maxEventos).forEach((evento) => {
+            if (eventoY + 4 > y + cellHeight - 3) return
+
+            // Tipo y hora
+            const tipo = evento.eventoType === "ENSAYO" ? "E" : "F"
+            const hora = format(new Date(evento.startTime), "HH:mm")
+
+            // Color según tipo
+            if (evento.eventoType === "ENSAYO") {
+              pdf.setTextColor(59, 130, 246) // Azul
+            } else {
+              pdf.setTextColor(245, 158, 11) // Ámbar
+            }
+
+            pdf.text(`${tipo} ${hora}`, x + 2, eventoY)
+            eventoY += 3.5
+
+            // Título del evento
+            pdf.setTextColor(0, 0, 0)
+            pdf.text(evento.tituloName, x + 2, eventoY)
+            eventoY += 3
+
+            // Rotativos aprobados/pendientes
+            const rotativosActivos = evento.rotativos.filter(r =>
+              r.estado === "APROBADO" || r.estado === "PENDIENTE"
+            )
+            if (rotativosActivos.length > 0) {
+              pdf.setTextColor(0, 0, 0)
+              pdf.setFontSize(7)
+              const nombresRotativos = rotativosActivos
+                .slice(0, 3)
+                .map(r => r.user.alias || r.user.name.split(" ")[0])
+                .join(", ")
+              const textoRotativos = rotativosActivos.length > 3
+                ? `${nombresRotativos} +${rotativosActivos.length - 3}`
+                : nombresRotativos
+              pdf.text(textoRotativos, x + 2, eventoY)
+              eventoY += 3
+              pdf.setFontSize(8)
+            }
+
+            eventoY += 1.5
+          })
+
+          if (eventosDelDia.length > maxEventos) {
+            pdf.setTextColor(0, 0, 0)
+            pdf.text(`+${eventosDelDia.length - maxEventos} más`, x + 2, y + cellHeight - 3)
+          }
+        }
+
+        pdf.setTextColor(0)
+      }
+      currentY += cellHeight
+    }
+
+    // Generar el PDF
+    const fileName = `calendario-${format(mesActual, "yyyy-MM")}.pdf`
+    pdf.save(fileName)
+    toast.success("PDF generado", { description: fileName })
+  }
+
   // Obtener las fechas de la semana actual (martes a domingo, sin lunes)
   const getSemanaActual = () => {
     const fechaBase = selectedDate || new Date(debugDate)
@@ -1139,9 +1429,10 @@ export default function DashboardPage() {
   // Renderizado para vista de mes (compacto)
   const renderDayContentMes = (date: Date) => {
     const eventosDelDia = getEventosDelDia(date)
+    const notasDelDia = getNotasDelDia(date)
     const tituloColors = getTituloColorsForDate(date)
 
-    const tieneContenido = eventosDelDia.length > 0
+    const tieneContenido = eventosDelDia.length > 0 || notasDelDia.length > 0
 
     return (
       <div className="relative w-full h-full flex flex-col py-1 overflow-hidden">
@@ -1160,6 +1451,17 @@ export default function DashboardPage() {
         <span className="relative font-semibold text-base pl-1.5">{date.getDate()}</span>
         {tieneContenido && (
           <div className="flex flex-col gap-1.5 mt-1 w-full px-1 overflow-y-auto flex-1">
+            {/* Notas del día */}
+            {notasDelDia.map((nota) => (
+              <div
+                key={`nota-${nota.id}`}
+                className="text-[11px] leading-snug px-1.5 py-1 rounded flex items-center gap-1"
+                style={{ backgroundColor: nota.color, color: "white" }}
+              >
+                <StickyNote className="w-3 h-3 flex-shrink-0" />
+                <span className="truncate">{nota.title}</span>
+              </div>
+            ))}
             {/* Eventos con sus rotativos */}
             {eventosDelDia.map((e, i) => (
               <div
@@ -1306,43 +1608,56 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Controles: botones de vista y toggle en una fila */}
-                  <div className="flex items-center justify-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant={vistaCalendario === "mes" ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 px-3 text-xs md:h-9 md:px-3 md:text-sm"
-                        onClick={() => setVistaCalendario("mes")}
-                      >
-                        Mes
-                      </Button>
-                      <Button
-                        variant={vistaCalendario === "semana" ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 px-3 text-xs md:h-9 md:px-3 md:text-sm"
-                        onClick={() => setVistaCalendario("semana")}
-                      >
-                        Semana
-                      </Button>
-                      <button
-                        className="text-xs md:text-sm text-primary hover:underline font-medium px-2 py-1"
-                        onClick={() => {
-                          const hoy = new Date(debugDate)
-                          setSelectedDate(hoy)
-                          setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
-                        }}
-                      >
-                        Hoy
-                      </button>
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-4 flex-wrap flex-1 justify-center">
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant={vistaCalendario === "mes" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-xs md:h-9 md:px-3 md:text-sm"
+                          onClick={() => setVistaCalendario("mes")}
+                        >
+                          Mes
+                        </Button>
+                        <Button
+                          variant={vistaCalendario === "semana" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-xs md:h-9 md:px-3 md:text-sm"
+                          onClick={() => setVistaCalendario("semana")}
+                        >
+                          Semana
+                        </Button>
+                        <button
+                          className="text-xs md:text-sm text-primary hover:underline font-medium px-2 py-1"
+                          onClick={() => {
+                            const hoy = new Date(debugDate)
+                            setSelectedDate(hoy)
+                            setMesActual(new Date(hoy.getFullYear(), hoy.getMonth(), 1))
+                          }}
+                        >
+                          Hoy
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs md:text-sm">
+                        <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
+                        <Switch
+                          checked={modoLista}
+                          onCheckedChange={setModoLista}
+                        />
+                        <span className={modoLista ? "font-medium" : "text-muted-foreground"}>Lista</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs md:text-sm">
-                      <span className={!modoLista ? "font-medium" : "text-muted-foreground"}>Grilla</span>
-                      <Switch
-                        checked={modoLista}
-                        onCheckedChange={setModoLista}
-                      />
-                      <span className={modoLista ? "font-medium" : "text-muted-foreground"}>Lista</span>
-                    </div>
+                    {vistaCalendario === "mes" && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 md:h-9 md:w-9"
+                        onClick={handlePrintCalendar}
+                        title="Imprimir calendario del mes"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -1636,7 +1951,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
               {/* Menu de navegación */}
-              {["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
+              {["rotativos", "titulos", "eventos", "notas"].includes(sidebarMode) && (
                 <nav className="flex gap-4 mb-3 border-b">
                   <button
                     className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
@@ -1671,6 +1986,19 @@ export default function DashboardPage() {
                     <Music className="w-4 h-4" />
                     Títulos
                   </button>
+                  {isAdmin && (
+                    <button
+                      className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                        sidebarMode === "notas"
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                      onClick={() => setSidebarMode("notas")}
+                    >
+                      <StickyNote className="w-4 h-4" />
+                      Notas
+                    </button>
+                  )}
                 </nav>
               )}
               {/* Título ABAJO */}
@@ -1697,13 +2025,16 @@ export default function DashboardPage() {
                   )}
                   {sidebarMode === "titulos" && "Títulos"}
                   {sidebarMode === "eventos" && (selectedDate ? format(selectedDate, "EEEE d 'de' MMMM", { locale: es }) : "Eventos del día")}
+                  {sidebarMode === "notas" && "Notas del Calendario"}
                   {sidebarMode === "nuevo-titulo" && "Nuevo Título"}
                   {sidebarMode === "editar-titulo" && "Editar Título"}
                   {sidebarMode === "nuevo-evento" && "Nuevo Evento"}
                   {sidebarMode === "editar-evento" && "Editar Evento"}
                   {sidebarMode === "detalle-evento" && selectedEvento?.tituloName}
+                  {sidebarMode === "nueva-nota" && "Nueva Nota"}
+                  {sidebarMode === "editar-nota" && "Editar Nota"}
                 </CardTitle>
-                {!["rotativos", "titulos", "eventos"].includes(sidebarMode) && (
+                {!["rotativos", "titulos", "eventos", "notas"].includes(sidebarMode) && (
                   <Button variant="ghost" size="icon" onClick={() => {
                     setSelectedEvento(null)
                     setSidebarMode("rotativos")
@@ -2362,6 +2693,171 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("titulos")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting}>
+                      {submitting ? "Guardando..." : "Guardar"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Lista de notas */}
+              {sidebarMode === "notas" && isAdmin && (
+                <div className="space-y-2">
+                  <Button
+                    className="w-full mb-3"
+                    onClick={() => {
+                      setNotaForm({ title: "", description: "", color: "#6b7280", date: selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(debugDate), "yyyy-MM-dd") })
+                      setSidebarMode("nueva-nota")
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nueva Nota
+                  </Button>
+                  {notas.length === 0 ? (
+                    <p className="text-muted-foreground text-sm text-center py-4">
+                      No hay notas en este mes
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {notas.map((nota) => (
+                        <div
+                          key={nota.id}
+                          className="flex items-center justify-between p-3 rounded-lg border"
+                          style={{ borderLeftColor: nota.color, borderLeftWidth: 4 }}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium truncate">{nota.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(nota.date).toLocaleDateString("es-ES", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                              })}
+                            </p>
+                            {nota.description && (
+                              <p className="text-sm text-muted-foreground truncate mt-1">
+                                {nota.description}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => startEditNota(nota)}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteNota(nota)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Formulario nueva nota */}
+              {sidebarMode === "nueva-nota" && isAdmin && (
+                <form onSubmit={handleCreateNota} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input
+                      type="date"
+                      value={notaForm.date}
+                      onChange={(e) => setNotaForm({ ...notaForm, date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Título</Label>
+                    <Input
+                      value={notaForm.title}
+                      onChange={(e) => setNotaForm({ ...notaForm, title: e.target.value })}
+                      placeholder="Ej: Reunión importante"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descripción (opcional)</Label>
+                    <Input
+                      value={notaForm.description}
+                      onChange={(e) => setNotaForm({ ...notaForm, description: e.target.value })}
+                      placeholder="Detalles adicionales..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <div className="grid grid-cols-8 gap-2">
+                      {["#6b7280", "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#06b6d4", "#3b82f6",
+                        "#6366f1", "#8b5cf6", "#d946ef", "#ec4899"
+                      ].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${notaForm.color === color ? "border-foreground ring-2 ring-offset-2 ring-foreground" : "border-transparent"}`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setNotaForm({ ...notaForm, color })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("notas")}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={submitting}>
+                      {submitting ? "Creando..." : "Crear Nota"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Formulario editar nota */}
+              {sidebarMode === "editar-nota" && isAdmin && editingNota && (
+                <form onSubmit={handleUpdateNota} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input
+                      type="date"
+                      value={notaForm.date}
+                      onChange={(e) => setNotaForm({ ...notaForm, date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Título</Label>
+                    <Input
+                      value={notaForm.title}
+                      onChange={(e) => setNotaForm({ ...notaForm, title: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descripción (opcional)</Label>
+                    <Input
+                      value={notaForm.description}
+                      onChange={(e) => setNotaForm({ ...notaForm, description: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <div className="grid grid-cols-8 gap-2">
+                      {["#6b7280", "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#22c55e", "#06b6d4", "#3b82f6",
+                        "#6366f1", "#8b5cf6", "#d946ef", "#ec4899"
+                      ].map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${notaForm.color === color ? "border-foreground ring-2 ring-offset-2 ring-foreground" : "border-transparent"}`}
+                          style={{ backgroundColor: color }}
+                          onClick={() => setNotaForm({ ...notaForm, color })}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setSidebarMode("notas")}>
                       Cancelar
                     </Button>
                     <Button type="submit" className="flex-1" disabled={submitting}>

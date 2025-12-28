@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   History,
+  CalendarOff,
 } from "lucide-react"
 
 const navItems = [
@@ -48,6 +49,12 @@ const navItems = [
     href: "/admin/integrantes",
     label: "Usuarios",
     icon: Users,
+    roles: ["ADMIN"],
+  },
+  {
+    href: "/admin/licencias",
+    label: "Licencias",
+    icon: CalendarOff,
     roles: ["ADMIN"],
   },
   {

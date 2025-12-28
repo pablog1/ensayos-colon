@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createAuditLog } from "@/lib/services/audit"
 import bcrypt from "bcryptjs"
 
 // GET /api/integrantes - Lista todos los usuarios (solo admin)
@@ -19,7 +20,9 @@ export async function GET() {
       id: true,
       email: true,
       name: true,
+      alias: true,
       role: true,
+      joinDate: true,
       createdAt: true,
       _count: {
         select: {
@@ -45,11 +48,11 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { email, name, password, role } = body
+  const { email, name, alias, password, role, joinDate } = body
 
   if (!email || !name || !password) {
     return NextResponse.json(
-      { error: "Email, nombre y contraseña son requeridos" },
+      { error: "Email, nombre y contrasena son requeridos" },
       { status: 400 }
     )
   }
@@ -73,21 +76,96 @@ export async function POST(req: NextRequest) {
   // Hash password
   const hashedPassword = await bcrypt.hash(password, 10)
 
+  // Determinar si es un integrante nuevo (tiene fecha de ingreso)
+  const esIntegranteNuevo = userRole === "INTEGRANTE" && joinDate
+
   const integrante = await prisma.user.create({
     data: {
       email,
       name,
+      alias,
       password: hashedPassword,
       role: userRole,
+      joinDate: joinDate ? new Date(joinDate) : null,
     },
     select: {
       id: true,
       email: true,
       name: true,
+      alias: true,
       role: true,
+      joinDate: true,
       createdAt: true,
     },
   })
 
-  return NextResponse.json(integrante)
+  // Si es integrante nuevo, calcular su maximo proporcional
+  let rotativosCalculados = 0
+  if (esIntegranteNuevo) {
+    const season = await prisma.season.findFirst({
+      where: { isActive: true },
+    })
+
+    if (season) {
+      // Calcular promedio de rotativos tomados por el resto del grupo
+      const balances = await prisma.userSeasonBalance.findMany({
+        where: {
+          seasonId: season.id,
+          user: { role: "INTEGRANTE" },
+        },
+      })
+
+      if (balances.length > 0) {
+        const totalRotativos = balances.reduce(
+          (sum, b) => sum + b.rotativosTomados + b.rotativosObligatorios,
+          0
+        )
+        rotativosCalculados = Math.round(totalRotativos / balances.length)
+      }
+
+      // Crear balance para el nuevo integrante
+      await prisma.userSeasonBalance.create({
+        data: {
+          userId: integrante.id,
+          seasonId: season.id,
+          rotativosTomados: 0,
+          rotativosObligatorios: 0,
+          rotativosPorLicencia: 0,
+          maxProyectado: rotativosCalculados,
+          fechaIngreso: new Date(joinDate),
+        },
+      })
+
+      // Audit log
+      await createAuditLog({
+        action: "USUARIO_CREADO",
+        entityType: "User",
+        entityId: integrante.id,
+        userId: session.user.id,
+        details: {
+          esIntegranteNuevo: true,
+          fechaIngreso: joinDate,
+          maxProyectadoCalculado: rotativosCalculados,
+          promedioGrupoAlIngreso: rotativosCalculados,
+        },
+      })
+    }
+  } else {
+    // Audit log para usuario normal
+    await createAuditLog({
+      action: "USUARIO_CREADO",
+      entityType: "User",
+      entityId: integrante.id,
+      userId: session.user.id,
+      details: {
+        esIntegranteNuevo: false,
+        role: userRole,
+      },
+    })
+  }
+
+  return NextResponse.json({
+    ...integrante,
+    rotativosCalculados: esIntegranteNuevo ? rotativosCalculados : undefined,
+  })
 }

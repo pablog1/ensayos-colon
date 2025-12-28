@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
+import { Clock, CheckCircle, XCircle, RefreshCw, Ban } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 
 interface SolicitudPendiente {
   id: string
@@ -32,9 +34,30 @@ interface SolicitudPendiente {
   }
 }
 
+interface CancelacionPendiente {
+  id: string
+  motivo: string | null
+  createdAt: string
+  user: {
+    id: string
+    name: string
+    alias: string | null
+  }
+  event: {
+    id: string
+    title: string
+    date: string
+  }
+}
+
 type AccionPendiente = {
   tipo: "aprobar" | "rechazar"
   solicitud: SolicitudPendiente
+} | null
+
+type AccionCancelacion = {
+  tipo: "aprobar" | "rechazar"
+  cancelacion: CancelacionPendiente
 } | null
 
 const MOTIVO_APROBACION_DEFAULT = "Validado por la fila"
@@ -42,22 +65,31 @@ const MOTIVO_RECHAZO_DEFAULT = "No validado por la fila"
 
 export default function PendientesPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudPendiente[]>([])
+  const [cancelaciones, setCancelaciones] = useState<CancelacionPendiente[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [accionPendiente, setAccionPendiente] = useState<AccionPendiente>(null)
   const [motivoAdicional, setMotivoAdicional] = useState("")
   const [procesando, setProcesando] = useState(false)
 
+  const [accionCancelacion, setAccionCancelacion] = useState<AccionCancelacion>(null)
+
   const fetchPendientes = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true)
     try {
       const res = await fetch("/api/solicitudes")
       const data = await res.json()
-      // Filtrar todas las solicitudes pendientes
+      // Filtrar solicitudes pendientes de aprobacion
       const pendientes = data.filter(
         (s: { estado: string }) => s.estado === "PENDIENTE"
       )
       setSolicitudes(pendientes)
+
+      // Filtrar cancelaciones tardias pendientes
+      const cancelacionesPendientes = data.filter(
+        (s: { estado: string }) => s.estado === "CANCELACION_PENDIENTE"
+      )
+      setCancelaciones(cancelacionesPendientes)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -70,6 +102,26 @@ export default function PendientesPage() {
     const interval = setInterval(() => fetchPendientes(), 15000)
     return () => clearInterval(interval)
   }, [fetchPendientes])
+
+  const handleCancelacionAccion = async (tipo: "aprobar" | "rechazar", cancelacion: CancelacionPendiente) => {
+    setProcesando(true)
+    try {
+      const res = await fetch(`/api/solicitudes/${cancelacion.id}/aprobar-cancelacion`, {
+        method: tipo === "aprobar" ? "POST" : "DELETE",
+      })
+
+      if (res.ok) {
+        toast.success(tipo === "aprobar" ? "Cancelacion aprobada" : "Cancelacion rechazada")
+        fetchPendientes()
+      } else {
+        const error = await res.json()
+        toast.error(error.error)
+      }
+    } finally {
+      setProcesando(false)
+      setAccionCancelacion(null)
+    }
+  }
 
   const abrirDialogAccion = (tipo: "aprobar" | "rechazar", solicitud: SolicitudPendiente) => {
     setAccionPendiente({ tipo, solicitud })
@@ -239,6 +291,75 @@ export default function PendientesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Cancelaciones tardias pendientes */}
+      {cancelaciones.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ban className="w-5 h-5 text-amber-500" />
+              <Badge variant="secondary" className="text-base px-3 py-1">
+                {cancelaciones.length}
+              </Badge>
+              cancelaciones tardias pendientes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {cancelaciones.map((c) => (
+                <div
+                  key={c.id}
+                  className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {c.user.alias || c.user.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Evento: {c.event.title} -{" "}
+                        {format(new Date(c.event.date), "EEEE d 'de' MMMM", { locale: es })}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                      Cancelacion tardia
+                    </Badge>
+                  </div>
+
+                  {c.motivo && (
+                    <div className="text-sm text-amber-700">
+                      <span className="font-medium">Motivo: </span>
+                      {c.motivo}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => handleCancelacionAccion("aprobar", c)}
+                      disabled={procesando}
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Aprobar cancelacion
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => handleCancelacionAccion("rechazar", c)}
+                      disabled={procesando}
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      Rechazar (mantener rotativo)
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Dialog de confirmación */}
       <Dialog open={accionPendiente !== null} onOpenChange={(open) => !open && cerrarDialog()}>

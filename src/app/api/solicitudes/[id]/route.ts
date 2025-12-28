@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/services/audit"
+import { createNotification } from "@/lib/services/notifications"
 import { promoteFromWaitingList, removeFromWaitingList } from "@/lib/services/waiting-list"
 import type { AuditAction } from "@/generated/prisma"
 
@@ -30,7 +31,7 @@ export async function DELETE(
     where: { id },
     include: {
       event: {
-        select: { date: true, title: true },
+        select: { id: true, date: true, title: true },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -56,12 +57,14 @@ export async function DELETE(
     )
   }
 
-  // Check if event is in the past (usar UTC para evitar problemas de timezone)
+  // Calcular diferencia de dias hasta el evento
   const ahora = new Date()
   const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
   const eventoDate = new Date(rotativo.event.date)
   const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
-  const esEventoPasado = fechaEventoUTC < hoyUTC
+  const diasHastaEvento = Math.floor((fechaEventoUTC - hoyUTC) / (1000 * 60 * 60 * 24))
+  const esEventoPasado = diasHastaEvento < 0
+  const esCancelacionTardia = diasHastaEvento <= 1 && !esEventoPasado
 
   // Only restrict past events for non-admins
   if (esEventoPasado && !isAdmin) {
@@ -71,7 +74,58 @@ export async function DELETE(
     )
   }
 
-  // Determine if this is a critical action
+  // NUEVA REGLA: Cancelaciones tardias (<=1 dia) requieren aprobacion
+  // Solo aplica a usuarios, admins pueden cancelar directamente
+  if (esCancelacionTardia && !isAdmin && isOwner) {
+    // No eliminar, marcar como CANCELACION_PENDIENTE
+    await prisma.rotativo.update({
+      where: { id },
+      data: {
+        estado: "CANCELACION_PENDIENTE",
+        motivo: motivoEliminacion || "Cancelacion tardia solicitada por el usuario",
+      },
+    })
+
+    // Audit log
+    await createAuditLog({
+      action: "ROTATIVO_CANCELADO",
+      entityType: "Rotativo",
+      entityId: id,
+      userId: session.user.id,
+      details: {
+        evento: rotativo.event.title,
+        fecha: rotativo.event.date.toISOString(),
+        esCancelacionTardia: true,
+        diasHastaEvento,
+        estadoAnterior: rotativo.estado,
+        nuevoEstado: "CANCELACION_PENDIENTE",
+        motivoEliminacion,
+      },
+    })
+
+    // Notificar a admins
+    const admins = await prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    })
+
+    for (const admin of admins) {
+      await createNotification({
+        userId: admin.id,
+        type: "SOLICITUD_PENDIENTE",
+        title: "Cancelacion tardia pendiente",
+        message: `${rotativo.user.alias || rotativo.user.name} solicita cancelar rotativo del ${eventoDate.toLocaleDateString()} (${diasHastaEvento} dias de anticipacion)`,
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      pendiente: true,
+      message: "Cancelacion solicitada. Requiere aprobacion de un administrador por ser con menos de 1 dia de anticipacion.",
+    })
+  }
+
+  // Cancelacion normal (>1 dia de anticipacion o admin)
   const eliminaAjeno = !isOwner && isAdmin
   const isCritical = eliminaAjeno || esEventoPasado
 
@@ -99,6 +153,8 @@ export async function DELETE(
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
       esEventoPasado,
+      esCancelacionTardia,
+      diasHastaEvento,
       eliminaAjeno,
       usuarioAfectado: rotativo.user.alias || rotativo.user.name,
       motivoEliminacion,
@@ -116,7 +172,7 @@ export async function DELETE(
     where: { id },
   })
 
-  // Si el rotativo liberó un cupo (estaba APROBADO o PENDIENTE), promover desde lista de espera
+  // Si el rotativo libero un cupo (estaba APROBADO o PENDIENTE), promover desde lista de espera
   if (estadoAnterior === "APROBADO" || estadoAnterior === "PENDIENTE") {
     await promoteFromWaitingList(eventId)
   }
