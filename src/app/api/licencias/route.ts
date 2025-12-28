@@ -64,28 +64,33 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(licencias)
 }
 
-// POST /api/licencias - Crear licencia
+// POST /api/licencias - Crear licencia (solo admin)
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
+  // Solo admin puede crear licencias
+  if (session.user.role !== "ADMIN") {
+    return NextResponse.json(
+      { error: "Solo administradores pueden registrar licencias" },
+      { status: 403 }
+    )
+  }
+
   const body = await req.json()
-  const { userId, startDate, endDate, type, description } = body
+  const { userId, startDate, endDate, description } = body
 
   // Validar campos requeridos
-  if (!startDate || !endDate || !type) {
+  if (!userId || !startDate || !endDate) {
     return NextResponse.json(
-      { error: "Faltan campos requeridos: startDate, endDate, type" },
+      { error: "Faltan campos requeridos: userId, startDate, endDate" },
       { status: 400 }
     )
   }
 
-  // Si no es admin, solo puede crear licencia para sí mismo
-  const targetUserId = session.user.role === "ADMIN" && userId
-    ? userId
-    : session.user.id
+  const targetUserId = userId
 
   // Validar fechas
   const start = new Date(startDate)
@@ -115,7 +120,6 @@ export async function POST(req: NextRequest) {
     where: {
       userId: targetUserId,
       seasonId: season.id,
-      estado: { not: "RECHAZADA" },
       OR: [
         {
           AND: [
@@ -141,21 +145,18 @@ export async function POST(req: NextRequest) {
     season.id
   )
 
-  // Crear licencia
+  // Crear licencia (siempre aprobada, solo admin puede crear)
   const license = await prisma.license.create({
     data: {
       userId: targetUserId,
       seasonId: season.id,
       startDate: start,
       endDate: end,
-      type,
+      type: "OTRO", // Tipo genérico, no se usa
       description,
       createdById: session.user.id,
       rotativosCalculados,
-      // Si es admin creando para otro, se aprueba automáticamente
-      estado: session.user.role === "ADMIN" && userId !== session.user.id
-        ? "APROBADA"
-        : "PENDIENTE",
+      estado: "APROBADA", // Siempre aprobada directamente
     },
     include: {
       user: {
@@ -167,10 +168,8 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // Si la licencia fue aprobada, actualizar balance
-  if (license.estado === "APROBADA") {
-    await actualizarBalancePorLicencia(targetUserId, season.id, rotativosCalculados)
-  }
+  // Actualizar balance inmediatamente
+  await actualizarBalancePorLicencia(targetUserId, season.id, rotativosCalculados)
 
   // Audit log
   await createAuditLog({
@@ -180,39 +179,19 @@ export async function POST(req: NextRequest) {
     userId: session.user.id,
     targetUserId: targetUserId,
     details: {
-      type,
       startDate: start.toISOString(),
       endDate: end.toISOString(),
       rotativosCalculados,
-      estado: license.estado,
     },
   })
 
-  // Notificaciones
-  if (session.user.role === "ADMIN" && userId !== session.user.id) {
-    // Notificar al usuario que se le creó una licencia
-    await createNotification({
-      userId: targetUserId,
-      type: "LICENCIA_REGISTRADA",
-      title: "Licencia registrada",
-      message: `Se te ha registrado una licencia de tipo ${type} del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}`,
-    })
-  } else {
-    // Notificar a admins que hay una licencia pendiente
-    const admins = await prisma.user.findMany({
-      where: { role: "ADMIN" },
-      select: { id: true },
-    })
-
-    for (const admin of admins) {
-      await createNotification({
-        userId: admin.id,
-        type: "LICENCIA_REGISTRADA",
-        title: "Nueva licencia pendiente",
-        message: `${session.user.name} ha solicitado una licencia de tipo ${type}`,
-      })
-    }
-  }
+  // Notificar al usuario que se le registró una licencia
+  await createNotification({
+    userId: targetUserId,
+    type: "LICENCIA_REGISTRADA",
+    title: "Licencia registrada",
+    message: `Se te ha registrado una licencia del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}. Se acreditaron ${rotativosCalculados.toFixed(2)} rotativos.`,
+  })
 
   return NextResponse.json(license)
 }

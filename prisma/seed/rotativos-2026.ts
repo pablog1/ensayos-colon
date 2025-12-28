@@ -132,7 +132,6 @@ async function main() {
     eventId: string
     estado: RotativoEstado
     tipo: RotativoTipo
-    motivo: string
   }> = []
 
   // Mezclar eventos para distribuir mejor
@@ -180,7 +179,7 @@ async function main() {
         eventId: evento.id,
         estado: RotativoEstado.APROBADO,
         tipo: RotativoTipo.VOLUNTARIO,
-        motivo: null, // Sin motivo para que se vea como solicitud manual
+        // Sin motivo para que se vea como solicitud manual
       })
 
       // Actualizar estadísticas

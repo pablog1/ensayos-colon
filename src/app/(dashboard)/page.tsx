@@ -2754,11 +2754,7 @@ export default function DashboardPage() {
                           <div className="min-w-0 flex-1">
                             <p className="font-medium truncate">{nota.title}</p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(nota.date).toLocaleDateString("es-ES", {
-                                weekday: "short",
-                                day: "numeric",
-                                month: "short",
-                              })}
+                              {formatInArgentina(nota.date.split("T")[0], "EEE, d MMM")}
                             </p>
                             {nota.description && (
                               <p className="text-sm text-muted-foreground truncate mt-1">
