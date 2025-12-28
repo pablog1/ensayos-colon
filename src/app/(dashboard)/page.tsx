@@ -1501,20 +1501,23 @@ export default function DashboardPage() {
                   <div className="bg-gray-100 rounded-b px-1.5 py-1 flex flex-wrap gap-1">
                     {e.rotativos.slice(0, 4).map((r, j) => {
                       const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                      const esMio = r.user.id === userId
                       return (
                         <span
                           key={j}
                           className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
-                            tieneExcepcion
-                              ? "bg-amber-200 text-amber-800"
-                              : r.estado === "APROBADO"
-                                ? "bg-green-200 text-green-800"
-                                : "bg-yellow-200 text-yellow-800"
+                            esMio
+                              ? "bg-green-600 text-white font-semibold ring-2 ring-green-400"
+                              : tieneExcepcion
+                                ? "bg-amber-200 text-amber-800"
+                                : r.estado === "APROBADO"
+                                  ? "bg-green-200 text-green-800"
+                                  : "bg-yellow-200 text-yellow-800"
                           }`}
                           title={tieneExcepcion ? r.motivo || "" : ""}
                         >
                           {r.user.alias || r.user.name.split(" ")[0]}
-                          {tieneExcepcion && <AlertTriangle className="w-2.5 h-2.5" />}
+                          {tieneExcepcion && !esMio && <AlertTriangle className="w-2.5 h-2.5" />}
                         </span>
                       )
                     })}
@@ -1849,20 +1852,23 @@ export default function DashboardPage() {
                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                               {evento.rotativos.map((r) => {
                                                 const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                                                const esMio = r.user.id === userId
                                                 return (
                                                   <span
                                                     key={r.id}
                                                     className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
-                                                      tieneExcepcion
-                                                        ? "bg-amber-100 text-amber-800"
-                                                        : r.estado === "APROBADO"
-                                                          ? "bg-green-100 text-green-800"
-                                                          : "bg-yellow-100 text-yellow-800"
+                                                      esMio
+                                                        ? "bg-green-600 text-white font-semibold ring-2 ring-green-400"
+                                                        : tieneExcepcion
+                                                          ? "bg-amber-100 text-amber-800"
+                                                          : r.estado === "APROBADO"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : "bg-yellow-100 text-yellow-800"
                                                     }`}
                                                     title={tieneExcepcion ? r.motivo || "" : ""}
                                                   >
                                                     {r.user.alias || r.user.name.split(" ")[0]}
-                                                    {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
+                                                    {tieneExcepcion && !esMio && <AlertTriangle className="w-3 h-3" />}
                                                   </span>
                                                 )
                                               })}
@@ -2315,20 +2321,23 @@ export default function DashboardPage() {
                                   <div className="flex flex-wrap gap-1 mt-2">
                                     {evento.rotativos.map((r) => {
                                       const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                                      const esMio = r.user.id === userId
                                       return (
                                         <span
                                           key={r.id}
                                           className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${
-                                            tieneExcepcion
-                                              ? "bg-amber-100 text-amber-800"
-                                              : r.estado === "APROBADO"
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-yellow-100 text-yellow-800"
+                                            esMio
+                                              ? "bg-green-600 text-white font-semibold ring-2 ring-green-400"
+                                              : tieneExcepcion
+                                                ? "bg-amber-100 text-amber-800"
+                                                : r.estado === "APROBADO"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : "bg-yellow-100 text-yellow-800"
                                           }`}
                                           title={tieneExcepcion ? r.motivo || "" : ""}
                                         >
                                           {r.user.alias || r.user.name.split(" ")[0]}
-                                          {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
+                                          {tieneExcepcion && !esMio && <AlertTriangle className="w-3 h-3" />}
                                         </span>
                                       )
                                     })}
@@ -2398,31 +2407,34 @@ export default function DashboardPage() {
                       <div className="space-y-2">
                         {selectedEvento.rotativos.map((r) => {
                           const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                          const esMio = r.user.id === userId
                           return (
                             <div
                               key={r.id}
                               className={`p-2 rounded border ${
-                                tieneExcepcion
-                                  ? "bg-amber-50 border-amber-200"
-                                  : r.estado === "APROBADO"
-                                    ? "bg-green-50 border-green-200"
-                                    : "bg-yellow-50 border-yellow-200"
+                                esMio
+                                  ? "bg-green-600 border-green-500 ring-2 ring-green-400"
+                                  : tieneExcepcion
+                                    ? "bg-amber-50 border-amber-200"
+                                    : r.estado === "APROBADO"
+                                      ? "bg-green-50 border-green-200"
+                                      : "bg-yellow-50 border-yellow-200"
                               }`}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">
+                                  <span className={`text-sm font-medium ${esMio ? "text-white" : ""}`}>
                                     {r.user.alias || r.user.name}
                                   </span>
-                                  {tieneExcepcion && (
+                                  {tieneExcepcion && !esMio && (
                                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                                   )}
                                 </div>
-                                <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className="text-xs">
+                                <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className={`text-xs ${esMio ? "bg-white text-green-700" : ""}`}>
                                   {r.estado}
                                 </Badge>
                               </div>
-                              {tieneExcepcion && r.motivo && (
+                              {tieneExcepcion && !esMio && r.motivo && (
                                 <p className="text-xs text-amber-700 mt-1 pl-6">
                                   {r.motivo}
                                 </p>
