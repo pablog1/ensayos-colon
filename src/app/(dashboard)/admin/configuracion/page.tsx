@@ -389,7 +389,6 @@ export default function ConfiguracionPage() {
   const categories = {
     cupo: { name: "Cupos y disponibilidad", rules: [] as RuleConfig[] },
     restriccion: { name: "Límites y restricciones", rules: [] as RuleConfig[] },
-    rotacion: { name: "Rotación y cobertura", rules: [] as RuleConfig[] },
     bloque: { name: "Bloques de producción", rules: [] as RuleConfig[] },
     alerta: { name: "Notificaciones", rules: [] as RuleConfig[] },
   }
