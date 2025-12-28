@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -1534,6 +1534,51 @@ export default function DashboardPage() {
   // Eventos del día seleccionado
   const eventosDelDiaSeleccionado = selectedDate ? getEventosDelDia(selectedDate) : []
 
+  // Calcular la última fecha visible del calendario (para filtrar rotativos)
+  const ultimaFechaVisibleCalendario = useMemo(() => {
+    const firstDay = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
+    const lastDay = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
+    const jsDay = firstDay.getDay()
+    const startDayOfWeek = jsDay === 0 ? 5 : jsDay === 1 ? 0 : jsDay - 2
+    const daysInMonth = lastDay.getDate()
+    const prevMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 0)
+    const daysInPrevMonth = prevMonth.getDate()
+
+    let cellCount = 0
+    // Contar días del mes anterior
+    let daysToAdd = startDayOfWeek
+    let prevDay = daysInPrevMonth
+    while (daysToAdd > 0) {
+      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, prevDay)
+      if (date.getDay() !== 1) {
+        cellCount++
+        daysToAdd--
+      }
+      prevDay--
+    }
+    // Contar días del mes actual
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(mesActual.getFullYear(), mesActual.getMonth(), day)
+      if (date.getDay() !== 1) {
+        cellCount++
+      }
+    }
+    // Calcular cuántos días del mes siguiente se necesitan
+    let nextDay = 1
+    while (cellCount < 36) {
+      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, nextDay)
+      if (date.getDay() !== 1) {
+        cellCount++
+        if (cellCount === 36) {
+          return date
+        }
+      }
+      nextDay++
+    }
+    // Si ya se llenó con días del mes actual
+    return lastDay
+  }, [mesActual])
+
   // Obtener rotativos de eventos (nuevo sistema)
   const rotativosDeEventos = eventos.flatMap(e =>
     (e.rotativos || []).map(r => ({
@@ -1547,8 +1592,9 @@ export default function DashboardPage() {
     }))
   )
 
-  // Ordenar rotativos por fecha
+  // Ordenar rotativos por fecha y filtrar por rango visible del calendario
   const todosLosRotativos = rotativosDeEventos
+    .filter(r => new Date(r.fecha) <= ultimaFechaVisibleCalendario)
     .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime())
 
   // Filtrar rotativos según la vista
