@@ -24,8 +24,6 @@ import {
   CalendarDays,
   UserPlus,
   Bell,
-  Shuffle,
-  Shield,
   ListOrdered,
 } from "lucide-react"
 
@@ -49,6 +47,7 @@ const ruleUIConfig: Record<string, {
   explanation: string
   editable: boolean
   editableFields?: string[]
+  nonEditableMessage?: string // Mensaje personalizado para reglas no editables
   renderValue?: (value: unknown) => React.ReactNode
   renderEditor?: (value: unknown, onChange: (val: unknown) => void) => React.ReactNode
 }> = {
@@ -201,69 +200,6 @@ const ruleUIConfig: Record<string, {
         </div>
       )
     },
-  },
-  ROTACION_OBLIGATORIA: {
-    icon: Shuffle,
-    friendlyName: "Rotación obligatoria",
-    shortDescription: "Asignación automática cuando no hay voluntarios",
-    explanation: "Si faltan 5 días para un evento y no se llenó el cupo con voluntarios, el sistema asigna automáticamente a quienes menos rotativos hayan tomado. Esto asegura que todos participen de forma equitativa.",
-    editable: true,
-    renderValue: (value) => {
-      if (!value || typeof value !== "object") return null
-      const config = value as { diasAntes: number; criterio: string }
-      return (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="text-base px-3 py-1">
-              {config.diasAntes} días antes
-            </Badge>
-            <span className="text-muted-foreground">se activa la asignación</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Se asigna a quienes <strong>menos rotativos</strong> hayan tomado
-          </p>
-        </div>
-      )
-    },
-    renderEditor: (value, onChange) => {
-      if (!value || typeof value !== "object") return null
-      const config = value as { diasAntes: number; criterio: string }
-      return (
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <Label>Días de anticipación:</Label>
-            <Input
-              type="number"
-              min={1}
-              max={30}
-              value={config.diasAntes}
-              onChange={(e) => {
-                onChange({ ...config, diasAntes: parseInt(e.target.value) || 5 })
-              }}
-              className="w-20 text-center"
-            />
-            <span className="text-muted-foreground">días antes del evento</span>
-          </div>
-        </div>
-      )
-    },
-  },
-  COBERTURA_EXTERNA: {
-    icon: Shield,
-    friendlyName: "Cobertura por causas externas",
-    shortDescription: "Quién cubre cuando alguien no puede asistir",
-    explanation: "Si alguien tiene una emergencia y no puede asistir, se busca cobertura entre quienes más rotativos hayan tomado. Así, quien cubre \"devuelve\" parte de sus rotativos acumulados.",
-    editable: false,
-    renderValue: () => (
-      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <p className="text-blue-800">
-          Se prioriza a quienes <strong>más rotativos</strong> hayan tomado
-        </p>
-        <p className="text-sm text-blue-600 mt-1">
-          Así se equilibra el balance de rotativos del grupo
-        </p>
-      </div>
-    ),
   },
   LICENCIAS: {
     icon: Calendar,
@@ -628,10 +564,9 @@ export default function ConfiguracionPage() {
                         {/* Mensaje para reglas no editables */}
                         {!uiConfig.editable && (
                           <div className="flex gap-2 p-3 bg-muted/50 rounded-lg text-sm">
-                            <AlertTriangle className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                            <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                             <p className="text-muted-foreground">
-                              Esta configuración es automática y no requiere ajustes manuales.
-                              Si necesitás modificarla, contactá al equipo técnico.
+                              {uiConfig.nonEditableMessage || "Esta configuración es automática y no requiere ajustes manuales. Si necesitás modificarla, contactá al equipo técnico."}
                             </p>
                           </div>
                         )}

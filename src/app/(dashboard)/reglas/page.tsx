@@ -18,6 +18,7 @@ import {
   CheckCircle,
   Info,
   Theater,
+  ArrowLeftRight,
 } from "lucide-react"
 
 interface RuleConfig {
@@ -132,32 +133,20 @@ const friendlyRules: Record<string, {
   ROTACION_OBLIGATORIA: {
     icon: Shuffle,
     title: "Rotación obligatoria",
-    summary: "Asignación automática cuando faltan voluntarios",
+    summary: "Designación por el admin cuando no hay voluntarios",
     details: [
-      "Si nadie se ofrece, el sistema asigna automáticamente",
-      "Se asigna a quienes menos rotativos hayan tomado",
-      "Garantiza que todos participen de forma equitativa",
+      "Si es necesario cubrir un evento y faltando un día no hay voluntarios, el admin puede designar quién rotará",
+      "Se busca consenso, pero el admin tiene potestad para asignar priorizando a quienes menos rotativos hayan utilizado",
+      "Esto garantiza una distribución equitativa de las rotaciones",
     ],
-    getValue: (value) => {
-      if (!value || typeof value !== "object") return null
-      const config = value as { diasAntes: number }
-      return (
-        <div className="flex items-center gap-3 mt-3">
-          <div className="text-center p-3 bg-amber-50 rounded-lg">
-            <div className="text-2xl font-bold text-amber-700">{config.diasAntes}</div>
-            <div className="text-xs text-amber-600">días antes</div>
-          </div>
-          <span className="text-sm text-muted-foreground">se activa si no hay voluntarios</span>
-        </div>
-      )
-    },
   },
   COBERTURA_EXTERNA: {
     icon: Shield,
     title: "Cobertura por emergencias",
     summary: "Quién cubre cuando alguien no puede asistir de urgencia",
     details: [
-      "Se busca entre quienes más rotativos hayan tomado",
+      "Se prioriza a quienes más rotativos hayan tomado",
+      "El admin gestiona manualmente las coberturas según este criterio",
       "Así se equilibra el balance del grupo",
     ],
   },
@@ -245,6 +234,16 @@ const friendlyRules: Record<string, {
         </div>
       )
     },
+  },
+  PRIMER_ULTIMO_TITULO: {
+    icon: ArrowLeftRight,
+    title: "Primer y último título",
+    summary: "No se puede tomar el primer y el último título del año",
+    details: [
+      "Si tomás rotativo en el primer título del año, no podés tomar en el último",
+      "Esto distribuye mejor las oportunidades a lo largo de la temporada",
+      "El admin verifica esta restricción manualmente",
+    ],
   },
 }
 

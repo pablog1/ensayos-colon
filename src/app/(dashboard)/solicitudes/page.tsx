@@ -57,6 +57,10 @@ export default function SolicitudesPage() {
 
   useEffect(() => {
     fetchSolicitudes()
+
+    // Polling para actualizar automáticamente cada 30 segundos
+    const interval = setInterval(fetchSolicitudes, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const fetchSolicitudes = async () => {

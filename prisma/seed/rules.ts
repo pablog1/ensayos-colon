@@ -142,6 +142,17 @@ const ruleConfigs = [
     category: "restriccion",
     priority: 16,
   },
+  {
+    key: "PRIMER_ULTIMO_TITULO",
+    value: JSON.stringify({
+      enabled: true,
+    }),
+    valueType: "json",
+    description:
+      "Si un integrante toma rotativo en el primer título del año, no puede tomar en el último. El admin verifica esta restricción manualmente.",
+    category: "restriccion",
+    priority: 40,
+  },
 ]
 
 export async function seedRuleConfigs() {

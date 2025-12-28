@@ -192,6 +192,10 @@ export default function DashboardPage() {
   const [confirmMotivo, setConfirmMotivo] = useState<string | null>(null)
   const [confirmEventId, setConfirmEventId] = useState<string | null>(null)
 
+  // Estado para el diálogo de confirmación de lista de espera
+  const [waitlistDialogOpen, setWaitlistDialogOpen] = useState(false)
+  const [waitlistEventId, setWaitlistEventId] = useState<string | null>(null)
+
   // Estado para mostrar progreso de validación
   const [validatingRule, setValidatingRule] = useState<string | null>(null)
 
@@ -363,6 +367,16 @@ export default function DashboardPage() {
     fetchSolicitudes(mesActual)
     fetchTitulos(mesActual.getFullYear())
   }, [mesActual, fetchEventos, fetchSolicitudes, fetchTitulos])
+
+  // Polling para actualizar eventos automáticamente (cada 30 segundos)
+  // Esto permite ver cambios cuando alguien es promovido de lista de espera
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchEventos(mesActual)
+    }, 30000) // 30 segundos
+
+    return () => clearInterval(interval)
+  }, [mesActual, fetchEventos])
 
   // Cargar integrantes una sola vez para admins
   useEffect(() => {
@@ -705,16 +719,26 @@ export default function DashboardPage() {
 
       const validation = await validationRes.json()
 
-      // Si requiere aprobación, mostrar diálogo de confirmación
+      // Si no hay cupo y no requiere aprobación, mostrar diálogo de lista de espera
+      if (validation.sinCupo && !validation.requiereAprobacion) {
+        setWaitlistEventId(evento.id)
+        setWaitlistDialogOpen(true)
+        setSubmitting(false)
+        return
+      }
+
+      // Si requiere aprobación (con o sin cupo), mostrar diálogo de confirmación
       if (validation.requiereAprobacion) {
-        setConfirmMotivo(validation.motivoTexto)
+        setConfirmMotivo(validation.sinCupo
+          ? `${validation.motivoTexto}. Nota: No hay cupo disponible, quedarás en lista de espera.`
+          : validation.motivoTexto)
         setConfirmEventId(evento.id)
         setConfirmDialogOpen(true)
         setSubmitting(false)
         return
       }
 
-      // Si no requiere aprobación, crear directamente
+      // Si no requiere aprobación y hay cupo, crear directamente
       await crearRotativo(evento.id, false, null)
     } catch (error) {
       console.error("Error en handleSolicitarRotativo:", error)
@@ -778,6 +802,20 @@ export default function DashboardPage() {
     setConfirmDialogOpen(false)
     setConfirmEventId(null)
     setConfirmMotivo(null)
+  }
+
+  // Handler para confirmar entrada a lista de espera
+  const handleConfirmarWaitlist = async () => {
+    if (!waitlistEventId) return
+    setWaitlistDialogOpen(false)
+    await crearRotativo(waitlistEventId, false, null)
+    setWaitlistEventId(null)
+  }
+
+  // Handler para cancelar entrada a lista de espera
+  const handleCancelarWaitlist = () => {
+    setWaitlistDialogOpen(false)
+    setWaitlistEventId(null)
   }
 
   // Handler para abrir diálogo de gestión de rotativos (admin)
@@ -1983,7 +2021,7 @@ export default function DashboardPage() {
 
                   {/* Acciones */}
                   <div className="space-y-2 pt-2 border-t">
-                    {!userHasRotativo(selectedEvento) && selectedEvento.cupoDisponible > 0 && (
+                    {!userHasRotativo(selectedEvento) && (
                       <div className="space-y-2">
                         <Button
                           className="w-full"
@@ -1995,8 +2033,10 @@ export default function DashboardPage() {
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               Validando...
                             </>
-                          ) : (
+                          ) : selectedEvento.cupoDisponible > 0 ? (
                             "Solicitar Rotativo"
+                          ) : (
+                            "Unirse a Lista de Espera"
                           )}
                         </Button>
                         {validatingRule && (
@@ -2858,6 +2898,46 @@ export default function DashboardPage() {
                 </>
               ) : (
                 "Solicitar aprobación"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de confirmación para lista de espera */}
+      <Dialog open={waitlistDialogOpen} onOpenChange={setWaitlistDialogOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+              <Clock className="h-8 w-8 text-blue-600" />
+            </div>
+            <DialogTitle className="text-xl">Lista de espera</DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              No hay cupo disponible en este evento. ¿Querés unirte a la lista de espera?
+              Te notificaremos cuando haya un lugar disponible.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCancelarWaitlist}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmarWaitlist}
+              className="w-full sm:w-auto"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Agregando...
+                </>
+              ) : (
+                "Unirme a la lista"
               )}
             </Button>
           </DialogFooter>

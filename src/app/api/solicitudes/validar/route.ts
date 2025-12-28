@@ -73,13 +73,8 @@ export async function POST(req: NextRequest) {
   )
   const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 
-  // Verificar cupo disponible
-  if (evento.rotativos.length >= cupoEfectivo) {
-    return NextResponse.json(
-      { error: "No hay cupo disponible en este evento" },
-      { status: 400 }
-    )
-  }
+  // Determinar si irá a lista de espera (no bloqueamos, solo informamos)
+  const sinCupo = evento.rotativos.length >= cupoEfectivo
 
   // Verificar fecha pasada (solo para usuarios normales, admins pueden crear en fechas pasadas)
   const ahora = new Date()
@@ -333,5 +328,6 @@ export async function POST(req: NextRequest) {
     requiereAprobacion,
     motivos: motivosAprobacion,
     motivoTexto: motivosAprobacion.join("; "),
+    sinCupo, // indica que irá a lista de espera
   })
 }

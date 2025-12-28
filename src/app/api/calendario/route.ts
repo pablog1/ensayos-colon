@@ -127,6 +127,11 @@ export async function GET(req: NextRequest) {
       r => r.estado === "APROBADO" || r.estado === "PENDIENTE"
     )
 
+    // Incluir también los EN_ESPERA para mostrar al usuario (pero no cuentan para el cupo)
+    const rotativosVisibles = evento.rotativos.filter(
+      r => r.estado === "APROBADO" || r.estado === "PENDIENTE" || r.estado === "EN_ESPERA"
+    )
+
     return {
       id: evento.id,
       title: evento.title,
@@ -142,7 +147,7 @@ export async function GET(req: NextRequest) {
       cupoOverride: evento.cupoOverride,
       rotativosUsados: rotativosActivos.length,
       cupoDisponible: cupoEfectivo - rotativosActivos.length,
-      rotativos: rotativosActivos,
+      rotativos: rotativosVisibles,
     }
   })
 
