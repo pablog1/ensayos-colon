@@ -1684,19 +1684,19 @@ export default function DashboardPage() {
                             }
                           }
 
-                          const diasConEventos = diasAMostrar
-                            .map(date => ({ date, eventos: getEventosDelDia(date) }))
-                            .filter(({ eventos }) => eventos.length > 0)
+                          const diasConContenido = diasAMostrar
+                            .map(date => ({ date, eventos: getEventosDelDia(date), notasDia: getNotasDelDia(date) }))
+                            .filter(({ eventos, notasDia }) => eventos.length > 0 || notasDia.length > 0)
 
-                          if (diasConEventos.length === 0) {
+                          if (diasConContenido.length === 0) {
                             return (
                               <div className="text-center py-8 text-muted-foreground">
-                                No hay eventos {vistaCalendario === "mes" ? "este mes" : "esta semana"}
+                                No hay eventos ni notas {vistaCalendario === "mes" ? "este mes" : "esta semana"}
                               </div>
                             )
                           }
 
-                          return diasConEventos.map(({ date, eventos }) => {
+                          return diasConContenido.map(({ date, eventos, notasDia }) => {
                             const isToday = date.toDateString() === debugDate.toDateString()
                             const tituloColors = getTituloColorsForDate(date)
 
@@ -1735,6 +1735,30 @@ export default function DashboardPage() {
                                     )}
                                   </div>
                                 </div>
+                                {/* Notas del día */}
+                                {notasDia.length > 0 && (
+                                  <div className="divide-y">
+                                    {notasDia.map(nota => (
+                                      <div
+                                        key={nota.id}
+                                        className="p-3 flex items-center gap-3"
+                                        style={{ backgroundColor: `${nota.color}15` }}
+                                      >
+                                        <div
+                                          className="w-1 self-stretch rounded"
+                                          style={{ backgroundColor: nota.color }}
+                                        />
+                                        <StickyNote className="w-4 h-4 flex-shrink-0" style={{ color: nota.color }} />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="font-medium">{nota.title}</p>
+                                          {nota.description && (
+                                            <p className="text-sm text-muted-foreground">{nota.description}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                                 {/* Lista de eventos */}
                                 <div className="divide-y cursor-pointer" onClick={() => handleDayClick(date)}>
                                   {eventos.map(evento => (
@@ -1952,50 +1976,50 @@ export default function DashboardPage() {
               </div>
               {/* Menu de navegación */}
               {["rotativos", "titulos", "eventos", "notas"].includes(sidebarMode) && (
-                <nav className="flex gap-4 mb-3 border-b">
+                <nav className="flex flex-wrap gap-x-3 gap-y-1 mb-3 border-b">
                   <button
-                    className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                    className={`flex items-center gap-1 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                       sidebarMode === "rotativos"
                         ? "border-primary text-primary"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => setSidebarMode("rotativos")}
                   >
-                    <Users className="w-4 h-4" />
+                    <Users className="w-3.5 h-3.5" />
                     Rotativos
                   </button>
                   <button
-                    className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                    className={`flex items-center gap-1 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                       sidebarMode === "eventos"
                         ? "border-primary text-primary"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => setSidebarMode("eventos")}
                   >
-                    <Theater className="w-4 h-4" />
+                    <Theater className="w-3.5 h-3.5" />
                     Eventos
                   </button>
                   <button
-                    className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                    className={`flex items-center gap-1 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                       sidebarMode === "titulos"
                         ? "border-primary text-primary"
                         : "border-transparent text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => setSidebarMode("titulos")}
                   >
-                    <Music className="w-4 h-4" />
+                    <Music className="w-3.5 h-3.5" />
                     Títulos
                   </button>
                   {isAdmin && (
                     <button
-                      className={`flex items-center gap-1.5 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                      className={`flex items-center gap-1 pb-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
                         sidebarMode === "notas"
                           ? "border-primary text-primary"
                           : "border-transparent text-muted-foreground hover:text-foreground"
                       }`}
                       onClick={() => setSidebarMode("notas")}
                     >
-                      <StickyNote className="w-4 h-4" />
+                      <StickyNote className="w-3.5 h-3.5" />
                       Notas
                     </button>
                   )}
