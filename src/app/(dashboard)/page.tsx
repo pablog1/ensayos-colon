@@ -1321,70 +1321,86 @@ export default function DashboardPage() {
           pdf.rect(x, y, cellWidth, cellHeight, "F")
         }
 
-        // Número del día
-        pdf.setFontSize(11)
+        // Número del día (arriba a la izquierda)
+        pdf.setFontSize(10)
         pdf.setFont("helvetica", esMesActual ? "bold" : "normal")
         pdf.setTextColor(esMesActual ? 0 : 150)
-        pdf.text(fecha.getDate().toString(), x + 2, y + 5)
+        const diaNumero = fecha.getDate().toString()
+        pdf.text(diaNumero, x + 2, y + 4)
 
-        // Eventos del día
+        // Eventos del día - comenzar al lado del número
         const eventosDelDia = getEventosDelDia(fecha)
         if (eventosDelDia.length > 0) {
           pdf.setFontSize(8)
           pdf.setFont("helvetica", "normal")
-          pdf.setTextColor(0)
+          pdf.setTextColor(0) // Todo en negro para imprimir
 
-          let eventoY = y + 10
-          const maxEventos = 3
+          // Primera línea al lado del número del día
+          const offsetX = 8 // Espacio después del número
+          let eventoY = y + 4
+          let primeraLinea = true
 
-          eventosDelDia.slice(0, maxEventos).forEach((evento) => {
-            if (eventoY + 4 > y + cellHeight - 3) return
+          eventosDelDia.forEach((evento, eventoIndex) => {
+            if (eventoY + 3 > y + cellHeight - 1) return
 
-            // Tipo y hora
+            // Tipo y hora - en negrita, en la misma línea que el número
             const tipo = evento.eventoType === "ENSAYO" ? "E" : "F"
             const hora = format(new Date(evento.startTime), "HH:mm")
+            pdf.setFont("helvetica", "bold")
 
-            // Color según tipo
-            if (evento.eventoType === "ENSAYO") {
-              pdf.setTextColor(59, 130, 246) // Azul
+            if (primeraLinea) {
+              // Primera línea: al lado del número
+              pdf.text(`${tipo} ${hora}`, x + offsetX, eventoY)
+              primeraLinea = false
             } else {
-              pdf.setTextColor(245, 158, 11) // Ámbar
+              pdf.text(`${tipo} ${hora}`, x + offsetX, eventoY)
             }
+            eventoY += 2.5
 
-            pdf.text(`${tipo} ${hora}`, x + 2, eventoY)
-            eventoY += 3.5
+            // Título del evento - en negrita, alineado con el horario
+            pdf.text(evento.tituloName, x + offsetX, eventoY)
+            eventoY += 2.5
+            pdf.setFont("helvetica", "normal")
 
-            // Título del evento
-            pdf.setTextColor(0, 0, 0)
-            pdf.text(evento.tituloName, x + 2, eventoY)
-            eventoY += 3
-
-            // Rotativos aprobados/pendientes
+            // Rotativos aprobados/pendientes - TODOS los nombres
             const rotativosActivos = evento.rotativos.filter(r =>
               r.estado === "APROBADO" || r.estado === "PENDIENTE"
             )
             if (rotativosActivos.length > 0) {
-              pdf.setTextColor(0, 0, 0)
               pdf.setFontSize(7)
-              const nombresRotativos = rotativosActivos
-                .slice(0, 3)
-                .map(r => r.user.alias || r.user.name.split(" ")[0])
-                .join(", ")
-              const textoRotativos = rotativosActivos.length > 3
-                ? `${nombresRotativos} +${rotativosActivos.length - 3}`
-                : nombresRotativos
-              pdf.text(textoRotativos, x + 2, eventoY)
-              eventoY += 3
+              // Mostrar TODOS los nombres, divididos en líneas si es necesario
+              const todosNombres = rotativosActivos.map(r => r.user.alias || r.user.name.split(" ")[0])
+              const maxCharsPerLine = Math.floor((cellWidth - offsetX - 2) / 2) // Ajustado al offset
+              let lineaActual = ""
+
+              todosNombres.forEach((nombre, idx) => {
+                const separador = idx === 0 ? "" : ", "
+                const textoTest = lineaActual + separador + nombre
+
+                if (textoTest.length > maxCharsPerLine && lineaActual.length > 0) {
+                  // Imprimir línea actual y empezar nueva
+                  if (eventoY + 2.5 <= y + cellHeight - 1) {
+                    pdf.text(lineaActual, x + offsetX, eventoY)
+                    eventoY += 2.5
+                  }
+                  lineaActual = nombre
+                } else {
+                  lineaActual = textoTest
+                }
+              })
+
+              // Imprimir última línea
+              if (lineaActual.length > 0 && eventoY + 2.5 <= y + cellHeight - 1) {
+                pdf.text(lineaActual, x + offsetX, eventoY)
+                eventoY += 2.5
+              }
+
               pdf.setFontSize(8)
             }
 
-            eventoY += 1.5
+            // Más espacio entre eventos cuando hay múltiples
+            eventoY += eventosDelDia.length > 1 ? 2.5 : 1
           })
-
-          if (eventosDelDia.length > maxEventos) {
-            pdf.setTextColor(0, 0, 0)
-            pdf.text(`+${eventosDelDia.length - maxEventos} más`, x + 2, y + cellHeight - 3)
-          }
         }
 
         pdf.setTextColor(0)
