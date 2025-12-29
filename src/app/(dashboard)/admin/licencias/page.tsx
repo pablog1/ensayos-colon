@@ -30,6 +30,14 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { parseDateSafe } from "@/lib/utils"
+
+interface DetallesCalculo {
+  totalCupos: number
+  totalIntegrantes: number
+  resultadoExacto: number
+  resultadoRedondeado: number
+}
 
 interface License {
   id: string
@@ -38,6 +46,7 @@ interface License {
   endDate: string
   description: string | null
   rotativosCalculados: number
+  detallesCalculo: DetallesCalculo | null
   createdAt: string
   user: {
     id: string
@@ -236,18 +245,30 @@ export default function LicenciasPage() {
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {format(new Date(licencia.startDate), "dd/MM/yyyy", { locale: es })} -{" "}
-                      {format(new Date(licencia.endDate), "dd/MM/yyyy", { locale: es })}
+                      {format(parseDateSafe(licencia.startDate), "dd/MM/yyyy", { locale: es })} -{" "}
+                      {format(parseDateSafe(licencia.endDate), "dd/MM/yyyy", { locale: es })}
                       {licencia.description && (
                         <span className="ml-2">- {licencia.description}</span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Rotativos restados: {Math.floor(licencia.rotativosCalculados)}
-                      {licencia.createdBy && (
-                        <span className="ml-2">
-                          - Registrada por: {licencia.createdBy.name}
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="font-medium text-foreground">
+                          Rotativos restados: {Math.floor(licencia.rotativosCalculados)}
                         </span>
+                        {licencia.createdBy && (
+                          <span className="ml-2">
+                            - Registrada por: {licencia.createdBy.name}
+                          </span>
+                        )}
+                      </div>
+                      {licencia.detallesCalculo && (
+                        <div className="text-xs text-muted-foreground/80 italic">
+                          Cálculo: {licencia.detallesCalculo.totalCupos} cupos en el período ÷ {licencia.detallesCalculo.totalIntegrantes} integrantes = {licencia.detallesCalculo.resultadoExacto}
+                          {licencia.detallesCalculo.resultadoExacto !== licencia.detallesCalculo.resultadoRedondeado && (
+                            <> → redondeado: {licencia.detallesCalculo.resultadoRedondeado}</>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

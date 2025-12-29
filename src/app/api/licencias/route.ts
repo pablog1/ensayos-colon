@@ -92,9 +92,11 @@ export async function POST(req: NextRequest) {
 
   const targetUserId = userId
 
-  // Validar fechas
-  const start = new Date(startDate)
-  const end = new Date(endDate)
+  // Parsear fechas manualmente para evitar desfase de timezone
+  const [startYear, startMonth, startDay] = startDate.split("-").map(Number)
+  const [endYear, endMonth, endDay] = endDate.split("-").map(Number)
+  const start = new Date(startYear, startMonth - 1, startDay, 12, 0, 0)
+  const end = new Date(endYear, endMonth - 1, endDay, 12, 0, 0)
 
   if (start > end) {
     return NextResponse.json(
@@ -139,7 +141,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Calcular rotativos proporcionales durante la licencia
-  const rotativosCalculados = await calcularRotativosProporcionales(
+  const { resultado: rotativosCalculados, detalles: detallesCalculo } = await calcularRotativosProporcionales(
     start,
     end,
     season.id
@@ -164,6 +166,7 @@ export async function POST(req: NextRequest) {
       description,
       createdById: session.user.id,
       rotativosCalculados,
+      detallesCalculo,
       estado: "APROBADA", // Siempre aprobada directamente
     },
     include: {
@@ -210,12 +213,19 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(license)
 }
 
+interface DetallesCalculo {
+  totalCupos: number
+  totalIntegrantes: number
+  resultadoExacto: number
+  resultadoRedondeado: number
+}
+
 // Calcular rotativos proporcionales durante el período de licencia
 async function calcularRotativosProporcionales(
   startDate: Date,
   endDate: Date,
   seasonId: string
-): Promise<number> {
+): Promise<{ resultado: number; detalles: DetallesCalculo }> {
   // Contar cupos de rotativos disponibles durante el período
   const eventos = await prisma.event.findMany({
     where: {
@@ -238,15 +248,28 @@ async function calcularRotativosProporcionales(
     totalCupos += cupo
   }
 
-  // Contar integrantes activos
-  const integrantes = await prisma.user.count({
-    where: { role: "INTEGRANTE" },
-  })
+  // Contar todos los usuarios (INTEGRANTE y ADMIN participan de rotativos)
+  const integrantes = await prisma.user.count()
 
-  if (integrantes === 0) return 0
+  if (integrantes === 0) {
+    return {
+      resultado: 0,
+      detalles: { totalCupos: 0, totalIntegrantes: 0, resultadoExacto: 0, resultadoRedondeado: 0 }
+    }
+  }
 
-  // Rotativos proporcionales = total de cupos / cantidad de integrantes (redondeado hacia abajo)
-  return Math.floor(totalCupos / integrantes)
+  const resultadoExacto = totalCupos / integrantes
+  const resultadoRedondeado = Math.floor(resultadoExacto)
+
+  return {
+    resultado: resultadoRedondeado,
+    detalles: {
+      totalCupos,
+      totalIntegrantes: integrantes,
+      resultadoExacto: Math.round(resultadoExacto * 100) / 100, // 2 decimales
+      resultadoRedondeado,
+    }
+  }
 }
 
 // Actualizar balance del usuario por licencia aprobada

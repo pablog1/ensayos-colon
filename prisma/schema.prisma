@@ -354,6 +354,7 @@ model License {
 
   // Calculo de rotativos promedio durante la licencia
   rotativosCalculados Float @default(0)
+  detallesCalculo     Json? // {totalCupos, totalIntegrantes, resultadoExacto}
 
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   season    Season  @relation(fields: [seasonId], references: [id])
