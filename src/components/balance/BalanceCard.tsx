@@ -85,9 +85,9 @@ export function BalanceCard({ balance, alertaUmbral = 90 }: BalanceCardProps) {
             <span>{balance.rotativosObligatorios}</span>
           </div>
           {balance.rotativosPorLicencia > 0 && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Por licencia</span>
-              <span>{balance.rotativosPorLicencia.toFixed(1)}</span>
+            <div className="flex justify-between text-amber-700">
+              <span>Restados por licencia</span>
+              <span>+{Math.floor(balance.rotativosPorLicencia)}</span>
             </div>
           )}
         </div>

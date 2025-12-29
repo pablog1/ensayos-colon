@@ -243,7 +243,7 @@ export default function LicenciasPage() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      Rotativos acreditados: {licencia.rotativosCalculados.toFixed(2)}
+                      Rotativos restados: {Math.floor(licencia.rotativosCalculados)}
                       {licencia.createdBy && (
                         <span className="ml-2">
                           - Registrada por: {licencia.createdBy.name}
@@ -352,9 +352,9 @@ export default function LicenciasPage() {
               Esta accion no se puede deshacer.
               {eliminarDialog.licencia && (
                 <p className="mt-2 text-amber-600">
-                  Se revertiran los{" "}
-                  {eliminarDialog.licencia.rotativosCalculados.toFixed(2)}{" "}
-                  rotativos acreditados.
+                  Se revertirán los{" "}
+                  {Math.floor(eliminarDialog.licencia.rotativosCalculados)}{" "}
+                  rotativos restados.
                 </p>
               )}
             </DialogDescription>

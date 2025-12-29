@@ -39,7 +39,7 @@ export const licenciasRule: RuleDefinition = {
         ruleName: this.name,
         passed: true,
         blocking: false,
-        message: "Sin rotativos sumados por licencia",
+        message: "Sin rotativos restados por licencia",
         details: {
           rotativosPorLicencia: 0,
           calculoPromedio: licenciasConfig.calculoPromedio,
@@ -56,7 +56,7 @@ export const licenciasRule: RuleDefinition = {
       ruleName: this.name,
       passed: true,
       blocking: false,
-      message: `${rotativosPorLicencia.toFixed(1)} rotativo(s) sumado(s) por licencia`,
+      message: `${Math.floor(rotativosPorLicencia)} rotativo(s) restado(s) por licencia`,
       details: {
         rotativosPorLicencia,
         rotativosTomados,

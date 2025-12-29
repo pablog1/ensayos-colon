@@ -28,6 +28,7 @@ interface CuposUsuarioTemporada {
   consumidos: number
   usadosPasados: number    // Ya utilizados (eventos pasados)
   usadosFuturos: number    // Reservados (eventos futuros)
+  rotativosPorLicencia?: number // Restados por licencia
   restantes: number
   porcentajeUsado: number
 }
@@ -292,7 +293,7 @@ export default function EstadisticasPage() {
                           <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className={`grid gap-2 text-center ${(i.cuposTemporada.rotativosPorLicencia ?? 0) > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
                         <div className="p-2 bg-muted/50 rounded">
                           <div className="text-lg font-bold text-muted-foreground">{i.cuposTemporada.usadosPasados}</div>
                           <div className="text-xs text-muted-foreground">Usados</div>
@@ -301,6 +302,12 @@ export default function EstadisticasPage() {
                           <div className="text-lg font-bold text-primary">{i.cuposTemporada.usadosFuturos}</div>
                           <div className="text-xs text-muted-foreground">Reservados</div>
                         </div>
+                        {(i.cuposTemporada.rotativosPorLicencia ?? 0) > 0 && (
+                          <div className="p-2 bg-amber-50 rounded">
+                            <div className="text-lg font-bold text-amber-600">+{i.cuposTemporada.rotativosPorLicencia}</div>
+                            <div className="text-xs text-amber-700">Licencia</div>
+                          </div>
+                        )}
                         <div className="p-2 bg-muted/50 rounded">
                           <div className="text-lg font-bold text-green-600">{i.cuposTemporada.restantes}</div>
                           <div className="text-xs text-muted-foreground">Libres</div>
@@ -326,6 +333,7 @@ export default function EstadisticasPage() {
                       <TableHead>Nombre</TableHead>
                       <TableHead className="text-center">Usados</TableHead>
                       <TableHead className="text-center">Reservados</TableHead>
+                      <TableHead className="text-center">Licencia</TableHead>
                       <TableHead className="text-center">Libres</TableHead>
                       <TableHead className="text-center">Progreso</TableHead>
                       <TableHead className="text-center">Estado</TableHead>
@@ -350,6 +358,15 @@ export default function EstadisticasPage() {
                             <span className="text-lg font-semibold text-primary">
                               {i.cuposTemporada.usadosFuturos}
                             </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {(i.cuposTemporada.rotativosPorLicencia ?? 0) > 0 ? (
+                              <span className="text-lg font-semibold text-amber-600">
+                                +{i.cuposTemporada.rotativosPorLicencia}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             <span className="text-lg font-semibold text-green-600">

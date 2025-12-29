@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
     rotativosFuturosMap[r.userId] = r._count.id
   }
 
-  // Obtener todos los usuarios
+  // Obtener todos los usuarios con sus balances
   const usuarios = await prisma.user.findMany({
     select: {
       id: true,
@@ -174,14 +174,39 @@ export async function GET(req: NextRequest) {
     orderBy: { name: "asc" },
   })
 
+  // Obtener balances de la temporada (incluye rotativosPorLicencia)
+  const balances = await prisma.userSeasonBalance.findMany({
+    where: { seasonId: season.id },
+    select: {
+      userId: true,
+      rotativosPorLicencia: true,
+      maxProyectado: true,
+      maxAjustadoManual: true,
+    },
+  })
+
+  const balancesMap: Record<string, { rotativosPorLicencia: number; maxProyectado: number; maxAjustadoManual: number | null }> = {}
+  for (const b of balances) {
+    balancesMap[b.userId] = {
+      rotativosPorLicencia: b.rotativosPorLicencia,
+      maxProyectado: b.maxProyectado,
+      maxAjustadoManual: b.maxAjustadoManual,
+    }
+  }
+
   // Mapear usuarios con sus cupos de temporada
   const integrantes = usuarios.map((usuario) => {
     const usadosPasados = rotativosPasadosMap[usuario.id] || 0
     const usadosFuturos = rotativosFuturosMap[usuario.id] || 0
-    const consumidos = usadosPasados + usadosFuturos
-    const restantes = Math.max(0, maximoPorIntegrante - consumidos)
-    const porcentajeUsado = maximoPorIntegrante > 0
-      ? Math.round((consumidos / maximoPorIntegrante) * 100)
+    const balance = balancesMap[usuario.id]
+    const rotativosPorLicencia = Math.floor(balance?.rotativosPorLicencia || 0)
+    const maxIndividual = balance?.maxAjustadoManual ?? balance?.maxProyectado ?? maximoPorIntegrante
+
+    // Total consumidos incluye los rotativos por licencia
+    const consumidos = usadosPasados + usadosFuturos + rotativosPorLicencia
+    const restantes = Math.max(0, maxIndividual - consumidos)
+    const porcentajeUsado = maxIndividual > 0
+      ? Math.round((consumidos / maxIndividual) * 100)
       : 0
 
     return {
@@ -189,18 +214,25 @@ export async function GET(req: NextRequest) {
       nombre: usuario.alias || usuario.name,
       email: usuario.email,
       cuposTemporada: {
-        maximoAsignado: maximoPorIntegrante,
+        maximoAsignado: Math.round(maxIndividual),
         consumidos,
         usadosPasados,    // Ya utilizados
         usadosFuturos,    // Reservados
+        rotativosPorLicencia, // Restados por licencia
         restantes,
         porcentajeUsado,
       },
     }
   })
 
-  // Ordenar por rotativos consumidos (mayor a menor)
-  integrantes.sort((a, b) => b.cuposTemporada.consumidos - a.cuposTemporada.consumidos)
+  // Ordenar: usuario logueado primero, luego alfabéticamente por nombre
+  integrantes.sort((a, b) => {
+    // Usuario logueado siempre primero
+    if (a.id === session.user.id) return -1
+    if (b.id === session.user.id) return 1
+    // Luego ordenar alfabéticamente por nombre
+    return a.nombre.localeCompare(b.nombre, "es")
+  })
 
   // Solicitudes pendientes de la temporada
   const solicitudesPendientes = await prisma.rotativo.count({
@@ -215,10 +247,13 @@ export async function GET(req: NextRequest) {
   // Datos personales del usuario actual
   const usadosPasadosUsuario = rotativosPasadosMap[session.user.id] || 0
   const usadosFuturosUsuario = rotativosFuturosMap[session.user.id] || 0
-  const consumidosUsuario = usadosPasadosUsuario + usadosFuturosUsuario
-  const restantesUsuario = Math.max(0, maximoPorIntegrante - consumidosUsuario)
-  const porcentajeUsadoUsuario = maximoPorIntegrante > 0
-    ? Math.round((consumidosUsuario / maximoPorIntegrante) * 100)
+  const balanceUsuario = balancesMap[session.user.id]
+  const rotativosPorLicenciaUsuario = Math.floor(balanceUsuario?.rotativosPorLicencia || 0)
+  const maxUsuario = balanceUsuario?.maxAjustadoManual ?? balanceUsuario?.maxProyectado ?? maximoPorIntegrante
+  const consumidosUsuario = usadosPasadosUsuario + usadosFuturosUsuario + rotativosPorLicenciaUsuario
+  const restantesUsuario = Math.max(0, maxUsuario - consumidosUsuario)
+  const porcentajeUsadoUsuario = maxUsuario > 0
+    ? Math.round((consumidosUsuario / maxUsuario) * 100)
     : 0
 
   return NextResponse.json({
@@ -244,10 +279,11 @@ export async function GET(req: NextRequest) {
     },
     personal: {
       cuposTemporada: {
-        maximoAsignado: maximoPorIntegrante,
+        maximoAsignado: Math.round(maxUsuario),
         consumidos: consumidosUsuario,
         usadosPasados: usadosPasadosUsuario,
         usadosFuturos: usadosFuturosUsuario,
+        rotativosPorLicencia: rotativosPorLicenciaUsuario,
         restantes: restantesUsuario,
         porcentajeUsado: porcentajeUsadoUsuario,
       },

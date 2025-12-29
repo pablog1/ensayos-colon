@@ -155,9 +155,9 @@ function getLogDescription(log: AuditLog): string {
     }
 
     case "LICENCIA_CREADA":
-      return `Se registró licencia para ${targetName || userName}`
+      return `${userName} registró licencia para ${targetName || "un integrante"}`
     case "LICENCIA_MODIFICADA":
-      return `Se modificó licencia de ${targetName || userName}`
+      return `${userName} modificó licencia de ${targetName || "un integrante"}`
 
     case "LISTA_ESPERA_AGREGADO":
       return `${userName} se agregó a lista de espera`

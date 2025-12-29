@@ -145,6 +145,14 @@ export async function POST(req: NextRequest) {
     season.id
   )
 
+  // Buscar y eliminar rotativos del usuario durante el período de licencia
+  const rotativosEliminados = await eliminarRotativosDuranteLicencia(
+    targetUserId,
+    start,
+    end,
+    season.id
+  )
+
   // Crear licencia (siempre aprobada, solo admin puede crear)
   const license = await prisma.license.create({
     data: {
@@ -182,15 +190,21 @@ export async function POST(req: NextRequest) {
       startDate: start.toISOString(),
       endDate: end.toISOString(),
       rotativosCalculados,
+      rotativosEliminados: rotativosEliminados.cantidad,
+      eventosEliminados: rotativosEliminados.eventos,
+      registradoPor: session.user.name,
     },
   })
 
   // Notificar al usuario que se le registró una licencia
+  const mensajeRotativosEliminados = rotativosEliminados.cantidad > 0
+    ? ` Se eliminaron ${rotativosEliminados.cantidad} rotativo(s) que tenías anotado(s) en ese período.`
+    : ""
   await createNotification({
     userId: targetUserId,
     type: "LICENCIA_REGISTRADA",
     title: "Licencia registrada",
-    message: `Se te ha registrado una licencia del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}. Se acreditaron ${rotativosCalculados.toFixed(2)} rotativos.`,
+    message: `${session.user.name} te registró una licencia del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}. Se restaron ${rotativosCalculados} rotativos.${mensajeRotativosEliminados}`,
   })
 
   return NextResponse.json(license)
@@ -231,8 +245,8 @@ async function calcularRotativosProporcionales(
 
   if (integrantes === 0) return 0
 
-  // Rotativos proporcionales = total de cupos / cantidad de integrantes
-  return totalCupos / integrantes
+  // Rotativos proporcionales = total de cupos / cantidad de integrantes (redondeado hacia abajo)
+  return Math.floor(totalCupos / integrantes)
 }
 
 // Actualizar balance del usuario por licencia aprobada
@@ -260,4 +274,68 @@ async function actualizarBalancePorLicencia(
       maxProyectado: 0,
     },
   })
+}
+
+// Eliminar rotativos del usuario durante el período de licencia
+async function eliminarRotativosDuranteLicencia(
+  userId: string,
+  startDate: Date,
+  endDate: Date,
+  seasonId: string
+): Promise<{ cantidad: number; eventos: string[] }> {
+  // Buscar rotativos aprobados del usuario en eventos dentro del período
+  const rotativosAprobados = await prisma.rotativo.findMany({
+    where: {
+      userId,
+      estado: "APROBADO",
+      event: {
+        seasonId,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    },
+    include: {
+      event: {
+        select: {
+          id: true,
+          title: true,
+          date: true,
+        },
+      },
+    },
+  })
+
+  if (rotativosAprobados.length === 0) {
+    return { cantidad: 0, eventos: [] }
+  }
+
+  const eventosInfo = rotativosAprobados.map(
+    (r) => `${r.event.title} (${r.event.date.toLocaleDateString()})`
+  )
+
+  // Eliminar los rotativos
+  await prisma.rotativo.deleteMany({
+    where: {
+      id: { in: rotativosAprobados.map((r) => r.id) },
+    },
+  })
+
+  // Decrementar el contador de rotativosTomados
+  await prisma.userSeasonBalance.update({
+    where: {
+      userId_seasonId: { userId, seasonId },
+    },
+    data: {
+      rotativosTomados: {
+        decrement: rotativosAprobados.length,
+      },
+    },
+  })
+
+  return {
+    cantidad: rotativosAprobados.length,
+    eventos: eventosInfo,
+  }
 }
