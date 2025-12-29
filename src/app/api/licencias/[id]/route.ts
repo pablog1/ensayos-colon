@@ -156,13 +156,13 @@ export async function DELETE(
 
   // Audit log
   await createAuditLog({
-    action: "LICENCIA_MODIFICADA",
+    action: "LICENCIA_ELIMINADA",
     entityType: "License",
     entityId: id,
     userId: session.user.id,
     targetUserId: license.userId,
     details: {
-      accion: "eliminada",
+      rotativosRevertidos: license.rotativosCalculados,
     },
   })
 
