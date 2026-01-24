@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
     userId: targetUserId,
     type: "LICENCIA_REGISTRADA",
     title: "Licencia registrada",
-    message: `${session.user.name} te registró una licencia del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}. Se restaron ${rotativosCalculados} rotativos.${mensajeRotativosEliminados}`,
+    message: `${session.user.name} te registró una licencia del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}. Se sumaron ${rotativosCalculados} rotativos a tu balance.${mensajeRotativosEliminados}`,
   })
 
   return NextResponse.json(license)

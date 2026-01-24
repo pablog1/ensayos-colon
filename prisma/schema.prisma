@@ -390,6 +390,12 @@ model UserSeasonBalance {
 
   fechaIngreso DateTime? // Para integrantes nuevos
 
+  // Campos para justificación de asignación inicial (nuevos miembros)
+  asignacionInicialRotativos Float?    // Valor inicial asignado
+  asignacionFechaCalculo     DateTime? // Cuándo se calculó
+  asignacionJustificacion    String?   // Justificación del cálculo
+  asignacionModificadaPor    String?   // ID del admin que modificó
+
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   season Season @relation(fields: [seasonId], references: [id])
 

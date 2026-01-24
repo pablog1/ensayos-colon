@@ -12,7 +12,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { History, Download, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
+import { History, Download, RefreshCw, ChevronLeft, ChevronRight, FileText, Upload, FileDown } from "lucide-react"
+import { jsPDF } from "jspdf"
+import { toast } from "sonner"
 import { format, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, endOfYear } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -366,6 +368,114 @@ export default function LogsPage() {
     }
   }
 
+  const downloadPDF = () => {
+    if (logs.length === 0) return
+
+    const pdf = new jsPDF()
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    const margin = 14
+    let yPosition = 22
+
+    // Título
+    pdf.setFontSize(18)
+    pdf.text(`Registro de Actividad - ${format(currentMonth, "MMMM yyyy", { locale: es })}`, margin, yPosition)
+    yPosition += 10
+
+    // Subtítulo con categoría
+    pdf.setFontSize(10)
+    pdf.setTextColor(100)
+    const categoryLabel = LOG_CATEGORIES[category]?.label || "Todos"
+    pdf.text(`Categoría: ${categoryLabel} | Total: ${logs.length} registros`, margin, yPosition)
+    pdf.setTextColor(0)
+    yPosition += 10
+
+    // Línea separadora
+    pdf.setLineWidth(0.5)
+    pdf.line(margin, yPosition, pageWidth - margin, yPosition)
+    yPosition += 8
+
+    // Logs
+    pdf.setFontSize(9)
+    logs.forEach((log) => {
+      // Verificar si necesitamos nueva página
+      if (yPosition > pageHeight - 30) {
+        pdf.addPage()
+        yPosition = 20
+      }
+
+      const date = new Date(log.createdAt)
+      const dateStr = format(date, "dd/MM/yyyy HH:mm")
+      const typeStr = getActionLabel(log.action)
+      const description = getLogDescription(log)
+
+      // Fecha y tipo
+      pdf.setFont("helvetica", "bold")
+      pdf.text(`${dateStr} - ${typeStr}${log.isCritical ? " [!]" : ""}`, margin, yPosition)
+      yPosition += 5
+
+      // Descripción (puede necesitar wrap)
+      pdf.setFont("helvetica", "normal")
+      const splitDescription = pdf.splitTextToSize(description, pageWidth - margin * 2)
+      pdf.text(splitDescription, margin, yPosition)
+      yPosition += splitDescription.length * 4 + 4
+    })
+
+    // Guardar
+    pdf.save(`logs_${format(currentMonth, "yyyy-MM")}.pdf`)
+  }
+
+  const exportBackup = async () => {
+    try {
+      const res = await fetch("/api/auditoria/export")
+      if (res.ok) {
+        const data = await res.json()
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+        const link = document.createElement("a")
+        link.href = URL.createObjectURL(blob)
+        link.download = `backup_logs_${format(new Date(), "yyyy-MM-dd")}.json`
+        link.click()
+        toast.success("Backup exportado correctamente")
+      } else {
+        toast.error("Error al exportar backup")
+      }
+    } catch (error) {
+      console.error("Error exporting backup:", error)
+      toast.error("Error al exportar backup")
+    }
+  }
+
+  const handleImportBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+
+      const res = await fetch("/api/auditoria/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+
+      if (res.ok) {
+        const result = await res.json()
+        toast.success(`Backup restaurado: ${result.imported} registros importados`)
+        fetchLogs()
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Error al importar backup")
+      }
+    } catch (error) {
+      console.error("Error importing backup:", error)
+      toast.error("Error al leer el archivo de backup")
+    }
+
+    // Limpiar input
+    event.target.value = ""
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -386,12 +496,30 @@ export default function LogsPage() {
           </Button>
           <Button variant="outline" size="sm" onClick={downloadCSV} disabled={logs.length === 0}>
             <Download className="w-4 h-4 mr-2" />
-            Mes
+            CSV Mes
           </Button>
-          <Button variant="outline" size="sm" onClick={downloadYearCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Año {currentMonth.getFullYear()}
+          <Button variant="outline" size="sm" onClick={downloadPDF} disabled={logs.length === 0}>
+            <FileText className="w-4 h-4 mr-2" />
+            PDF
           </Button>
+          <Button variant="outline" size="sm" onClick={exportBackup}>
+            <FileDown className="w-4 h-4 mr-2" />
+            Backup
+          </Button>
+          <label className="cursor-pointer">
+            <Button variant="outline" size="sm" asChild>
+              <span>
+                <Upload className="w-4 h-4 mr-2" />
+                Restaurar
+              </span>
+            </Button>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportBackup}
+              className="hidden"
+            />
+          </label>
         </div>
       </div>
 

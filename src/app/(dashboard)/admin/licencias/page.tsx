@@ -254,7 +254,7 @@ export default function LicenciasPage() {
                     <div className="text-xs text-muted-foreground space-y-1">
                       <div className="flex items-center gap-1 flex-wrap">
                         <span className="font-medium text-foreground">
-                          Rotativos restados: {Math.floor(licencia.rotativosCalculados)}
+                          Rotativos sumados: {Math.floor(licencia.rotativosCalculados)}
                         </span>
                         {licencia.createdBy && (
                           <span className="ml-2">
@@ -375,7 +375,7 @@ export default function LicenciasPage() {
                 <p className="mt-2 text-amber-600">
                   Se revertirán los{" "}
                   {Math.floor(eliminarDialog.licencia.rotativosCalculados)}{" "}
-                  rotativos restados.
+                  rotativos sumados.
                 </p>
               )}
             </DialogDescription>

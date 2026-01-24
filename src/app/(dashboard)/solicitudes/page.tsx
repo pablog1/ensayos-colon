@@ -40,6 +40,25 @@ interface Solicitud {
   tituloName?: string
   tituloColor?: string
   motivo?: string | null
+  posicionEnCola?: number | null
+}
+
+// Helper para formatear el estado
+const formatEstado = (estado: string, posicionEnCola?: number | null): string => {
+  switch (estado) {
+    case "EN_ESPERA":
+      return posicionEnCola ? `En espera (puesto ${posicionEnCola})` : "En espera"
+    case "APROBADO":
+      return "Aprobado"
+    case "PENDIENTE":
+      return "Pendiente"
+    case "RECHAZADO":
+      return "Rechazado"
+    case "CANCELADO":
+      return "Cancelado"
+    default:
+      return estado
+  }
 }
 
 type SortField = "createdAt" | "fecha"
@@ -145,6 +164,8 @@ export default function SolicitudesPage() {
       case "APROBADO":
         return "bg-green-500 hover:bg-green-600 text-white"
       case "PENDIENTE":
+        return "bg-red-500 hover:bg-red-600 text-white"
+      case "EN_ESPERA":
         return "bg-yellow-500 hover:bg-yellow-600 text-white"
       case "RECHAZADO":
         return "bg-red-500 hover:bg-red-600 text-white"
@@ -166,7 +187,7 @@ export default function SolicitudesPage() {
           </p>
         </div>
         <Badge variant={estadoBadgeVariant(s.estado)} className={getBadgeClassName(s.estado)}>
-          {s.estado}
+          {formatEstado(s.estado, s.posicionEnCola)}
         </Badge>
       </div>
       <div className="text-sm space-y-1">
@@ -198,7 +219,7 @@ export default function SolicitudesPage() {
           {s.motivo}
         </div>
       )}
-      {(s.estado === "PENDIENTE" || s.estado === "APROBADO") &&
+      {(s.estado === "PENDIENTE" || s.estado === "APROBADO" || s.estado === "EN_ESPERA") &&
         new Date(s.fecha) >= new Date() && (
           <Button
             variant="destructive"
@@ -252,11 +273,11 @@ export default function SolicitudesPage() {
       </TableCell>
       <TableCell>
         <Badge variant={estadoBadgeVariant(s.estado)} className={getBadgeClassName(s.estado)}>
-          {s.estado}
+          {formatEstado(s.estado, s.posicionEnCola)}
         </Badge>
       </TableCell>
       <TableCell>
-        {(s.estado === "PENDIENTE" || s.estado === "APROBADO") &&
+        {(s.estado === "PENDIENTE" || s.estado === "APROBADO" || s.estado === "EN_ESPERA") &&
           new Date(s.fecha) >= new Date() && (
             <Button
               variant="destructive"

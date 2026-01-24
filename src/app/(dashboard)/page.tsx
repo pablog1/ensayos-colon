@@ -1512,7 +1512,9 @@ export default function DashboardPage() {
                                 ? "bg-amber-200 text-amber-800"
                                 : r.estado === "APROBADO"
                                   ? "bg-green-200 text-green-800"
-                                  : "bg-yellow-200 text-yellow-800"
+                                  : r.estado === "PENDIENTE"
+                                    ? "bg-red-200 text-red-800"
+                                    : "bg-yellow-200 text-yellow-800"
                           }`}
                           title={tieneExcepcion ? r.motivo || "" : ""}
                         >
@@ -1863,7 +1865,9 @@ export default function DashboardPage() {
                                                           ? "bg-amber-100 text-amber-800"
                                                           : r.estado === "APROBADO"
                                                             ? "bg-green-100 text-green-800"
-                                                            : "bg-yellow-100 text-yellow-800"
+                                                            : r.estado === "PENDIENTE"
+                                                              ? "bg-red-100 text-red-800"
+                                                              : "bg-yellow-100 text-yellow-800"
                                                     }`}
                                                     title={tieneExcepcion ? r.motivo || "" : ""}
                                                   >
@@ -2332,7 +2336,9 @@ export default function DashboardPage() {
                                                 ? "bg-amber-100 text-amber-800"
                                                 : r.estado === "APROBADO"
                                                   ? "bg-green-100 text-green-800"
-                                                  : "bg-yellow-100 text-yellow-800"
+                                                  : r.estado === "PENDIENTE"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : "bg-yellow-100 text-yellow-800"
                                           }`}
                                           title={tieneExcepcion ? r.motivo || "" : ""}
                                         >
@@ -2418,7 +2424,9 @@ export default function DashboardPage() {
                                     ? "bg-amber-50 border-amber-200"
                                     : r.estado === "APROBADO"
                                       ? "bg-green-50 border-green-200"
-                                      : "bg-yellow-50 border-yellow-200"
+                                      : r.estado === "PENDIENTE"
+                                        ? "bg-red-50 border-red-200"
+                                        : "bg-yellow-50 border-yellow-200"
                               }`}
                             >
                               <div className="flex items-center justify-between">
@@ -2452,26 +2460,39 @@ export default function DashboardPage() {
                   <div className="space-y-2 pt-2 border-t">
                     {!userHasRotativo(selectedEvento) && (
                       <div className="space-y-2">
-                        <Button
-                          className="w-full"
-                          onClick={() => handleSolicitarRotativo(selectedEvento)}
-                          disabled={submitting}
-                        >
-                          {submitting ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Validando...
-                            </>
-                          ) : selectedEvento.cupoDisponible > 0 ? (
-                            "Solicitar Rotativo"
-                          ) : (
-                            "Unirse a Lista de Espera"
-                          )}
-                        </Button>
-                        {validatingRule && (
-                          <p className="text-xs text-muted-foreground text-center animate-pulse">
-                            {validatingRule}
-                          </p>
+                        {selectedEvento.tituloType === "CONCIERTO" ? (
+                          <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm text-amber-800">
+                              Los conciertos solo permiten rotativos por bloque completo.
+                            </p>
+                            <p className="text-xs text-amber-600 mt-1">
+                              Usá la opción &quot;Solicitar bloque&quot; desde la vista de títulos.
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            <Button
+                              className="w-full"
+                              onClick={() => handleSolicitarRotativo(selectedEvento)}
+                              disabled={submitting}
+                            >
+                              {submitting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Validando...
+                                </>
+                              ) : selectedEvento.cupoDisponible > 0 ? (
+                                "Solicitar Rotativo"
+                              ) : (
+                                "Unirse a Lista de Espera"
+                              )}
+                            </Button>
+                            {validatingRule && (
+                              <p className="text-xs text-muted-foreground text-center animate-pulse">
+                                {validatingRule}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
@@ -3695,12 +3716,22 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <h4 className="font-medium text-sm text-muted-foreground">Rotativos actuales</h4>
                 <div className="space-y-2">
-                  {gestionEvento.rotativos.map((r) => (
+                  {gestionEvento.rotativos.map((r) => {
+                    // Formatear estado para mostrar
+                    const estadoDisplay = r.estado === "EN_ESPERA" ? "En espera" :
+                                          r.estado === "APROBADO" ? "Aprobado" :
+                                          r.estado === "PENDIENTE" ? "Pendiente" : r.estado
+                    // Clases de color según estado
+                    const badgeClass = r.estado === "APROBADO" ? "bg-green-500 hover:bg-green-600 text-white" :
+                                       r.estado === "PENDIENTE" ? "bg-red-500 hover:bg-red-600 text-white" :
+                                       r.estado === "EN_ESPERA" ? "bg-yellow-500 hover:bg-yellow-600 text-white" :
+                                       "bg-gray-500 text-white"
+                    return (
                     <div key={r.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{r.user.alias || r.user.name}</span>
-                        <Badge variant={r.estado === "APROBADO" ? "default" : r.estado === "PENDIENTE" ? "secondary" : "outline"} className="text-xs">
-                          {r.estado}
+                        <Badge className={`text-xs ${badgeClass}`}>
+                          {estadoDisplay}
                         </Badge>
                       </div>
                       {deleteRotativoId === r.id ? (
@@ -3718,7 +3749,8 @@ export default function DashboardPage() {
                         </Button>
                       )}
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}

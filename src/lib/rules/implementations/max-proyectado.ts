@@ -48,16 +48,41 @@ export const maxProyectadoRule: RuleDefinition = {
     }
 
     const dentroDelLimite = totalConNuevo <= maxEfectivo
+    const yaEnSobrecupo = totalActual > maxEfectivo
     const porcentajeUsado = (totalConNuevo / maxEfectivo) * 100
+
+    // Si ya está en sobrecupo, bloquear la solicitud
+    if (yaEnSobrecupo) {
+      return {
+        ruleId: this.id,
+        ruleName: this.name,
+        passed: false,
+        blocking: true, // Bloquea completamente
+        message: `Ya estás en sobrecupo (${totalActual}/${maxEfectivo}). No se permiten más solicitudes.`,
+        details: {
+          rotativosTomados,
+          rotativosObligatorios,
+          rotativosPorLicencia,
+          totalActual,
+          totalConNuevo,
+          maxProyectado: maxEfectivo,
+          maxOriginal: maxProyectado,
+          maxAjustado: maxAjustadoManual,
+          porcentajeUsado,
+          yaEnSobrecupo: true,
+        },
+        suggestedAction: "REJECT",
+      }
+    }
 
     return {
       ruleId: this.id,
       ruleName: this.name,
       passed: dentroDelLimite,
-      blocking: false, // No bloquea, pero requiere aprobacion
+      blocking: false, // Si excedería pero no está en sobrecupo, va a aprobación
       message: dentroDelLimite
         ? `Dentro del límite (${totalConNuevo}/${maxEfectivo}) - ${porcentajeUsado.toFixed(1)}%`
-        : `Excede máximo proyectado (${totalConNuevo}/${maxEfectivo}) - ${porcentajeUsado.toFixed(1)}%`,
+        : `Excedería máximo proyectado (${totalConNuevo}/${maxEfectivo}) - ${porcentajeUsado.toFixed(1)}%`,
       details: {
         rotativosTomados,
         rotativosObligatorios,

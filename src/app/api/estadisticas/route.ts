@@ -194,6 +194,22 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Primero calculamos el promedio de uso del grupo (solo rotativos reales, sin licencia)
+  let totalUsadosGrupo = 0
+  let usuariosConUso = 0
+  for (const usuario of usuarios) {
+    const usados = (rotativosPasadosMap[usuario.id] || 0) + (rotativosFuturosMap[usuario.id] || 0)
+    totalUsadosGrupo += usados
+    if (usados > 0) usuariosConUso++
+  }
+  const promedioGrupo = totalIntegrantes > 0 ? totalUsadosGrupo / totalIntegrantes : 0
+
+  // Obtener umbral de alerta de cercanía (default 80%)
+  const reglaUmbral = await prisma.ruleConfig.findUnique({
+    where: { key: "ALERTA_UMBRAL" },
+  })
+  const umbralCercania = reglaUmbral?.enabled ? parseInt(reglaUmbral.value) || 80 : 80
+
   // Mapear usuarios con sus cupos de temporada
   const integrantes = usuarios.map((usuario) => {
     const usadosPasados = rotativosPasadosMap[usuario.id] || 0
@@ -209,6 +225,15 @@ export async function GET(req: NextRequest) {
       ? Math.round((consumidos / maxIndividual) * 100)
       : 0
 
+    // Calcular alertas
+    // Cerca del límite superior: cuando el porcentaje de uso >= umbral
+    const cercaDelLimite = porcentajeUsado >= umbralCercania && restantes > 0
+
+    // Por debajo del promedio: cuando está más del 30% por debajo del promedio del grupo
+    const usadosReales = usadosPasados + usadosFuturos
+    const umbralInferior = promedioGrupo * 0.7 // 30% debajo del promedio
+    const porDebajoDelPromedio = promedioGrupo > 2 && usadosReales < umbralInferior
+
     return {
       id: usuario.id,
       nombre: usuario.alias || usuario.name,
@@ -221,6 +246,8 @@ export async function GET(req: NextRequest) {
         rotativosPorLicencia, // Restados por licencia
         restantes,
         porcentajeUsado,
+        cercaDelLimite,
+        porDebajoDelPromedio,
       },
     }
   })
@@ -256,6 +283,11 @@ export async function GET(req: NextRequest) {
     ? Math.round((consumidosUsuario / maxUsuario) * 100)
     : 0
 
+  // Alertas personales
+  const cercaDelLimiteUsuario = porcentajeUsadoUsuario >= umbralCercania && restantesUsuario > 0
+  const usadosRealesUsuario = usadosPasadosUsuario + usadosFuturosUsuario
+  const porDebajoDelPromedioUsuario = promedioGrupo > 2 && usadosRealesUsuario < promedioGrupo * 0.7
+
   return NextResponse.json({
     temporada: {
       id: season.id,
@@ -286,7 +318,10 @@ export async function GET(req: NextRequest) {
         rotativosPorLicencia: rotativosPorLicenciaUsuario,
         restantes: restantesUsuario,
         porcentajeUsado: porcentajeUsadoUsuario,
+        cercaDelLimite: cercaDelLimiteUsuario,
+        porDebajoDelPromedio: porDebajoDelPromedioUsuario,
       },
     },
+    promedioGrupo: Math.round(promedioGrupo * 10) / 10,
   })
 }

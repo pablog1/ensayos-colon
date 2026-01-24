@@ -55,7 +55,7 @@ const ruleUIConfig: Record<string, {
     icon: Users,
     friendlyName: "Cupos por tipo de evento",
     shortDescription: "Cuántos músicos pueden tomar rotativo en cada tipo de evento",
-    explanation: "Define cuántas personas pueden pedir rotativo simultáneamente según el tipo de actividad. Por ejemplo, en una Ópera pueden faltar más músicos que en un Ensayo.",
+    explanation: "Define cuántas personas pueden pedir rotativo simultáneamente según el tipo de actividad. Para conciertos, los cupos son fijos.",
     editable: true,
     renderValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -182,7 +182,7 @@ const ruleUIConfig: Record<string, {
     icon: ListOrdered,
     friendlyName: "Lista de espera",
     shortDescription: "Cómo funciona la cola cuando no hay cupo",
-    explanation: "Cuando no hay cupo disponible, podés anotarte en la lista de espera. Funciona por orden de llegada: el primero que se anotó es el primero en recibir el cupo cuando se libera. La lista se vacía al final de cada temporada.",
+    explanation: "Cuando no hay cupo disponible, podés anotarte en la lista de espera. Funciona con sistema FIFO (First In, First Out): el primero en anotarse es el primero en recibir el cupo cuando se libera. La lista se vacía al final de cada temporada.",
     editable: false,
     renderValue: (value) => {
       if (!value || typeof value !== "object") return null

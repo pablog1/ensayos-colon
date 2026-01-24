@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BarChart3, Users, Calendar, Clock, AlertTriangle } from "lucide-react"
+import { BarChart3, Users, Calendar, Clock, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface CuposUsuarioTemporada {
@@ -31,6 +31,8 @@ interface CuposUsuarioTemporada {
   rotativosPorLicencia?: number // Restados por licencia
   restantes: number
   porcentajeUsado: number
+  cercaDelLimite?: boolean  // Alerta: cerca del límite superior
+  porDebajoDelPromedio?: boolean  // Alerta: muy por debajo del promedio
 }
 
 interface Stats {
@@ -48,6 +50,7 @@ interface Stats {
     cuposTemporada: CuposUsuarioTemporada
   }[]
   currentUserId: string
+  promedioGrupo?: number
   cuposTemporada: {
     totalCuposDisponibles: number
     cuposConsumidos: number
@@ -208,18 +211,30 @@ export default function EstadisticasPage() {
           {/* Card personal para todos (ADMIN e INTEGRANTE) */}
           <Card className="border-primary/50 bg-primary/5">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 flex-wrap">
                 <span className="text-primary">Tus rotativos</span>
-                {stats.personal.cuposTemporada.restantes > 0 ? (
+                {stats.personal.cuposTemporada.cercaDelLimite && (
+                  <span className="flex items-center gap-1">
+                    <TrendingUp className="w-4 h-4 text-amber-600" />
+                    <Badge className="bg-amber-100 text-amber-800">Cerca del límite</Badge>
+                  </span>
+                )}
+                {stats.personal.cuposTemporada.porDebajoDelPromedio && (
+                  <span className="flex items-center gap-1">
+                    <TrendingDown className="w-4 h-4 text-blue-600" />
+                    <Badge className="bg-blue-100 text-blue-800">Por debajo del promedio</Badge>
+                  </span>
+                )}
+                {stats.personal.cuposTemporada.restantes > 0 && !stats.personal.cuposTemporada.cercaDelLimite ? (
                   <Badge className="bg-green-100 text-green-800">Podés solicitar más</Badge>
                 ) : stats.personal.cuposTemporada.consumidos > stats.personal.cuposTemporada.maximoAsignado ? (
                   <span className="flex items-center gap-1">
                     <AlertTriangle className="w-4 h-4 text-orange-600" />
                     <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
                   </span>
-                ) : (
+                ) : stats.personal.cuposTemporada.restantes === 0 ? (
                   <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
-                )}
+                ) : null}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -282,16 +297,30 @@ export default function EstadisticasPage() {
                           </p>
                           <p className="text-sm text-muted-foreground truncate">{i.email}</p>
                         </div>
-                        {i.cuposTemporada.restantes > 0 ? (
-                          <Badge className="bg-green-100 text-green-800">Disponible</Badge>
-                        ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
-                          <span className="flex items-center gap-1">
-                            <AlertTriangle className="w-4 h-4 text-orange-600" />
-                            <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
-                          </span>
-                        ) : (
-                          <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
-                        )}
+                        <div className="flex flex-wrap gap-1 justify-end">
+                          {i.cuposTemporada.cercaDelLimite && (
+                            <span className="flex items-center gap-0.5">
+                              <TrendingUp className="w-3 h-3 text-amber-600" />
+                              <Badge className="bg-amber-100 text-amber-800 text-xs">Límite</Badge>
+                            </span>
+                          )}
+                          {i.cuposTemporada.porDebajoDelPromedio && (
+                            <span className="flex items-center gap-0.5">
+                              <TrendingDown className="w-3 h-3 text-blue-600" />
+                              <Badge className="bg-blue-100 text-blue-800 text-xs">Bajo</Badge>
+                            </span>
+                          )}
+                          {i.cuposTemporada.restantes > 0 && !i.cuposTemporada.cercaDelLimite ? (
+                            <Badge className="bg-green-100 text-green-800">Disponible</Badge>
+                          ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
+                            <span className="flex items-center gap-1">
+                              <AlertTriangle className="w-4 h-4 text-orange-600" />
+                              <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                            </span>
+                          ) : i.cuposTemporada.restantes === 0 ? (
+                            <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                          ) : null}
+                        </div>
                       </div>
                       <div className={`grid gap-2 text-center ${(i.cuposTemporada.rotativosPorLicencia ?? 0) > 0 ? "grid-cols-4" : "grid-cols-3"}`}>
                         <div className="p-2 bg-muted/50 rounded">
@@ -382,16 +411,30 @@ export default function EstadisticasPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            {i.cuposTemporada.restantes > 0 ? (
-                              <Badge className="bg-green-100 text-green-800">Disponible</Badge>
-                            ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
-                              <span className="inline-flex items-center gap-1">
-                                <AlertTriangle className="w-4 h-4 text-orange-600" />
-                                <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
-                              </span>
-                            ) : (
-                              <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
-                            )}
+                            <div className="flex flex-wrap gap-1 justify-center">
+                              {i.cuposTemporada.cercaDelLimite && (
+                                <span className="inline-flex items-center gap-0.5" title="Cerca del límite superior">
+                                  <TrendingUp className="w-3 h-3 text-amber-600" />
+                                  <Badge className="bg-amber-100 text-amber-800 text-xs">Límite</Badge>
+                                </span>
+                              )}
+                              {i.cuposTemporada.porDebajoDelPromedio && (
+                                <span className="inline-flex items-center gap-0.5" title="Por debajo del promedio del grupo">
+                                  <TrendingDown className="w-3 h-3 text-blue-600" />
+                                  <Badge className="bg-blue-100 text-blue-800 text-xs">Bajo</Badge>
+                                </span>
+                              )}
+                              {i.cuposTemporada.restantes > 0 && !i.cuposTemporada.cercaDelLimite ? (
+                                <Badge className="bg-green-100 text-green-800">Disponible</Badge>
+                              ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <AlertTriangle className="w-4 h-4 text-orange-600" />
+                                  <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                                </span>
+                              ) : i.cuposTemporada.restantes === 0 ? (
+                                <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                              ) : null}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )

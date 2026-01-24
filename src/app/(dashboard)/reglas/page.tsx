@@ -79,7 +79,7 @@ const friendlyRules: Record<string, {
     details: [
       "Se calcula automáticamente para que sea justo para todos",
       "El límite se ajusta según los días de trabajo y la cantidad de músicos",
-      "Podés ver tu límite personal en tu perfil de balance",
+      "Podés ver tu límite personal en tus Estadísticas personales",
     ],
   },
   FINES_SEMANA_MAX: {
@@ -105,7 +105,6 @@ const friendlyRules: Record<string, {
     summary: "Podés ausentarte durante un título completo",
     details: [
       "Un título por persona por temporada",
-      "Una vez iniciado, no se puede cancelar",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -173,10 +172,11 @@ const friendlyRules: Record<string, {
   ALERTA_UMBRAL: {
     icon: Bell,
     title: "Alertas de cercanía al límite",
-    summary: "Recibís aviso cuando te acercás a tu máximo",
+    summary: "Recibís aviso cuando te acercás a tu máximo o mínimo",
     details: [
-      "Te notificamos para que puedas planificar mejor",
-      "También se notifica al administrador",
+      "Te notificamos cuando estás cerca del límite superior (máximo anual)",
+      "También se alerta si estás muy por debajo del promedio (límite inferior)",
+      "El administrador recibe notificaciones para ayudarte a equilibrar",
     ],
     getValue: (value) => (
       <div className="flex items-center gap-3 mt-3">
@@ -194,7 +194,7 @@ const friendlyRules: Record<string, {
     summary: "Límite de rotativos en días con más de un ensayo del mismo título",
     details: [
       "Si un título tiene varios días con ensayos dobles, solo podés pedir un rotativo en uno de esos días",
-      "Si ya tenés uno y pedís otro, va a revisión del administrador",
+      "Si ya tenés uno y pedís otro, va a revisión del administrador (validado por la fila)",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null

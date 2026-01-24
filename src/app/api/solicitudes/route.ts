@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
 import { notifyAdmins, notifyAlertaCercania } from "@/lib/services/notifications"
-import { addToWaitingList } from "@/lib/services/waiting-list"
+import { addToWaitingList, getUserWaitingListPosition } from "@/lib/services/waiting-list"
 
 // GET /api/solicitudes - Lista rotativos del usuario
 export async function GET(req: NextRequest) {
@@ -79,21 +79,30 @@ export async function GET(req: NextRequest) {
   })
 
   // Formatear para compatibilidad con el frontend
-  const solicitudesFormateadas = rotativos.map(r => ({
-    id: r.id,
-    fecha: `${r.event.date.getUTCFullYear()}-${String(r.event.date.getUTCMonth() + 1).padStart(2, '0')}-${String(r.event.date.getUTCDate()).padStart(2, '0')}`,
-    estado: r.estado,
-    esCasoEspecial: false,
-    porcentajeAlMomento: r.contadorAlMomento,
-    createdAt: r.createdAt,
-    user: r.user,
-    motivo: r.motivo,
-    // Datos adicionales del evento
-    eventoId: r.event.id,
-    eventoTitle: r.event.title,
-    eventoType: r.event.eventoType,
-    tituloName: r.event.titulo?.name,
-    tituloColor: r.event.titulo?.color,
+  // Para solicitudes EN_ESPERA, obtener la posición en cola
+  const solicitudesFormateadas = await Promise.all(rotativos.map(async r => {
+    let posicionEnCola: number | null = null
+    if (r.estado === "EN_ESPERA") {
+      posicionEnCola = await getUserWaitingListPosition(r.userId, r.eventId)
+    }
+
+    return {
+      id: r.id,
+      fecha: `${r.event.date.getUTCFullYear()}-${String(r.event.date.getUTCMonth() + 1).padStart(2, '0')}-${String(r.event.date.getUTCDate()).padStart(2, '0')}`,
+      estado: r.estado,
+      esCasoEspecial: false,
+      porcentajeAlMomento: r.contadorAlMomento,
+      createdAt: r.createdAt,
+      user: r.user,
+      motivo: r.motivo,
+      posicionEnCola,
+      // Datos adicionales del evento
+      eventoId: r.event.id,
+      eventoTitle: r.event.title,
+      eventoType: r.event.eventoType,
+      tituloName: r.event.titulo?.name,
+      tituloColor: r.event.titulo?.color,
+    }
   }))
 
   return NextResponse.json(solicitudesFormateadas)
@@ -135,6 +144,14 @@ export async function POST(req: NextRequest) {
 
     if (!evento) {
       return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 })
+    }
+
+    // Verificar si es un concierto - solo se permiten bloques completos
+    if (evento.titulo?.type === "CONCIERTO") {
+      return NextResponse.json(
+        { error: "Los conciertos solo permiten rotativos por bloque completo. Usá la opción 'Solicitar bloque'." },
+        { status: 400 }
+      )
     }
 
     // Verificar si existe un rotativo del usuario en este evento
