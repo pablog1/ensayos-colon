@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { Prisma } from "@/generated/prisma"
 import { createAuditLog } from "@/lib/services/audit"
 import { createNotification } from "@/lib/services/notifications"
 
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
       description,
       createdById: session.user.id,
       rotativosCalculados,
-      detallesCalculo,
+      detallesCalculo: detallesCalculo as unknown as Prisma.InputJsonValue,
       estado: "APROBADA", // Siempre aprobada directamente
     },
     include: {
