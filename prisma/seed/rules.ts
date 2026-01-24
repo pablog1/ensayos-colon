@@ -117,6 +117,15 @@ const ruleConfigs = [
     priority: 200,
   },
   {
+    key: "ALERTA_SUBCUPO",
+    value: "30",
+    valueType: "number",
+    description:
+      "Umbral de alerta de subcupo (%). Se alerta cuando un integrante está este porcentaje por debajo del promedio del grupo.",
+    category: "alerta",
+    priority: 201,
+  },
+  {
     key: "ENSAYOS_DOBLES",
     value: JSON.stringify({
       enabled: true,

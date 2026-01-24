@@ -204,11 +204,17 @@ export async function GET(req: NextRequest) {
   }
   const promedioGrupo = totalIntegrantes > 0 ? totalUsadosGrupo / totalIntegrantes : 0
 
-  // Obtener umbral de alerta de cercanía (default 80%)
+  // Obtener umbral de alerta de cercanía al máximo (default 90%)
   const reglaUmbral = await prisma.ruleConfig.findUnique({
     where: { key: "ALERTA_UMBRAL" },
   })
-  const umbralCercania = reglaUmbral?.enabled ? parseInt(reglaUmbral.value) || 80 : 80
+  const umbralCercania = reglaUmbral?.enabled ? parseInt(reglaUmbral.value) || 90 : 90
+
+  // Obtener umbral de alerta de subcupo (default 30%)
+  const reglaSubcupo = await prisma.ruleConfig.findUnique({
+    where: { key: "ALERTA_SUBCUPO" },
+  })
+  const umbralSubcupo = reglaSubcupo?.enabled ? parseInt(reglaSubcupo.value) || 30 : 30
 
   // Mapear usuarios con sus cupos de temporada
   const integrantes = usuarios.map((usuario) => {
@@ -229,9 +235,9 @@ export async function GET(req: NextRequest) {
     // Cerca del límite superior: cuando el porcentaje de uso >= umbral
     const cercaDelLimite = porcentajeUsado >= umbralCercania && restantes > 0
 
-    // Por debajo del promedio: cuando está más del 30% por debajo del promedio del grupo
+    // Por debajo del promedio: cuando está X% por debajo del promedio del grupo (configurable)
     const usadosReales = usadosPasados + usadosFuturos
-    const umbralInferior = promedioGrupo * 0.7 // 30% debajo del promedio
+    const umbralInferior = promedioGrupo * (1 - umbralSubcupo / 100) // X% debajo del promedio
     const porDebajoDelPromedio = promedioGrupo > 2 && usadosReales < umbralInferior
 
     return {
@@ -286,7 +292,7 @@ export async function GET(req: NextRequest) {
   // Alertas personales
   const cercaDelLimiteUsuario = porcentajeUsadoUsuario >= umbralCercania && restantesUsuario > 0
   const usadosRealesUsuario = usadosPasadosUsuario + usadosFuturosUsuario
-  const porDebajoDelPromedioUsuario = promedioGrupo > 2 && usadosRealesUsuario < promedioGrupo * 0.7
+  const porDebajoDelPromedioUsuario = promedioGrupo > 2 && usadosRealesUsuario < promedioGrupo * (1 - umbralSubcupo / 100)
 
   return NextResponse.json({
     temporada: {

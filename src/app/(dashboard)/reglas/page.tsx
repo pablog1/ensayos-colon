@@ -39,7 +39,8 @@ const friendlyRules: Record<string, {
   title: string
   summary: string
   details: string[]
-  getValue?: (value: unknown) => React.ReactNode
+  getValue?: (value: unknown, allRules?: RuleConfig[]) => React.ReactNode
+  hidden?: boolean // Para ocultar reglas que se muestran dentro de otras
 }> = {
   CUPO_DIARIO: {
     icon: Users,
@@ -178,15 +179,30 @@ const friendlyRules: Record<string, {
       "También se alerta si estás muy por debajo del promedio (límite inferior)",
       "El administrador recibe notificaciones para ayudarte a equilibrar",
     ],
-    getValue: (value) => (
-      <div className="flex items-center gap-3 mt-3">
-        <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-          <div className="text-2xl font-bold text-yellow-700">{String(value)}%</div>
-          <div className="text-xs text-yellow-600">del máximo</div>
+    getValue: (value, allRules) => {
+      const subcupoRule = allRules?.find(r => r.configKey === "ALERTA_SUBCUPO")
+      const subcupoValue = subcupoRule?.currentValue ?? 30
+      return (
+        <div className="flex items-center gap-3 mt-3 flex-wrap">
+          <div className="text-center p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <div className="text-2xl font-bold text-amber-700">{String(value)}%</div>
+            <div className="text-xs text-amber-600">límite superior</div>
+          </div>
+          <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
+            <div className="text-2xl font-bold text-red-700">{String(subcupoValue)}%</div>
+            <div className="text-xs text-red-600">límite inferior</div>
+          </div>
+          <span className="text-sm text-muted-foreground">del promedio</span>
         </div>
-        <span className="text-sm text-muted-foreground">se envía alerta</span>
-      </div>
-    ),
+      )
+    },
+  },
+  ALERTA_SUBCUPO: {
+    icon: Bell,
+    title: "Umbral de subcupo",
+    summary: "Porcentaje por debajo del promedio que activa la alerta",
+    details: [],
+    hidden: true, // Se muestra junto con ALERTA_UMBRAL
   },
   ENSAYOS_DOBLES: {
     icon: CalendarDays,
@@ -277,8 +293,8 @@ export default function ReglasPage() {
     )
   }
 
-  // Obtener solo reglas activas
-  const activeRules = rules.filter(r => r.enabled)
+  // Obtener solo reglas activas y no ocultas
+  const activeRules = rules.filter(r => r.enabled && !friendlyRules[r.configKey]?.hidden)
 
   return (
     <div className="space-y-8">
@@ -341,7 +357,7 @@ export default function ReglasPage() {
                     </li>
                   ))}
                 </ul>
-                {friendly.getValue && friendly.getValue(rule.currentValue)}
+                {friendly.getValue && friendly.getValue(rule.currentValue, rules)}
               </CardContent>
             </Card>
           )
