@@ -39,10 +39,12 @@ interface Solicitud {
   eventoType: string
   tituloName?: string
   tituloColor?: string
+  tituloType?: string
   motivo?: string | null
   posicionEnCola?: number | null
   esParteDeBloque?: boolean
   bloqueId?: string | null
+  eventoHora?: string | null
 }
 
 // Helper para formatear el estado
@@ -70,6 +72,7 @@ export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [loading, setLoading] = useState(true)
   const [showPastRequests, setShowPastRequests] = useState(false)
+  const [showEliminarPorTitulo, setShowEliminarPorTitulo] = useState(false)
   // Ordenamiento: por defecto por fecha de evento, ascendente (más cercanos primero)
   const [futureSortField, setFutureSortField] = useState<SortField>("fecha")
   const [futureAscending, setFutureAscending] = useState(true)
@@ -85,7 +88,7 @@ export default function SolicitudesPage() {
   }, [])
 
   const fetchSolicitudes = async () => {
-    const res = await fetch("/api/solicitudes")
+    const res = await fetch("/api/solicitudes?soloMias=true")
     const data = await res.json()
     setSolicitudes(data)
     setLoading(false)
@@ -107,49 +110,75 @@ export default function SolicitudesPage() {
     }
   }
 
-  const cancelarBloque = async (bloqueId: string, tituloName: string) => {
-    const rotativosDelBloque = solicitudes.filter(s => s.bloqueId === bloqueId && (s.estado === "APROBADO" || s.estado === "PENDIENTE"))
-    if (!confirm(`¿Estás seguro de cancelar todos los ${rotativosDelBloque.length} rotativos del bloque "${tituloName}"?`)) return
+  const cancelarMultiples = async (solicitudIds: string[], tituloName: string, bloqueId?: string | null) => {
+    if (!confirm(`¿Estás seguro de eliminar ${solicitudIds.length} rotativos de "${tituloName}"?`)) return
 
-    const res = await fetch("/api/bloques/cancelar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bloqueId }),
-    })
+    // Si hay bloqueId, usar el endpoint de cancelar bloque
+    if (bloqueId) {
+      const res = await fetch("/api/bloques/cancelar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bloqueId }),
+      })
 
-    if (res.ok) {
-      const data = await res.json()
-      if (data.pendiente) {
-        toast.info(data.message)
+      if (res.ok) {
+        const data = await res.json()
+        toast.success(data.message || `${solicitudIds.length} rotativos eliminados`)
+        fetchSolicitudes()
       } else {
-        toast.success(data.message)
+        const error = await res.json()
+        toast.error(error.error)
+      }
+    } else {
+      // Eliminar uno por uno
+      let eliminados = 0
+      let errores = 0
+      for (const id of solicitudIds) {
+        const res = await fetch(`/api/solicitudes/${id}`, { method: "DELETE" })
+        if (res.ok) {
+          eliminados++
+        } else {
+          errores++
+        }
+      }
+      if (errores > 0) {
+        toast.warning(`${eliminados} eliminados, ${errores} con error`)
+      } else {
+        toast.success(`${eliminados} rotativos eliminados`)
       }
       fetchSolicitudes()
-    } else {
-      const error = await res.json()
-      toast.error(error.error)
     }
   }
 
-  // Agrupar solicitudes por bloque para mostrar opción de cancelar bloque completo
-  const bloquesActivos = useMemo(() => {
-    const bloques: Record<string, { bloqueId: string; tituloName: string; count: number }> = {}
+  // Agrupar solicitudes por título para mostrar opción de cancelar múltiples a la vez
+  const titulosConMultiplesSolicitudes = useMemo(() => {
+    const titulos: Record<string, { tituloName: string; solicitudIds: string[]; bloqueId?: string | null; esConcierto: boolean }> = {}
     solicitudes
-      .filter(s => s.bloqueId && (s.estado === "APROBADO" || s.estado === "PENDIENTE") && new Date(s.fecha) >= new Date())
+      .filter(s => s.tituloName && (s.estado === "APROBADO" || s.estado === "PENDIENTE" || s.estado === "EN_ESPERA") && new Date(s.fecha) >= new Date())
       .forEach(s => {
-        if (s.bloqueId && !bloques[s.bloqueId]) {
-          bloques[s.bloqueId] = {
+        const key = s.tituloName || s.eventoTitle
+        if (!titulos[key]) {
+          titulos[key] = {
+            tituloName: key,
+            solicitudIds: [],
             bloqueId: s.bloqueId,
-            tituloName: s.tituloName || s.eventoTitle,
-            count: 0,
+            esConcierto: s.tituloType === "CONCIERTO",
           }
         }
+        titulos[key].solicitudIds.push(s.id)
+        // Si alguna solicitud tiene bloqueId, guardarlo
         if (s.bloqueId) {
-          bloques[s.bloqueId].count++
+          titulos[key].bloqueId = s.bloqueId
         }
       })
-    return Object.values(bloques).filter(b => b.count > 1) // Solo mostrar si hay más de 1 rotativo en el bloque
+    return Object.values(titulos).filter(t => t.solicitudIds.length > 1) // Solo mostrar si hay más de 1 solicitud del título
   }, [solicitudes])
+
+  // Verificar si una solicitud es de un concierto (para deshabilitar cancelación individual)
+  const esConcierto = (s: Solicitud) => s.tituloType === "CONCIERTO"
+
+  // Obtener el título del concierto si hay alguno
+  const conciertoConMultiples = titulosConMultiplesSolicitudes.find(t => t.esConcierto)
 
   // Separate future and past requests, sorted by selected field
   const { futureSolicitudes, pastSolicitudes } = useMemo(() => {
@@ -244,6 +273,7 @@ export default function SolicitudesPage() {
             day: "numeric",
             month: "long",
           })}
+          {s.eventoHora && <span className="ml-1">a las {s.eventoHora}</span>}
         </div>
         <div className="text-muted-foreground text-xs">
           <span className="font-medium">Solicitado: </span>
@@ -267,14 +297,20 @@ export default function SolicitudesPage() {
       )}
       {(s.estado === "PENDIENTE" || s.estado === "APROBADO" || s.estado === "EN_ESPERA") &&
         new Date(s.fecha) >= new Date() && (
-          <Button
-            variant="destructive"
-            size="sm"
-            className="w-full"
-            onClick={() => cancelarSolicitud(s.id)}
-          >
-            Cancelar
-          </Button>
+          esConcierto(s) ? (
+            <p className="text-xs text-orange-600 text-center">
+              Concierto: cancelar desde arriba
+            </p>
+          ) : (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full"
+              onClick={() => cancelarSolicitud(s.id)}
+            >
+              Cancelar
+            </Button>
+          )
         )}
     </div>
   )
@@ -282,29 +318,30 @@ export default function SolicitudesPage() {
   // Component to render solicitud row (desktop)
   const SolicitudRow = ({ s }: { s: Solicitud }) => (
     <TableRow key={s.id}>
-      <TableCell className="text-muted-foreground text-sm">
+      <TableCell className="text-muted-foreground text-sm truncate">
         {new Date(s.createdAt).toLocaleDateString("es-ES", {
           day: "numeric",
           month: "short",
         })}
       </TableCell>
-      <TableCell>
+      <TableCell className="truncate">
         {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
           weekday: "short",
           day: "numeric",
           month: "short",
         })}
+        {s.eventoHora && <span className="text-muted-foreground ml-1">{s.eventoHora}</span>}
       </TableCell>
-      <TableCell>
-        <div className="flex flex-col">
-          <span className="font-medium">
+      <TableCell className="overflow-hidden">
+        <div className="flex flex-col min-w-0">
+          <span className="font-medium truncate">
             {s.tituloName || s.eventoTitle}
           </span>
           <span className="text-xs text-muted-foreground">
             {s.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
           </span>
           {s.motivo && (
-            <span className={`text-xs mt-1 ${
+            <span className={`text-xs mt-1 truncate ${
               s.estado === "RECHAZADO"
                 ? "text-red-600"
                 : s.estado === "APROBADO"
@@ -318,20 +355,24 @@ export default function SolicitudesPage() {
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant={estadoBadgeVariant(s.estado)} className={`${getBadgeClassName(s.estado)} whitespace-nowrap`}>
+        <Badge variant={estadoBadgeVariant(s.estado)} className={`${getBadgeClassName(s.estado)} text-xs`}>
           {formatEstado(s.estado, s.posicionEnCola)}
         </Badge>
       </TableCell>
       <TableCell>
         {(s.estado === "PENDIENTE" || s.estado === "APROBADO" || s.estado === "EN_ESPERA") &&
           new Date(s.fecha) >= new Date() && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => cancelarSolicitud(s.id)}
-            >
-              Cancelar
-            </Button>
+            esConcierto(s) ? (
+              <span className="text-xs text-orange-600">Ver arriba</span>
+            ) : (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => cancelarSolicitud(s.id)}
+              >
+                Cancelar
+              </Button>
+            )
           )}
       </TableCell>
     </TableRow>
@@ -346,40 +387,55 @@ export default function SolicitudesPage() {
         </p>
       </div>
 
-      {/* Sección de bloques activos - Cancelación de bloque completo */}
-      {bloquesActivos.length > 0 && (
+      {/* Sección para eliminar múltiples solicitudes del mismo título */}
+      {titulosConMultiplesSolicitudes.length > 0 && (
         <Card className="border-orange-200 bg-orange-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Layers className="w-4 h-4 text-orange-600" />
-              Bloques activos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              Podés cancelar todos los rotativos de un bloque completo:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {bloquesActivos.map((bloque) => (
-                <Button
-                  key={bloque.bloqueId}
-                  variant="outline"
-                  size="sm"
-                  className="border-orange-300 hover:bg-orange-100"
-                  onClick={() => cancelarBloque(bloque.bloqueId, bloque.tituloName)}
-                >
-                  Cancelar "{bloque.tituloName}" ({bloque.count} rotativos)
-                </Button>
-              ))}
-            </div>
-          </CardContent>
+          <Collapsible open={showEliminarPorTitulo} onOpenChange={setShowEliminarPorTitulo}>
+            <CardHeader className="pb-2">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center justify-between w-full text-left">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Layers className="w-4 h-4 text-orange-600" />
+                    Eliminar por título ({titulosConMultiplesSolicitudes.length})
+                  </CardTitle>
+                  <ChevronDown
+                    className={`h-4 w-4 text-orange-600 transition-transform ${showEliminarPorTitulo ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </CollapsibleTrigger>
+            </CardHeader>
+            <CollapsibleContent>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Podés eliminar todos los rotativos de un mismo título a la vez:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {titulosConMultiplesSolicitudes.map((titulo) => (
+                    <div key={titulo.tituloName} className="flex flex-col items-start">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-orange-300 hover:bg-orange-100"
+                        onClick={() => cancelarMultiples(titulo.solicitudIds, titulo.tituloName, titulo.bloqueId)}
+                      >
+                        Eliminar "{titulo.tituloName}" ({titulo.solicitudIds.length})
+                      </Button>
+                      <span className="text-xs text-muted-foreground mt-1 ml-1">
+                        {titulo.bloqueId ? "Título completo" : "Eventos individuales"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
       )}
 
       <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <CardTitle>Solicitudes Futuras</CardTitle>
+            <CardTitle>Solicitudes</CardTitle>
             <div className="flex items-center gap-2">
               <Select
                 value={futureSortField}
@@ -423,15 +479,15 @@ export default function SolicitudesPage() {
               </div>
 
               {/* Vista desktop: Table */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table className="min-w-[600px]">
+              <div className="hidden md:block">
+                <Table className="w-full table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-20">Solicitado</TableHead>
-                      <TableHead className="w-24">Fecha Evento</TableHead>
-                      <TableHead className="min-w-[150px]">Evento</TableHead>
-                      <TableHead className="w-28">Estado</TableHead>
-                      <TableHead className="w-20">Acciones</TableHead>
+                      <TableHead className="w-[15%]">Solicitado</TableHead>
+                      <TableHead className="w-[18%]">Fecha Evento</TableHead>
+                      <TableHead className="w-[37%]">Evento</TableHead>
+                      <TableHead className="w-[15%]">Estado</TableHead>
+                      <TableHead className="w-[15%]">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -494,15 +550,15 @@ export default function SolicitudesPage() {
                 </div>
 
                 {/* Vista desktop: Table */}
-                <div className="hidden md:block overflow-x-auto">
-                  <Table className="min-w-[600px]">
+                <div className="hidden md:block">
+                  <Table className="w-full table-fixed">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-20">Solicitado</TableHead>
-                        <TableHead className="w-24">Fecha Evento</TableHead>
-                        <TableHead className="min-w-[150px]">Evento</TableHead>
-                        <TableHead className="w-28">Estado</TableHead>
-                        <TableHead className="w-20">Acciones</TableHead>
+                        <TableHead className="w-[15%]">Solicitado</TableHead>
+                        <TableHead className="w-[18%]">Fecha Evento</TableHead>
+                        <TableHead className="w-[37%]">Evento</TableHead>
+                        <TableHead className="w-[15%]">Estado</TableHead>
+                        <TableHead className="w-[15%]">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

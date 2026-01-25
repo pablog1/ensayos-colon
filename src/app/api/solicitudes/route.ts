@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const mes = searchParams.get("mes")
   const userId = searchParams.get("userId")
   const verTodas = searchParams.get("todas") === "true"
+  const soloMias = searchParams.get("soloMias") === "true"
 
   // Construir filtro de fecha basado en la fecha del evento
   let fechaFilter = {}
@@ -35,15 +36,21 @@ export async function GET(req: NextRequest) {
   }
 
   // Si todas=true, mostrar todos los rotativos (para calendario general)
+  // Si soloMias=true, mostrar solo las del usuario actual (para "Mis Solicitudes")
   // Si no, admin puede ver todos, integrante solo los suyos
   let userFilter = {}
   if (!verTodas) {
-    userFilter =
-      session.user.role === "ADMIN"
-        ? userId
-          ? { userId }
-          : {}
-        : { userId: session.user.id }
+    if (soloMias) {
+      // Forzar filtro por usuario actual, independientemente del rol
+      userFilter = { userId: session.user.id }
+    } else {
+      userFilter =
+        session.user.role === "ADMIN"
+          ? userId
+            ? { userId }
+            : {}
+          : { userId: session.user.id }
+    }
   }
 
   const rotativos = await prisma.rotativo.findMany({
@@ -65,6 +72,7 @@ export async function GET(req: NextRequest) {
           id: true,
           title: true,
           date: true,
+          startTime: true,
           eventoType: true,
           titulo: {
             select: {
@@ -105,6 +113,8 @@ export async function GET(req: NextRequest) {
       tituloColor: r.event.titulo?.color,
       tituloType: r.event.titulo?.type,
       esEventoIndividualConcierto: r.event.titulo?.type === "CONCIERTO" && !r.esParteDeBloqueId,
+      // Hora del evento
+      eventoHora: r.event.startTime ? r.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : null,
       // Información de bloque para cancelación
       esParteDeBloque: !!r.esParteDeBloqueId,
       bloqueId: r.esParteDeBloqueId,
