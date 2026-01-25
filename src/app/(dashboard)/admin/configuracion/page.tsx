@@ -182,7 +182,7 @@ const ruleUIConfig: Record<string, {
     icon: ListOrdered,
     friendlyName: "Lista de espera",
     shortDescription: "Cómo funciona la cola cuando no hay cupo",
-    explanation: "Cuando no hay cupo disponible, podés anotarte en la lista de espera. Funciona con sistema FIFO (First In, First Out): el primero en anotarse es el primero en recibir el cupo cuando se libera. La lista se vacía al final de cada temporada.",
+    explanation: "Cuando no hay cupo disponible, podés anotarte en la lista de espera. Funciona por orden de llegada: el primero en anotarse es el primero en recibir el cupo cuando se libera. La lista se vacía al final de cada temporada.",
     editable: false,
     renderValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -190,7 +190,7 @@ const ruleUIConfig: Record<string, {
       return (
         <div className="space-y-2">
           <Badge variant="outline" className="text-base">
-            Orden de llegada (FIFO)
+            Orden de llegada
           </Badge>
           <p className="text-sm text-muted-foreground">
             {config.vencimiento
