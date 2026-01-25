@@ -61,20 +61,27 @@ export async function POST(req: NextRequest) {
   // ============================================
   const motivosAprobacion: string[] = []
 
-  // 1. Verificar si el usuario ya tiene rotativos en eventos de este título
-  const rotativosEnTitulo = eventos.reduce((count, evento) => {
+  // 1. Verificar cuántos rotativos ya tiene el usuario en este título
+  // y filtrar los eventos donde NO tiene rotativo (para completar el bloque)
+  const eventosSinRotativoPropio = eventos.filter((evento) => {
     const tieneRotativo = evento.rotativos.some(
       (r) => r.userId === session.user.id && (r.estado === "APROBADO" || r.estado === "PENDIENTE")
     )
-    return count + (tieneRotativo ? 1 : 0)
-  }, 0)
+    return !tieneRotativo
+  })
 
-  if (rotativosEnTitulo > 0) {
+  const rotativosExistentes = eventos.length - eventosSinRotativoPropio.length
+
+  // Si ya tiene todos los rotativos del bloque, no puede solicitar más
+  if (eventosSinRotativoPropio.length === 0) {
     return NextResponse.json(
-      { error: `Ya tienes ${rotativosEnTitulo} rotativo(s) en eventos de este título` },
+      { error: "Ya tienes rotativos en todos los eventos de este título (bloque completo)" },
       { status: 400 }
     )
   }
+
+  // Usar solo los eventos donde no tiene rotativo para el resto del proceso
+  const eventosParaSolicitar = eventosSinRotativoPropio
 
   // 2. Verificar balance del usuario para la temporada
   const balance = await prisma.userSeasonBalance.findUnique({
@@ -135,16 +142,16 @@ export async function POST(req: NextRequest) {
       balance.rotativosObligatorios +
       balance.rotativosPorLicencia
 
-    if (totalActual + eventos.length > maxEfectivo) {
+    if (totalActual + eventosParaSolicitar.length > maxEfectivo) {
       motivosAprobacion.push(
-        `Excede máximo proyectado anual (${totalActual + eventos.length}/${maxEfectivo})`
+        `Excede máximo proyectado anual (${totalActual + eventosParaSolicitar.length}/${maxEfectivo})`
       )
     }
   }
 
-  // 5. Verificar cupo disponible en cada evento
+  // 5. Verificar cupo disponible en cada evento (solo los que va a solicitar)
   const eventosSinCupo: string[] = []
-  for (const evento of eventos) {
+  for (const evento of eventosParaSolicitar) {
     const rotativosActivos = evento.rotativos.filter(
       (r) => r.estado === "APROBADO" || r.estado === "PENDIENTE"
     ).length
@@ -169,13 +176,15 @@ export async function POST(req: NextRequest) {
       requiereAprobacion,
       motivos: motivosAprobacion,
       motivoTexto: motivosAprobacion.join("; "),
-      eventos: eventos.map((e) => ({
+      eventos: eventosParaSolicitar.map((e) => ({
         id: e.id,
         date: e.date,
         startTime: e.startTime,
         eventoType: e.eventoType,
       })),
-      totalEventos: eventos.length,
+      totalEventos: eventosParaSolicitar.length,
+      rotativosExistentes,
+      esCompletarBloque: rotativosExistentes > 0,
     })
   }
 
@@ -214,11 +223,11 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Crear rotativos para cada evento con cupo disponible
+  // Crear rotativos para cada evento con cupo disponible (solo los que no tiene)
   const rotativosCreados: string[] = []
   const eventosSaltados: string[] = []
 
-  for (const evento of eventos) {
+  for (const evento of eventosParaSolicitar) {
     const rotativosActivos = evento.rotativos.filter(
       (r) => r.estado === "APROBADO" || r.estado === "PENDIENTE"
     ).length
@@ -248,15 +257,20 @@ export async function POST(req: NextRequest) {
     })
   }
 
+  const esCompletarBloque = rotativosExistentes > 0
+  const accion = esCompletarBloque ? "completado" : "solicitado"
+
   return NextResponse.json({
     success: true,
     estado,
     motivo: motivoTexto,
     bloqueId: bloque.id,
     rotativosCreados: rotativosCreados.length,
+    rotativosExistentes,
     eventosSaltados: eventosSaltados.length,
+    esCompletarBloque,
     message: estado === "APROBADO"
-      ? `Bloque aprobado. ${rotativosCreados.length} rotativos creados.`
-      : `Bloque pendiente de aprobación. ${rotativosCreados.length} rotativos en espera.`,
+      ? `Bloque ${accion}. ${rotativosCreados.length} rotativos creados${esCompletarBloque ? ` (ya tenías ${rotativosExistentes})` : ""}.`
+      : `Bloque pendiente de aprobación. ${rotativosCreados.length} rotativos en espera${esCompletarBloque ? ` (ya tenías ${rotativosExistentes})` : ""}.`,
   })
 }

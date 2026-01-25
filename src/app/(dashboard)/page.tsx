@@ -2587,21 +2587,27 @@ export default function DashboardPage() {
                 })
 
                 const renderTitulo = (titulo: typeof titulos[0]) => {
-                  // Verificar si el usuario ya tiene rotativos en eventos de este título
-                  const tieneRotativosEnTitulo = eventos.some(evento =>
-                    evento.tituloId === titulo.id &&
-                    evento.rotativos?.some(r => r.user.id === userId)
-                  )
-                  const esConcierto = titulo.type === "CONCIERTO"
+                  // Contar rotativos del usuario en eventos de este título
+                  const eventosDelTitulo = eventos.filter(e => e.tituloId === titulo.id)
+                  const rotativosEnTitulo = eventosDelTitulo.filter(evento =>
+                    evento.rotativos?.some(r => r.user.id === userId && r.estado !== "RECHAZADO" && r.estado !== "CANCELADO")
+                  ).length
+                  const tieneRotativosEnTitulo = rotativosEnTitulo > 0
 
-                  // Verificar si el concierto ya pasó
+                  // Verificar si tiene todos los eventos del título (bloque completo)
+                  // Si no hay eventos visibles, no podemos saber, así que permitimos solicitar
+                  const tieneBloqueCompleto = eventosDelTitulo.length > 0 && rotativosEnTitulo >= eventosDelTitulo.length
+
+                  // Verificar si el título ya pasó
                   const yaFinalizo = titulo.endDate ? new Date(titulo.endDate) < hoy : false
 
                   // Verificar si hay cupo disponible en al menos un evento del título
-                  const eventosDelTitulo = eventos.filter(e => e.tituloId === titulo.id)
-                  const hayCupoDisponible = eventosDelTitulo.some(e => e.cupoDisponible > 0)
+                  // Si no hay eventos visibles del título en el mes actual, asumimos que podría haber cupos
+                  // (el backend validará al momento de solicitar el bloque)
+                  const hayCupoDisponible = eventosDelTitulo.length === 0 || eventosDelTitulo.some(e => e.cupoDisponible > 0)
 
-                  const puedesolicitarBloque = esConcierto && !tieneRotativosEnTitulo && !yaFinalizo && hayCupoDisponible
+                  // Permitir solicitar/completar bloque si no tiene todos los eventos y hay cupo
+                  const puedesolicitarBloque = !tieneBloqueCompleto && !yaFinalizo && hayCupoDisponible
 
                   return (
                     <div
@@ -2641,22 +2647,27 @@ export default function DashboardPage() {
                           className="w-full text-center text-sm text-amber-700 hover:text-amber-800 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-dashed border-amber-300 hover:border-amber-400 hover:bg-amber-50 transition-colors"
                         >
                           <Layers className="w-4 h-4" />
-                          Solicitar bloque completo
+                          {tieneRotativosEnTitulo ? "Completar bloque" : "Solicitar bloque completo"}
                         </button>
                       )}
-                      {esConcierto && tieneRotativosEnTitulo && (
+                      {tieneRotativosEnTitulo && !puedesolicitarBloque && (
                         <p className="text-xs text-green-600 text-center py-1">
-                          ✓ Ya tenés rotativos en este concierto
+                          ✓ Ya tenés el bloque completo
                         </p>
                       )}
-                      {esConcierto && !tieneRotativosEnTitulo && yaFinalizo && (
-                        <p className="text-xs text-muted-foreground text-center py-1">
-                          Este concierto ya finalizó
+                      {tieneRotativosEnTitulo && puedesolicitarBloque && (
+                        <p className="text-xs text-blue-600 text-center py-1">
+                          Tenés {rotativosEnTitulo} rotativo(s), podés completar el bloque
                         </p>
                       )}
-                      {esConcierto && !tieneRotativosEnTitulo && !yaFinalizo && !hayCupoDisponible && (
+                      {!tieneRotativosEnTitulo && yaFinalizo && (
                         <p className="text-xs text-muted-foreground text-center py-1">
-                          Sin cupos disponibles para este concierto
+                          Este título ya finalizó
+                        </p>
+                      )}
+                      {!tieneRotativosEnTitulo && !yaFinalizo && eventosDelTitulo.length > 0 && !eventosDelTitulo.some(e => e.cupoDisponible > 0) && (
+                        <p className="text-xs text-muted-foreground text-center py-1">
+                          Sin cupos disponibles para este título
                         </p>
                       )}
                     </div>

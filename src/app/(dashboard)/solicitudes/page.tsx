@@ -272,7 +272,7 @@ export default function SolicitudesPage() {
         </div>
       </TableCell>
       <TableCell>
-        <Badge variant={estadoBadgeVariant(s.estado)} className={getBadgeClassName(s.estado)}>
+        <Badge variant={estadoBadgeVariant(s.estado)} className={`${getBadgeClassName(s.estado)} whitespace-nowrap`}>
           {formatEstado(s.estado, s.posicionEnCola)}
         </Badge>
       </TableCell>
@@ -347,15 +347,15 @@ export default function SolicitudesPage() {
               </div>
 
               {/* Vista desktop: Table */}
-              <div className="hidden md:block">
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Solicitado</TableHead>
-                      <TableHead>Fecha Evento</TableHead>
+                      <TableHead className="w-24">Solicitado</TableHead>
+                      <TableHead className="w-28">Fecha Evento</TableHead>
                       <TableHead>Evento</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Acciones</TableHead>
+                      <TableHead className="w-32">Estado</TableHead>
+                      <TableHead className="w-24">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -418,15 +418,15 @@ export default function SolicitudesPage() {
                 </div>
 
                 {/* Vista desktop: Table */}
-                <div className="hidden md:block">
+                <div className="hidden md:block overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Solicitado</TableHead>
-                        <TableHead>Fecha Evento</TableHead>
+                        <TableHead className="w-24">Solicitado</TableHead>
+                        <TableHead className="w-28">Fecha Evento</TableHead>
                         <TableHead>Evento</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Acciones</TableHead>
+                        <TableHead className="w-32">Estado</TableHead>
+                        <TableHead className="w-24">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
