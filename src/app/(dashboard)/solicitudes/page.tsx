@@ -37,6 +37,7 @@ interface Solicitud {
   eventoId: string
   eventoTitle: string
   eventoType: string
+  tituloId?: string | null
   tituloName?: string
   tituloColor?: string
   tituloType?: string
@@ -45,6 +46,12 @@ interface Solicitud {
   esParteDeBloque?: boolean
   bloqueId?: string | null
   eventoHora?: string | null
+}
+
+interface TituloEventCount {
+  id: string
+  name: string
+  totalEventos: number
 }
 
 // Helper para formatear el estado
@@ -70,6 +77,7 @@ type SortField = "createdAt" | "fecha"
 export default function SolicitudesPage() {
   const { debugDate } = useDebugDate()
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
+  const [tituloEventCounts, setTituloEventCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [showPastRequests, setShowPastRequests] = useState(false)
   const [showEliminarPorTitulo, setShowEliminarPorTitulo] = useState(false)
@@ -92,6 +100,24 @@ export default function SolicitudesPage() {
     const data = await res.json()
     setSolicitudes(data)
     setLoading(false)
+
+    // Obtener total de eventos por título
+    const tituloIds = [...new Set(data.map((s: Solicitud) => s.tituloId).filter(Boolean))] as string[]
+    if (tituloIds.length > 0) {
+      const counts: Record<string, number> = {}
+      await Promise.all(tituloIds.map(async (tituloId) => {
+        try {
+          const tituloRes = await fetch(`/api/titulos/${tituloId}`)
+          if (tituloRes.ok) {
+            const titulo = await tituloRes.json()
+            counts[titulo.name] = titulo.totalEventos || 0
+          }
+        } catch {
+          // Ignorar errores
+        }
+      }))
+      setTituloEventCounts(counts)
+    }
   }
 
   const cancelarSolicitud = async (id: string) => {
@@ -410,21 +436,24 @@ export default function SolicitudesPage() {
                   Podés eliminar todos los rotativos de un mismo título a la vez:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {titulosConMultiplesSolicitudes.map((titulo) => (
-                    <div key={titulo.tituloName} className="flex flex-col items-start">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-orange-300 hover:bg-orange-100"
-                        onClick={() => cancelarMultiples(titulo.solicitudIds, titulo.tituloName, titulo.bloqueId)}
-                      >
-                        Eliminar "{titulo.tituloName}" ({titulo.solicitudIds.length})
-                      </Button>
-                      <span className="text-xs text-muted-foreground mt-1 ml-1">
-                        {titulo.bloqueId ? "Título completo" : "Eventos individuales"}
-                      </span>
-                    </div>
-                  ))}
+                  {titulosConMultiplesSolicitudes.map((titulo) => {
+                    const totalEventos = tituloEventCounts[titulo.tituloName]
+                    return (
+                      <div key={titulo.tituloName} className="flex flex-col items-start">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-orange-300 hover:bg-orange-100"
+                          onClick={() => cancelarMultiples(titulo.solicitudIds, titulo.tituloName, titulo.bloqueId)}
+                        >
+                          Eliminar "{titulo.tituloName}" ({titulo.solicitudIds.length}{totalEventos ? `/${totalEventos}` : ""})
+                        </Button>
+                        <span className="text-xs text-muted-foreground mt-1 ml-1">
+                          {titulo.bloqueId ? "Título completo" : "Eventos individuales"}
+                        </span>
+                      </div>
+                    )
+                  })}
                 </div>
               </CardContent>
             </CollapsibleContent>

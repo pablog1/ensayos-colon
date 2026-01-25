@@ -74,8 +74,10 @@ export async function GET(req: NextRequest) {
           date: true,
           startTime: true,
           eventoType: true,
+          tituloId: true,
           titulo: {
             select: {
+              id: true,
               name: true,
               color: true,
               type: true,
@@ -109,6 +111,7 @@ export async function GET(req: NextRequest) {
       eventoId: r.event.id,
       eventoTitle: r.event.title,
       eventoType: r.event.eventoType,
+      tituloId: r.event.tituloId,
       tituloName: r.event.titulo?.name,
       tituloColor: r.event.titulo?.color,
       tituloType: r.event.titulo?.type,
