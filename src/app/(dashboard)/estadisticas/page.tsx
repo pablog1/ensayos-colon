@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BarChart3, Users, Calendar, Clock, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react"
+import { BarChart3, Users, Calendar, Clock, AlertTriangle, TrendingUp } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface CuposUsuarioTemporada {
@@ -221,8 +221,8 @@ export default function EstadisticasPage() {
                 )}
                 {stats.personal.cuposTemporada.porDebajoDelPromedio && (
                   <span className="flex items-center gap-1">
-                    <TrendingDown className="w-4 h-4 text-blue-600" />
-                    <Badge className="bg-blue-100 text-blue-800">Por debajo del promedio</Badge>
+                    <AlertTriangle className="w-4 h-4 text-orange-600" />
+                    <Badge className="bg-orange-100 text-orange-800">¡Bajo cupo!</Badge>
                   </span>
                 )}
                 {stats.personal.cuposTemporada.restantes > 0 && !stats.personal.cuposTemporada.cercaDelLimite ? (
@@ -230,7 +230,7 @@ export default function EstadisticasPage() {
                 ) : stats.personal.cuposTemporada.consumidos > stats.personal.cuposTemporada.maximoAsignado ? (
                   <span className="flex items-center gap-1">
                     <AlertTriangle className="w-4 h-4 text-orange-600" />
-                    <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                    <Badge className="bg-orange-100 text-orange-800">¡Sobre cupo!</Badge>
                   </span>
                 ) : stats.personal.cuposTemporada.restantes === 0 ? (
                   <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
@@ -290,12 +290,12 @@ export default function EstadisticasPage() {
                       className={`border rounded-lg p-4 space-y-3 ${isCurrentUser ? "border-primary bg-primary/5" : ""}`}
                     >
                       <div className="flex items-start justify-between">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium">
                             {i.nombre}
                             {isCurrentUser && <span className="text-primary ml-2">(Vos)</span>}
                           </p>
-                          <p className="text-sm text-muted-foreground truncate">{i.email}</p>
+                          <p className="text-sm text-muted-foreground truncate max-w-[200px]">{i.email}</p>
                         </div>
                         <div className="flex flex-wrap gap-1 justify-end">
                           {i.cuposTemporada.cercaDelLimite && (
@@ -306,8 +306,8 @@ export default function EstadisticasPage() {
                           )}
                           {i.cuposTemporada.porDebajoDelPromedio && (
                             <span className="flex items-center gap-0.5">
-                              <TrendingDown className="w-3 h-3 text-blue-600" />
-                              <Badge className="bg-blue-100 text-blue-800 text-xs">Bajo</Badge>
+                              <AlertTriangle className="w-3 h-3 text-orange-600" />
+                              <Badge className="bg-orange-100 text-orange-800 text-xs">¡Bajo cupo!</Badge>
                             </span>
                           )}
                           {i.cuposTemporada.restantes > 0 && !i.cuposTemporada.cercaDelLimite ? (
@@ -315,7 +315,7 @@ export default function EstadisticasPage() {
                           ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
                             <span className="flex items-center gap-1">
                               <AlertTriangle className="w-4 h-4 text-orange-600" />
-                              <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                              <Badge className="bg-orange-100 text-orange-800">¡Sobre cupo!</Badge>
                             </span>
                           ) : i.cuposTemporada.restantes === 0 ? (
                             <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
@@ -420,8 +420,8 @@ export default function EstadisticasPage() {
                               )}
                               {i.cuposTemporada.porDebajoDelPromedio && (
                                 <span className="inline-flex items-center gap-0.5" title="Por debajo del promedio del grupo">
-                                  <TrendingDown className="w-3 h-3 text-blue-600" />
-                                  <Badge className="bg-blue-100 text-blue-800 text-xs">Bajo</Badge>
+                                  <AlertTriangle className="w-3 h-3 text-orange-600" />
+                                  <Badge className="bg-orange-100 text-orange-800 text-xs">¡Bajo cupo!</Badge>
                                 </span>
                               )}
                               {i.cuposTemporada.restantes > 0 && !i.cuposTemporada.cercaDelLimite ? (
@@ -429,7 +429,7 @@ export default function EstadisticasPage() {
                               ) : i.cuposTemporada.consumidos > i.cuposTemporada.maximoAsignado ? (
                                 <span className="inline-flex items-center gap-1">
                                   <AlertTriangle className="w-4 h-4 text-orange-600" />
-                                  <Badge className="bg-orange-100 text-orange-800">Sobre cupo</Badge>
+                                  <Badge className="bg-orange-100 text-orange-800">¡Sobre cupo!</Badge>
                                 </span>
                               ) : i.cuposTemporada.restantes === 0 ? (
                                 <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
