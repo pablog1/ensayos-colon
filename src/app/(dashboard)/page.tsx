@@ -2462,13 +2462,33 @@ export default function DashboardPage() {
                     {!userHasRotativo(selectedEvento) && (
                       <div className="space-y-2">
                         {selectedEvento.tituloType === "CONCIERTO" ? (
-                          <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-sm text-amber-800">
-                              Los conciertos solo permiten rotativos por bloque completo.
-                            </p>
-                            <p className="text-xs text-amber-600 mt-1">
-                              Usá la opción &quot;Solicitar bloque&quot; desde la vista de títulos.
-                            </p>
+                          <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
+                            <div>
+                              <p className="text-sm text-amber-800">
+                                Los conciertos solo permiten rotativos por bloque completo.
+                              </p>
+                              <p className="text-xs text-amber-600 mt-1">
+                                Se solicitarán todas las funciones de este concierto juntas.
+                              </p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              className="w-full border-amber-300 text-amber-800 hover:bg-amber-100"
+                              onClick={() => handleSolicitarBloque(selectedEvento.tituloId, selectedEvento.tituloName)}
+                              disabled={loadingBloque}
+                            >
+                              {loadingBloque ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Validando...
+                                </>
+                              ) : (
+                                <>
+                                  <Layers className="w-4 h-4 mr-2" />
+                                  Solicitar bloque completo
+                                </>
+                              )}
+                            </Button>
                           </div>
                         ) : (
                           <>
@@ -2566,37 +2586,82 @@ export default function DashboardPage() {
                   return endDate < hoy
                 })
 
-                const renderTitulo = (titulo: typeof titulos[0]) => (
-                  <div
-                    key={titulo.id}
-                    className="flex items-center justify-between p-3 rounded-lg border"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: titulo.color || "#6b7280" }}
-                      />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{titulo.name}</p>
-                        {titulo.startDate && titulo.endDate && (
-                          <p className="text-xs text-muted-foreground">
-                            {titulo.startDate.substring(0, 10).split('-').reverse().join('-')} → {titulo.endDate.substring(0, 10).split('-').reverse().join('-')}
-                          </p>
+                const renderTitulo = (titulo: typeof titulos[0]) => {
+                  // Verificar si el usuario ya tiene rotativos en eventos de este título
+                  const tieneRotativosEnTitulo = eventos.some(evento =>
+                    evento.tituloId === titulo.id &&
+                    evento.rotativos?.some(r => r.user.id === userId)
+                  )
+                  const esConcierto = titulo.type === "CONCIERTO"
+
+                  // Verificar si el concierto ya pasó
+                  const yaFinalizo = titulo.endDate ? new Date(titulo.endDate) < hoy : false
+
+                  // Verificar si hay cupo disponible en al menos un evento del título
+                  const eventosDelTitulo = eventos.filter(e => e.tituloId === titulo.id)
+                  const hayCupoDisponible = eventosDelTitulo.some(e => e.cupoDisponible > 0)
+
+                  const puedesolicitarBloque = esConcierto && !tieneRotativosEnTitulo && !yaFinalizo && hayCupoDisponible
+
+                  return (
+                    <div
+                      key={titulo.id}
+                      className="p-3 rounded-lg border space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div
+                            className="w-4 h-4 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: titulo.color || "#6b7280" }}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{titulo.name}</p>
+                            {titulo.startDate && titulo.endDate && (
+                              <p className="text-xs text-muted-foreground">
+                                {titulo.startDate.substring(0, 10).split('-').reverse().join('-')} → {titulo.endDate.substring(0, 10).split('-').reverse().join('-')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex gap-1">
+                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         )}
                       </div>
+                      {puedesolicitarBloque && (
+                        <button
+                          onClick={() => handleSolicitarBloque(titulo.id, titulo.name)}
+                          disabled={loadingBloque}
+                          className="w-full text-center text-sm text-amber-700 hover:text-amber-800 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-dashed border-amber-300 hover:border-amber-400 hover:bg-amber-50 transition-colors"
+                        >
+                          <Layers className="w-4 h-4" />
+                          Solicitar bloque completo
+                        </button>
+                      )}
+                      {esConcierto && tieneRotativosEnTitulo && (
+                        <p className="text-xs text-green-600 text-center py-1">
+                          ✓ Ya tenés rotativos en este concierto
+                        </p>
+                      )}
+                      {esConcierto && !tieneRotativosEnTitulo && yaFinalizo && (
+                        <p className="text-xs text-muted-foreground text-center py-1">
+                          Este concierto ya finalizó
+                        </p>
+                      )}
+                      {esConcierto && !tieneRotativosEnTitulo && !yaFinalizo && !hayCupoDisponible && (
+                        <p className="text-xs text-muted-foreground text-center py-1">
+                          Sin cupos disponibles para este concierto
+                        </p>
+                      )}
                     </div>
-                    {isAdmin && (
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditTitulo(titulo)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteTitulo(titulo)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                )
+                  )
+                }
 
                 return (
                   <div className="space-y-2">
