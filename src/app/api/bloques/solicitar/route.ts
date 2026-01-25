@@ -99,34 +99,40 @@ export async function POST(req: NextRequest) {
     where: { key: "BLOQUE_EXCLUSIVO" },
   })
 
+  // Obtener cupo para este tipo de título (ej: conciertos = 2)
+  const cupoDelTitulo = await getCupoParaEvento(null, titulo.type)
+
   if (reglaBloqueExclusivo?.enabled) {
     const config = JSON.parse(reglaBloqueExclusivo.value)
     const maxPorPersona = config.maxPorPersona ?? 1
 
-    // Verificar si ya usó su bloque esta temporada
+    // Verificar si ya usó su bloque esta temporada - advertir pero permitir
     if (balance?.bloqueUsado) {
-      return NextResponse.json(
-        { error: `Ya utilizaste tu bloque de esta temporada (máximo ${maxPorPersona} por año)` },
-        { status: 400 }
+      motivosAprobacion.push(
+        `Ya utilizaste tu bloque de esta temporada (máximo ${maxPorPersona} por año). Requiere aprobación del administrador.`
       )
     }
 
-    // Verificar si el bloque ya está asignado a otro usuario
-    const bloqueExistente = await prisma.block.findFirst({
+    // Verificar cuántos usuarios ya tienen este bloque asignado
+    const bloquesAsignados = await prisma.block.findMany({
       where: {
         name: titulo.name,
         seasonId: temporadaActiva.id,
         assignedToId: { not: null },
       },
       include: {
-        assignedTo: { select: { name: true } },
+        assignedTo: { select: { id: true, name: true } },
       },
     })
 
-    if (bloqueExistente && bloqueExistente.assignedToId !== session.user.id) {
-      return NextResponse.json(
-        { error: `Este bloque ya fue solicitado por ${bloqueExistente.assignedTo?.name ?? "otro integrante"}` },
-        { status: 400 }
+    // Filtrar los bloques de otros usuarios (no el propio)
+    const bloquesDeOtros = bloquesAsignados.filter(b => b.assignedToId !== session.user.id)
+
+    // Si ya hay tantos bloques asignados como cupo permite, advertir pero permitir
+    if (bloquesDeOtros.length >= cupoDelTitulo) {
+      const nombresAsignados = bloquesDeOtros.map(b => b.assignedTo?.name).filter(Boolean).join(", ")
+      motivosAprobacion.push(
+        `Este bloque ya tiene ${bloquesDeOtros.length} asignaciones (cupo: ${cupoDelTitulo}). Asignados a: ${nombresAsignados}. Requiere aprobación del administrador.`
       )
     }
   }
@@ -202,15 +208,18 @@ export async function POST(req: NextRequest) {
   const estado = motivosAprobacion.length > 0 ? "PENDIENTE" : "APROBADO"
   const motivoTexto = motivosAprobacion.length > 0 ? motivosAprobacion.join("; ") : null
 
-  // Crear o actualizar bloque
+  // Crear o actualizar bloque para ESTE usuario
+  // (pueden existir múltiples bloques del mismo título para diferentes usuarios, según el cupo)
   let bloque = await prisma.block.findFirst({
     where: {
       name: titulo.name,
       seasonId: temporadaActiva.id,
+      assignedToId: session.user.id, // Buscar solo el bloque de este usuario
     },
   })
 
   if (!bloque) {
+    // Crear nuevo bloque para este usuario
     bloque = await prisma.block.create({
       data: {
         name: titulo.name,
@@ -222,10 +231,10 @@ export async function POST(req: NextRequest) {
       },
     })
   } else {
+    // Actualizar el bloque existente de este usuario
     bloque = await prisma.block.update({
       where: { id: bloque.id },
       data: {
-        assignedToId: session.user.id,
         estado: estado === "APROBADO" ? "APROBADO" : "SOLICITADO",
       },
     })
