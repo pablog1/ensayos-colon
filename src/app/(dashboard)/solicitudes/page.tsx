@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { ChevronDown, ArrowUpDown } from "lucide-react"
+import { ChevronDown, ArrowUpDown, Layers } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface Solicitud {
@@ -41,6 +41,8 @@ interface Solicitud {
   tituloColor?: string
   motivo?: string | null
   posicionEnCola?: number | null
+  esParteDeBloque?: boolean
+  bloqueId?: string | null
 }
 
 // Helper para formatear el estado
@@ -68,9 +70,9 @@ export default function SolicitudesPage() {
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [loading, setLoading] = useState(true)
   const [showPastRequests, setShowPastRequests] = useState(false)
-  // Ordenamiento: por defecto por fecha de solicitud (createdAt), descendente (más recientes primero)
-  const [futureSortField, setFutureSortField] = useState<SortField>("createdAt")
-  const [futureAscending, setFutureAscending] = useState(false)
+  // Ordenamiento: por defecto por fecha de evento, ascendente (más cercanos primero)
+  const [futureSortField, setFutureSortField] = useState<SortField>("fecha")
+  const [futureAscending, setFutureAscending] = useState(true)
   const [pastSortField, setPastSortField] = useState<SortField>("createdAt")
   const [pastAscending, setPastAscending] = useState(false)
 
@@ -104,6 +106,50 @@ export default function SolicitudesPage() {
       toast.error(error.error)
     }
   }
+
+  const cancelarBloque = async (bloqueId: string, tituloName: string) => {
+    const rotativosDelBloque = solicitudes.filter(s => s.bloqueId === bloqueId && (s.estado === "APROBADO" || s.estado === "PENDIENTE"))
+    if (!confirm(`¿Estás seguro de cancelar todos los ${rotativosDelBloque.length} rotativos del bloque "${tituloName}"?`)) return
+
+    const res = await fetch("/api/bloques/cancelar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bloqueId }),
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      if (data.pendiente) {
+        toast.info(data.message)
+      } else {
+        toast.success(data.message)
+      }
+      fetchSolicitudes()
+    } else {
+      const error = await res.json()
+      toast.error(error.error)
+    }
+  }
+
+  // Agrupar solicitudes por bloque para mostrar opción de cancelar bloque completo
+  const bloquesActivos = useMemo(() => {
+    const bloques: Record<string, { bloqueId: string; tituloName: string; count: number }> = {}
+    solicitudes
+      .filter(s => s.bloqueId && (s.estado === "APROBADO" || s.estado === "PENDIENTE") && new Date(s.fecha) >= new Date())
+      .forEach(s => {
+        if (s.bloqueId && !bloques[s.bloqueId]) {
+          bloques[s.bloqueId] = {
+            bloqueId: s.bloqueId,
+            tituloName: s.tituloName || s.eventoTitle,
+            count: 0,
+          }
+        }
+        if (s.bloqueId) {
+          bloques[s.bloqueId].count++
+        }
+      })
+    return Object.values(bloques).filter(b => b.count > 1) // Solo mostrar si hay más de 1 rotativo en el bloque
+  }, [solicitudes])
 
   // Separate future and past requests, sorted by selected field
   const { futureSolicitudes, pastSolicitudes } = useMemo(() => {
@@ -299,6 +345,36 @@ export default function SolicitudesPage() {
           Para solicitar un rotativo, seleccioná un evento en el calendario
         </p>
       </div>
+
+      {/* Sección de bloques activos - Cancelación de bloque completo */}
+      {bloquesActivos.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers className="w-4 h-4 text-orange-600" />
+              Bloques activos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Podés cancelar todos los rotativos de un bloque completo:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {bloquesActivos.map((bloque) => (
+                <Button
+                  key={bloque.bloqueId}
+                  variant="outline"
+                  size="sm"
+                  className="border-orange-300 hover:bg-orange-100"
+                  onClick={() => cancelarBloque(bloque.bloqueId, bloque.tituloName)}
+                >
+                  Cancelar "{bloque.tituloName}" ({bloque.count} rotativos)
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

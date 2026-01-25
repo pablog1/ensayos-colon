@@ -48,14 +48,15 @@ const ruleUIConfig: Record<string, {
   editable: boolean
   editableFields?: string[]
   nonEditableMessage?: string // Mensaje personalizado para reglas no editables
-  renderValue?: (value: unknown) => React.ReactNode
-  renderEditor?: (value: unknown, onChange: (val: unknown) => void) => React.ReactNode
+  hidden?: boolean // Para ocultar reglas que se muestran dentro de otras
+  renderValue?: (value: unknown, allRules?: RuleConfig[]) => React.ReactNode
+  renderEditor?: (value: unknown, onChange: (val: unknown) => void, allRules?: RuleConfig[], onChangeOther?: (key: string, val: unknown) => void) => React.ReactNode
 }> = {
   CUPO_DIARIO: {
     icon: Users,
     friendlyName: "Cupos por tipo de evento",
     shortDescription: "Cuántos músicos pueden tomar rotativo en cada tipo de evento",
-    explanation: "Define cuántas personas pueden pedir rotativo simultáneamente según el tipo de actividad. Para conciertos, los cupos son fijos.",
+    explanation: "Define cuántas personas pueden pedir rotativo simultáneamente según el tipo de actividad. Los conciertos llevan equipo fijo, por lo que sus cupos no son modificables.",
     editable: true,
     renderValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -235,34 +236,73 @@ const ruleUIConfig: Record<string, {
   },
   ALERTA_UMBRAL: {
     icon: Bell,
-    friendlyName: "Alerta de cercanía al máximo",
-    shortDescription: "Cuándo avisar que estás cerca del límite",
-    explanation: "Cuando alcanzás este porcentaje de tu máximo anual, recibís una notificación de advertencia. También se notifica al administrador para que esté al tanto.",
+    friendlyName: "Alerta de cercanía al límite",
+    shortDescription: "Cuándo avisar que estás cerca del límite superior o inferior",
+    explanation: "Cuando alcanzás cierto porcentaje de tu máximo anual (límite superior), o estás muy por debajo del promedio (límite inferior), recibís una notificación de advertencia. También se notifica al administrador.",
     editable: true,
-    renderValue: (value) => (
-      <div className="flex items-center gap-4">
-        <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-          <div className="text-3xl font-bold text-yellow-600">{String(value)}%</div>
-          <div className="text-sm text-yellow-600">del máximo</div>
+    renderValue: (value, allRules) => {
+      const subcupoRule = allRules?.find(r => r.configKey === "ALERTA_SUBCUPO")
+      const subcupoValue = subcupoRule?.currentValue ?? 30
+      return (
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div className="text-3xl font-bold text-yellow-600">{String(value)}%</div>
+            <div className="text-sm text-yellow-600">límite superior</div>
+          </div>
+          <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+            <div className="text-3xl font-bold text-red-600">{String(subcupoValue)}%</div>
+            <div className="text-sm text-red-600">límite inferior</div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Se envía alerta al acercarse a estos porcentajes del promedio
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Se envía alerta cuando llegás a este porcentaje de tu límite anual
-        </p>
-      </div>
-    ),
-    renderEditor: (value, onChange) => (
-      <div className="flex items-center gap-4">
-        <Input
-          type="number"
-          min={50}
-          max={100}
-          value={String(value)}
-          onChange={(e) => onChange(parseInt(e.target.value) || 90)}
-          className="w-24 text-center text-xl font-semibold"
-        />
-        <span className="text-muted-foreground">% del máximo anual</span>
-      </div>
-    ),
+      )
+    },
+    renderEditor: (value, onChange, allRules, onChangeOther) => {
+      const subcupoRule = allRules?.find(r => r.configKey === "ALERTA_SUBCUPO")
+      const subcupoValue = subcupoRule?.currentValue ?? 30
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="space-y-1">
+              <Label className="text-sm text-yellow-700">Límite superior (máximo)</Label>
+              <Input
+                type="number"
+                min={50}
+                max={100}
+                value={String(value)}
+                onChange={(e) => onChange(parseInt(e.target.value) || 90)}
+                className="w-24 text-center text-xl font-semibold border-yellow-300"
+              />
+            </div>
+            <span className="text-muted-foreground">% del máximo anual</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="space-y-1">
+              <Label className="text-sm text-red-700">Límite inferior (mínimo)</Label>
+              <Input
+                type="number"
+                min={10}
+                max={50}
+                value={String(subcupoValue)}
+                onChange={(e) => onChangeOther?.("ALERTA_SUBCUPO", parseInt(e.target.value) || 30)}
+                className="w-24 text-center text-xl font-semibold border-red-300"
+              />
+            </div>
+            <span className="text-muted-foreground">% por debajo del promedio</span>
+          </div>
+        </div>
+      )
+    },
+  },
+  ALERTA_SUBCUPO: {
+    icon: Bell,
+    friendlyName: "Umbral de subcupo",
+    shortDescription: "Porcentaje por debajo del promedio",
+    explanation: "Se muestra junto con la alerta de cercanía al límite",
+    editable: true,
+    hidden: true, // Se muestra junto con ALERTA_UMBRAL
   },
 }
 
@@ -441,6 +481,7 @@ export default function ConfiguracionPage() {
             <div className="grid gap-4">
               {category.rules
                 .sort((a, b) => a.priority - b.priority)
+                .filter((rule) => !ruleUIConfig[rule.configKey]?.hidden)
                 .map((rule) => {
                   const uiConfig = ruleUIConfig[rule.configKey]
                   if (!uiConfig) return null
@@ -509,8 +550,11 @@ export default function ConfiguracionPage() {
                         {isEditing && uiConfig.editable && uiConfig.renderEditor ? (
                           <div className="space-y-4">
                             <Label className="text-base font-semibold">Modificar configuración</Label>
-                            {uiConfig.renderEditor(currentValue, (val) =>
-                              handleValueChange(rule.configKey, val)
+                            {uiConfig.renderEditor(
+                              currentValue,
+                              (val) => handleValueChange(rule.configKey, val),
+                              rules,
+                              handleValueChange
                             )}
                             <div className="flex gap-2">
                               <Button
@@ -554,7 +598,7 @@ export default function ConfiguracionPage() {
                               )}
                             </div>
                             {uiConfig.renderValue
-                              ? uiConfig.renderValue(currentValue)
+                              ? uiConfig.renderValue(currentValue, rules)
                               : <span className="text-2xl font-bold">{String(currentValue)}</span>
                             }
                           </div>

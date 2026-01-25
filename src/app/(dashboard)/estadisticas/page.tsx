@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BarChart3, Users, Calendar, Clock, AlertTriangle, TrendingUp } from "lucide-react"
+import { BarChart3, Users, Calendar, Clock, AlertTriangle } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface CuposUsuarioTemporada {
@@ -215,8 +215,8 @@ export default function EstadisticasPage() {
                 <span className="text-primary">Tus rotativos</span>
                 {stats.personal.cuposTemporada.cercaDelLimite && (
                   <span className="flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4 text-amber-600" />
-                    <Badge className="bg-amber-100 text-amber-800">Cerca del límite</Badge>
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <Badge className="bg-amber-100 text-amber-800">¡Cerca del límite!</Badge>
                   </span>
                 )}
                 {stats.personal.cuposTemporada.porDebajoDelPromedio && (
@@ -300,8 +300,8 @@ export default function EstadisticasPage() {
                         <div className="flex flex-wrap gap-1 justify-end">
                           {i.cuposTemporada.cercaDelLimite && (
                             <span className="flex items-center gap-0.5">
-                              <TrendingUp className="w-3 h-3 text-amber-600" />
-                              <Badge className="bg-amber-100 text-amber-800 text-xs">Límite</Badge>
+                              <AlertTriangle className="w-3 h-3 text-amber-600" />
+                              <Badge className="bg-amber-100 text-amber-800 text-xs">¡Cerca del límite!</Badge>
                             </span>
                           )}
                           {i.cuposTemporada.porDebajoDelPromedio && (
@@ -413,9 +413,9 @@ export default function EstadisticasPage() {
                           <TableCell className="text-center">
                             <div className="flex flex-wrap gap-1 justify-center">
                               {i.cuposTemporada.cercaDelLimite && (
-                                <span className="inline-flex items-center gap-0.5" title="Cerca del límite superior">
-                                  <TrendingUp className="w-3 h-3 text-amber-600" />
-                                  <Badge className="bg-amber-100 text-amber-800 text-xs">Límite</Badge>
+                                <span className="inline-flex items-center gap-0.5" title="¡Cerca del límite superior!">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                  <Badge className="bg-amber-100 text-amber-800 text-xs">¡Cerca del límite!</Badge>
                                 </span>
                               )}
                               {i.cuposTemporada.porDebajoDelPromedio && (

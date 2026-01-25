@@ -1,0 +1,14 @@
+- Si un dia antes de cualquier evento, los cupos no estan perfectamente cubiertos, el admin debe recibir alerta y notificacion
+
+- tanto en reglas como en configuración, aclarar en la parte de cupos por tipo de eventos, que los conciertos llevan equipo fijo
+
+- En Mis Solicitudes / Solicitudes futuras, el select tendría que tener por default seleccionado "fecha de evento" y ordenar por fecha ascendente
+
+- Al ya tener todos los rotativos utilizados como usuario, si bien el sistema restringe correctamente la posibilidad de pedir más rotativos, el usuario pudo pedir un bloque completo, y el sistema se lo asignó salteando esa validación. En este caso, debido a que pasaria los rotativos permitidos y que el bloque solo se puede pedir completo, el sistema tiene que avisar sobre el problema y pasar la solicitud a revision del admin
+
+- Permitir que un usuario pueda cancelar los rotativos de un bloque completo. Mostrar esa opcion en la misma vista que la de cancelacion individual > mis solititudes
+
+- En Estadisticas de un usuario, el badge "Cerca del límite" se muestra también como "límite". Mostarlo siempre igual, con la versión "Cerca del límite". poder signos de admiración y el ícono de alerta
+
+- En Configuración / Alerta de cercanía al máximo, agregar en el mismo bloque la conf. para alerta de cercanía al mínimo. por lo tanto el texto cambia a "Alerta de cercanía al límite"
+- En reglas, en el bloque de licencias prolongadas, en el ultimo punto "aplica para licencias medicas, de estudio, maternidad, etc.." agregar "con o sin goce de sueldo"

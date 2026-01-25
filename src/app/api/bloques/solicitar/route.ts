@@ -142,7 +142,14 @@ export async function POST(req: NextRequest) {
       balance.rotativosObligatorios +
       balance.rotativosPorLicencia
 
-    if (totalActual + eventosParaSolicitar.length > maxEfectivo) {
+    // Verificar si el usuario ya agotó sus rotativos
+    if (totalActual >= maxEfectivo) {
+      // Usuario sin rotativos disponibles pero solicita bloque completo
+      // El bloque solo se puede pedir completo, así que pasa a revisión del admin
+      motivosAprobacion.push(
+        `Rotativos agotados (${totalActual}/${maxEfectivo}). Solicitud de bloque completo requiere revisión del administrador.`
+      )
+    } else if (totalActual + eventosParaSolicitar.length > maxEfectivo) {
       motivosAprobacion.push(
         `Excede máximo proyectado anual (${totalActual + eventosParaSolicitar.length}/${maxEfectivo})`
       )

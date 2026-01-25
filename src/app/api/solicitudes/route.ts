@@ -105,6 +105,9 @@ export async function GET(req: NextRequest) {
       tituloColor: r.event.titulo?.color,
       tituloType: r.event.titulo?.type,
       esEventoIndividualConcierto: r.event.titulo?.type === "CONCIERTO" && !r.esParteDeBloqueId,
+      // Información de bloque para cancelación
+      esParteDeBloque: !!r.esParteDeBloqueId,
+      bloqueId: r.esParteDeBloqueId,
     }
   }))
 

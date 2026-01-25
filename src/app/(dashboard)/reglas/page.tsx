@@ -49,6 +49,7 @@ const friendlyRules: Record<string, {
     details: [
       "El cupo depende del tipo de título (ópera, ballet, concierto)",
       "Ensayos y funciones de un mismo título usan el mismo cupo",
+      "Los conciertos llevan equipo fijo (cupo no modificable)",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -157,7 +158,7 @@ const friendlyRules: Record<string, {
     details: [
       "Al volver, se te suma el promedio del grupo durante tu ausencia",
       "Esto evita ventajas o desventajas por haber tomado licencia",
-      "Aplica para licencias médicas, de estudio, maternidad, etc.",
+      "Aplica para licencias médicas, de estudio, maternidad, etc., con o sin goce de sueldo",
     ],
   },
   INTEGRANTE_NUEVO: {
