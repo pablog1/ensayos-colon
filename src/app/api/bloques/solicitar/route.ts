@@ -106,10 +106,22 @@ export async function POST(req: NextRequest) {
     const config = JSON.parse(reglaBloqueExclusivo.value)
     const maxPorPersona = config.maxPorPersona ?? 1
 
-    // Verificar si ya usó su bloque esta temporada - advertir pero permitir
-    if (balance?.bloqueUsado) {
+    // Verificar si ya tiene OTRO bloque asignado en esta temporada (de cualquier título)
+    // Esta verificación es más robusta que depender del campo bloqueUsado del balance
+    const bloquesDelUsuario = await prisma.block.findMany({
+      where: {
+        assignedToId: session.user.id,
+        seasonId: temporadaActiva.id,
+        name: { not: titulo.name }, // Excluir el bloque del mismo título (para completar bloque existente)
+        estado: { in: ["SOLICITADO", "APROBADO", "EN_CURSO", "COMPLETADO"] },
+      },
+      select: { name: true },
+    })
+
+    if (bloquesDelUsuario.length >= maxPorPersona) {
+      const nombresBloquesUsados = bloquesDelUsuario.map(b => b.name).join(", ")
       motivosAprobacion.push(
-        `Ya utilizaste tu bloque de esta temporada (máximo ${maxPorPersona} por año). Requiere aprobación del administrador.`
+        `Ya utilizaste tu bloque de esta temporada: "${nombresBloquesUsados}" (máximo ${maxPorPersona} por año). Requiere aprobación del administrador.`
       )
     }
 
@@ -268,13 +280,29 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Marcar que el usuario usó su bloque si fue aprobado
-  if (estado === "APROBADO" && balance) {
-    await prisma.userSeasonBalance.update({
-      where: { id: balance.id },
-      data: { bloqueUsado: true },
-    })
-  }
+  // Marcar que el usuario usó su bloque (siempre, sin importar si fue aprobado o pendiente)
+  // Usar upsert para crear el balance si no existe
+  await prisma.userSeasonBalance.upsert({
+    where: {
+      userId_seasonId: {
+        userId: session.user.id,
+        seasonId: temporadaActiva.id,
+      },
+    },
+    create: {
+      userId: session.user.id,
+      seasonId: temporadaActiva.id,
+      bloqueUsado: true,
+      rotativosTomados: 0,
+      rotativosObligatorios: 0,
+      rotativosPorLicencia: 0,
+      maxProyectado: 50, // Valor por defecto, se recalculará
+      finesDeSemanaMes: {},
+    },
+    update: {
+      bloqueUsado: true,
+    },
+  })
 
   const esCompletarBloque = rotativosExistentes > 0
   const accion = esCompletarBloque ? "completado" : "solicitado"
