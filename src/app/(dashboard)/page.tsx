@@ -76,6 +76,7 @@ interface Evento {
     estado: string
     motivo: string | null
     validationResults: Record<string, unknown> | null
+    posicionEnCola: number | null
     user: {
       id: string
       name: string
@@ -1506,16 +1507,14 @@ export default function DashboardPage() {
                         <span
                           key={j}
                           className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
-                            esMio
-                              ? "bg-green-600 text-white font-semibold ring-2 ring-green-400"
-                              : tieneExcepcion
-                                ? "bg-amber-200 text-amber-800"
-                                : r.estado === "APROBADO"
-                                  ? "bg-green-200 text-green-800"
-                                  : r.estado === "PENDIENTE"
-                                    ? "bg-red-200 text-red-800"
-                                    : "bg-yellow-200 text-yellow-800"
-                          }`}
+                            tieneExcepcion
+                              ? "bg-amber-200 text-amber-800"
+                              : r.estado === "APROBADO"
+                                ? "bg-green-200 text-green-800"
+                                : r.estado === "PENDIENTE"
+                                  ? "bg-red-200 text-red-800"
+                                  : "bg-yellow-200 text-yellow-800"
+                          } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
                           title={tieneExcepcion ? r.motivo || "" : ""}
                         >
                           {r.user.alias || r.user.name.split(" ")[0]}
@@ -1859,16 +1858,14 @@ export default function DashboardPage() {
                                                   <span
                                                     key={r.id}
                                                     className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
-                                                      esMio
-                                                        ? "bg-green-600 text-white font-semibold ring-2 ring-green-400"
-                                                        : tieneExcepcion
-                                                          ? "bg-amber-100 text-amber-800"
-                                                          : r.estado === "APROBADO"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : r.estado === "PENDIENTE"
-                                                              ? "bg-red-100 text-red-800"
-                                                              : "bg-yellow-100 text-yellow-800"
-                                                    }`}
+                                                      tieneExcepcion
+                                                        ? "bg-amber-100 text-amber-800"
+                                                        : r.estado === "APROBADO"
+                                                          ? "bg-green-100 text-green-800"
+                                                          : r.estado === "PENDIENTE"
+                                                            ? "bg-red-100 text-red-800"
+                                                            : "bg-yellow-100 text-yellow-800"
+                                                    } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
                                                     title={tieneExcepcion ? r.motivo || "" : ""}
                                                   >
                                                     {r.user.alias || r.user.name.split(" ")[0]}
@@ -2221,7 +2218,7 @@ export default function DashboardPage() {
                                 variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
                                 className="text-xs flex-shrink-0"
                               >
-                                {r.estado === "APROBADA" ? "APROBADO" : r.estado}
+                                {r.estado === "APROBADA" ? "Aprobado" : r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? "En Espera" : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
                               </Badge>
                             </div>
                           </div>
@@ -2330,16 +2327,14 @@ export default function DashboardPage() {
                                         <span
                                           key={r.id}
                                           className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${
-                                            esMio
-                                              ? "bg-green-600 text-white font-semibold ring-2 ring-green-400"
-                                              : tieneExcepcion
-                                                ? "bg-amber-100 text-amber-800"
-                                                : r.estado === "APROBADO"
-                                                  ? "bg-green-100 text-green-800"
-                                                  : r.estado === "PENDIENTE"
-                                                    ? "bg-red-100 text-red-800"
-                                                    : "bg-yellow-100 text-yellow-800"
-                                          }`}
+                                            tieneExcepcion
+                                              ? "bg-amber-100 text-amber-800"
+                                              : r.estado === "APROBADO"
+                                                ? "bg-green-100 text-green-800"
+                                                : r.estado === "PENDIENTE"
+                                                  ? "bg-red-100 text-red-800"
+                                                  : "bg-yellow-100 text-yellow-800"
+                                          } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
                                           title={tieneExcepcion ? r.motivo || "" : ""}
                                         >
                                           {r.user.alias || r.user.name.split(" ")[0]}
@@ -2418,28 +2413,26 @@ export default function DashboardPage() {
                             <div
                               key={r.id}
                               className={`p-2 rounded border ${
-                                esMio
-                                  ? "bg-green-600 border-green-500 ring-2 ring-green-400"
-                                  : tieneExcepcion
-                                    ? "bg-amber-50 border-amber-200"
-                                    : r.estado === "APROBADO"
-                                      ? "bg-green-50 border-green-200"
-                                      : r.estado === "PENDIENTE"
-                                        ? "bg-red-50 border-red-200"
-                                        : "bg-yellow-50 border-yellow-200"
-                              }`}
+                                tieneExcepcion
+                                  ? "bg-amber-50 border-amber-200"
+                                  : r.estado === "APROBADO"
+                                    ? "bg-green-50 border-green-200"
+                                    : r.estado === "PENDIENTE"
+                                      ? "bg-red-50 border-red-200"
+                                      : "bg-yellow-50 border-yellow-200"
+                              } ${esMio ? "ring-2 ring-offset-1 ring-gray-800" : ""}`}
                             >
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <span className={`text-sm font-medium ${esMio ? "text-white" : ""}`}>
+                                  <span className={`text-sm font-medium ${esMio ? "font-bold" : ""}`}>
                                     {r.user.alias || r.user.name}
                                   </span>
                                   {tieneExcepcion && !esMio && (
                                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                                   )}
                                 </div>
-                                <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className={`text-xs ${esMio ? "bg-white text-green-700" : ""}`}>
-                                  {r.estado}
+                                <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className={`text-xs ${r.estado === "APROBADO" ? "bg-green-600 hover:bg-green-700" : ""}`}>
+                                  {r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? `En Espera${r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}` : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
                                 </Badge>
                               </div>
                               {tieneExcepcion && !esMio && r.motivo && (
@@ -3718,7 +3711,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   {gestionEvento.rotativos.map((r) => {
                     // Formatear estado para mostrar
-                    const estadoDisplay = r.estado === "EN_ESPERA" ? "En espera" :
+                    const estadoDisplay = r.estado === "EN_ESPERA" ? `En Espera${r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}` :
                                           r.estado === "APROBADO" ? "Aprobado" :
                                           r.estado === "PENDIENTE" ? "Pendiente" : r.estado
                     // Clases de color según estado

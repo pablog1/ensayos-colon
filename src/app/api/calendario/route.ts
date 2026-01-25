@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
           estado: true,
           motivo: true,
           validationResults: true,
+          createdAt: true,
           user: {
             select: {
               id: true,
@@ -81,6 +82,9 @@ export async function GET(req: NextRequest) {
               alias: true,
             },
           },
+        },
+        orderBy: {
+          createdAt: "asc",
         },
       },
     },
@@ -128,9 +132,20 @@ export async function GET(req: NextRequest) {
     )
 
     // Incluir también los EN_ESPERA para mostrar al usuario (pero no cuentan para el cupo)
+    // Los rotativos ya vienen ordenados por createdAt ASC (FIFO)
     const rotativosVisibles = evento.rotativos.filter(
       r => r.estado === "APROBADO" || r.estado === "PENDIENTE" || r.estado === "EN_ESPERA"
     )
+
+    // Calcular posición en cola para los EN_ESPERA (FIFO basado en createdAt)
+    let posicionEnCola = 0
+    const rotativosConPosicion = rotativosVisibles.map(r => {
+      if (r.estado === "EN_ESPERA") {
+        posicionEnCola++
+        return { ...r, posicionEnCola }
+      }
+      return { ...r, posicionEnCola: null }
+    })
 
     return {
       id: evento.id,
@@ -147,7 +162,7 @@ export async function GET(req: NextRequest) {
       cupoOverride: evento.cupoOverride,
       rotativosUsados: rotativosActivos.length,
       cupoDisponible: cupoEfectivo - rotativosActivos.length,
-      rotativos: rotativosVisibles,
+      rotativos: rotativosConPosicion,
     }
   })
 
