@@ -133,21 +133,20 @@ const friendlyRules: Record<string, {
   },
   ROTACION_OBLIGATORIA: {
     icon: Shuffle,
-    title: "Cobertura por emergencias",
-    summary: "Quién cubre/toca cuando alguien no puede asistir de urgencia",
+    title: "Cobertura de rotativos vacantes",
+    summary: "Quién rota cuando nadie quiere rotar",
     details: [
-      "Se busca consenso pero el administrador puede designar a quiénes les correspondería tocar priorizando a quienes más rotativos hayan tomado",
+      "Si es necesario cubrir los rotativos de un evento y faltando un día no hay voluntarios suficientes se busca consenso, pero luego el administrador puede designar a quiénes les tocaría rotar priorizando a quienes menos rotativos hayan utilizado",
       "Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo",
     ],
   },
   COBERTURA_EXTERNA: {
     icon: Shield,
     title: "Cobertura por emergencias",
-    summary: "Quién cubre cuando alguien no puede asistir de urgencia",
+    summary: "Quién cubre/toca cuando alguien no puede asistir de urgencia",
     details: [
-      "Se prioriza a quienes más rotativos hayan tomado",
-      "El admin gestiona manualmente las coberturas según este criterio",
-      "Así se equilibra el balance del grupo",
+      "Se busca consenso pero el administrador puede designar a quiénes les correspondería tocar priorizando a quienes más rotativos hayan tomado",
+      "Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo",
     ],
   },
   LICENCIAS: {
