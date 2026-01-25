@@ -56,7 +56,7 @@ const ruleUIConfig: Record<string, {
     icon: Users,
     friendlyName: "Cupos por tipo de evento",
     shortDescription: "Cuántos músicos pueden tomar rotativo en cada tipo de evento",
-    explanation: "Define cuántas personas pueden pedir rotativo simultáneamente según el tipo de actividad. Los conciertos llevan equipo fijo, por lo que sus cupos no son modificables.",
+    explanation: "Define cuántas personas pueden pedir rotativo simultáneamente según el tipo de actividad. Los conciertos requieren equipo fijo.",
     editable: true,
     renderValue: (value) => {
       if (!value || typeof value !== "object") return null

@@ -376,7 +376,7 @@ export default function SolicitudesPage() {
         </Card>
       )}
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-2">
             <CardTitle>Solicitudes Futuras</CardTitle>
@@ -424,14 +424,14 @@ export default function SolicitudesPage() {
 
               {/* Vista desktop: Table */}
               <div className="hidden md:block overflow-x-auto">
-                <Table>
+                <Table className="min-w-[600px]">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-24">Solicitado</TableHead>
-                      <TableHead className="w-28">Fecha Evento</TableHead>
-                      <TableHead>Evento</TableHead>
-                      <TableHead className="w-32">Estado</TableHead>
-                      <TableHead className="w-24">Acciones</TableHead>
+                      <TableHead className="w-20">Solicitado</TableHead>
+                      <TableHead className="w-24">Fecha Evento</TableHead>
+                      <TableHead className="min-w-[150px]">Evento</TableHead>
+                      <TableHead className="w-28">Estado</TableHead>
+                      <TableHead className="w-20">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -448,7 +448,7 @@ export default function SolicitudesPage() {
 
       {/* Past requests collapsible section */}
       {!loading && pastSolicitudes.length > 0 && (
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="pt-6">
             <Collapsible open={showPastRequests} onOpenChange={setShowPastRequests}>
               <CollapsibleTrigger asChild>
@@ -495,14 +495,14 @@ export default function SolicitudesPage() {
 
                 {/* Vista desktop: Table */}
                 <div className="hidden md:block overflow-x-auto">
-                  <Table>
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-24">Solicitado</TableHead>
-                        <TableHead className="w-28">Fecha Evento</TableHead>
-                        <TableHead>Evento</TableHead>
-                        <TableHead className="w-32">Estado</TableHead>
-                        <TableHead className="w-24">Acciones</TableHead>
+                        <TableHead className="w-20">Solicitado</TableHead>
+                        <TableHead className="w-24">Fecha Evento</TableHead>
+                        <TableHead className="min-w-[150px]">Evento</TableHead>
+                        <TableHead className="w-28">Estado</TableHead>
+                        <TableHead className="w-20">Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

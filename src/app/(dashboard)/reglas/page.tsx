@@ -49,7 +49,7 @@ const friendlyRules: Record<string, {
     details: [
       "El cupo depende del tipo de título (ópera, ballet, concierto)",
       "Ensayos y funciones de un mismo título usan el mismo cupo",
-      "Los conciertos llevan equipo fijo (cupo no modificable)",
+      "Los conciertos requieren equipo fijo",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
