@@ -380,7 +380,7 @@ export default function SolicitudesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1">
         <h1 className="text-2xl font-bold">Mis Solicitudes</h1>
         <p className="text-sm text-muted-foreground">
           Para solicitar un rotativo, seleccioná un evento en el calendario

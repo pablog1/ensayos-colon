@@ -1,14 +1,21 @@
-- Si un dia antes de cualquier evento, los cupos no estan perfectamente cubiertos, el admin debe recibir alerta y notificacion
 
-- tanto en reglas como en configuración, aclarar en la parte de cupos por tipo de eventos, que los conciertos llevan equipo fijo
 
-- En Mis Solicitudes / Solicitudes futuras, el select tendría que tener por default seleccionado "fecha de evento" y ordenar por fecha ascendente
 
-- Al ya tener todos los rotativos utilizados como usuario, si bien el sistema restringe correctamente la posibilidad de pedir más rotativos, el usuario pudo pedir un bloque completo, y el sistema se lo asignó salteando esa validación. En este caso, debido a que pasaria los rotativos permitidos y que el bloque solo se puede pedir completo, el sistema tiene que avisar sobre el problema y pasar la solicitud a revision del admin
+*Cobertura de rotativos vacantes.* 
+Quién rota cuando nadie quiere rotar.
 
-- Permitir que un usuario pueda cancelar los rotativos de un bloque completo. Mostrar esa opcion en la misma vista que la de cancelacion individual > mis solititudes
+. Si es necesario cubrir los rotativos de un evento y faltando un día no hay voluntarios suficientes se busca consenso, pero luego el administrador puede designar a quiénes les tocaría rotar priorizando a quienes *menos* rotativos hayan utilizado.
 
-- En Estadisticas de un usuario, el badge "Cerca del límite" se muestra también como "límite". Mostarlo siempre igual, con la versión "Cerca del límite". poder signos de admiración y el ícono de alerta
+. Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo.
 
-- En Configuración / Alerta de cercanía al máximo, agregar en el mismo bloque la conf. para alerta de cercanía al mínimo. por lo tanto el texto cambia a "Alerta de cercanía al límite"
-- En reglas, en el bloque de licencias prolongadas, en el ultimo punto "aplica para licencias medicas, de estudio, maternidad, etc.." agregar "con o sin goce de sueldo"
+
+
+
+
+
+*Cobertura por emergencias.* 
+Quién cubre/toca cuando alguien no puede asistir de urgencia.
+
+. Se busca consenso pero el administrador puede designar a quiénes les correspondería tocar priorizando a quienes *más* rotativos hayan tomado. 
+
+. Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo.

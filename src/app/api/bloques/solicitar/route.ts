@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 
 // POST /api/bloques/solicitar - Solicitar bloque completo de un título
 export async function POST(req: NextRequest) {
@@ -238,7 +239,9 @@ export async function POST(req: NextRequest) {
     const rotativosActivos = evento.rotativos.filter(
       (r) => r.estado === "APROBADO" || r.estado === "PENDIENTE"
     ).length
-    const cupoEfectivo = evento.cupoOverride ?? titulo.cupo
+    // Usar cupo de reglas (consistente con el calendario) o override del evento
+    const cupoDeReglas = await getCupoParaEvento(evento.eventoType, titulo.type)
+    const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
 
     if (rotativosActivos < cupoEfectivo) {
       await prisma.rotativo.create({

@@ -49,7 +49,7 @@ const friendlyRules: Record<string, {
     details: [
       "El cupo depende del tipo de título (ópera, ballet, concierto)",
       "Ensayos y funciones de un mismo título usan el mismo cupo",
-      "Los conciertos requieren equipo fijo",
+      "Los conciertos llevan equipo fijo (cupo no modificable)",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -133,12 +133,11 @@ const friendlyRules: Record<string, {
   },
   ROTACION_OBLIGATORIA: {
     icon: Shuffle,
-    title: "Rotación obligatoria",
-    summary: "Designación por el admin cuando no hay voluntarios",
+    title: "Cobertura por emergencias",
+    summary: "Quién cubre/toca cuando alguien no puede asistir de urgencia",
     details: [
-      "Si es necesario cubrir un evento y faltando un día no hay voluntarios, el admin puede designar quién rotará",
-      "Se busca consenso, pero el admin tiene potestad para asignar priorizando a quienes menos rotativos hayan utilizado",
-      "Esto garantiza una distribución equitativa de las rotaciones",
+      "Se busca consenso pero el administrador puede designar a quiénes les correspondería tocar priorizando a quienes más rotativos hayan tomado",
+      "Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo",
     ],
   },
   COBERTURA_EXTERNA: {
