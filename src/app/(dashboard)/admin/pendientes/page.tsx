@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Clock, CheckCircle, XCircle, RefreshCw, Ban } from "lucide-react"
+import { Clock, CheckCircle, XCircle, RefreshCw, Ban, Hourglass } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -50,6 +50,20 @@ interface CancelacionPendiente {
   }
 }
 
+interface EnEspera {
+  id: string
+  fecha: string
+  posicionEnCola: number | null
+  createdAt: string
+  user: {
+    id: string
+    name: string
+    alias?: string | null
+  }
+  tituloName?: string
+  eventoType?: string
+}
+
 type AccionPendiente = {
   tipo: "aprobar" | "rechazar"
   solicitud: SolicitudPendiente
@@ -66,6 +80,7 @@ const MOTIVO_RECHAZO_DEFAULT = "No validado por la fila"
 export default function PendientesPage() {
   const [solicitudes, setSolicitudes] = useState<SolicitudPendiente[]>([])
   const [cancelaciones, setCancelaciones] = useState<CancelacionPendiente[]>([])
+  const [enEspera, setEnEspera] = useState<EnEspera[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [accionPendiente, setAccionPendiente] = useState<AccionPendiente>(null)
@@ -90,6 +105,12 @@ export default function PendientesPage() {
         (s: { estado: string }) => s.estado === "CANCELACION_PENDIENTE"
       )
       setCancelaciones(cancelacionesPendientes)
+
+      // Filtrar en espera (informativo)
+      const esperando = data.filter(
+        (s: { estado: string }) => s.estado === "EN_ESPERA"
+      )
+      setEnEspera(esperando)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -197,7 +218,7 @@ export default function PendientesPage() {
             <Badge variant="secondary" className="text-base px-3 py-1">
               {solicitudes.length}
             </Badge>
-            solicitudes esperando revisión
+            Solicitudes Esperando Revisión
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -354,6 +375,60 @@ export default function PendientesPage() {
                       Rechazar (mantener rotativo)
                     </Button>
                   </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* En espera (informativo) */}
+      {enEspera.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Hourglass className="w-5 h-5 text-yellow-500" />
+              <Badge variant="secondary" className="text-base px-3 py-1 bg-yellow-100 text-yellow-800">
+                {enEspera.length}
+              </Badge>
+              En Lista de Espera
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Usuarios esperando que se libere un cupo. No requieren acción.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {enEspera.map((e) => (
+                <div
+                  key={e.id}
+                  className="border border-yellow-200 bg-yellow-50 rounded-lg p-3 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 font-mono">
+                      P{e.posicionEnCola || "?"}
+                    </Badge>
+                    <div>
+                      <p className="font-medium">
+                        {e.user.alias || e.user.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(e.fecha + "T12:00:00").toLocaleDateString("es-ES", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                        })}
+                        {e.tituloName && <> · {e.tituloName}</>}
+                        {e.eventoType && <> · {e.eventoType === "FUNCION" ? "Función" : "Ensayo"}</>}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Solicitado {new Date(e.createdAt).toLocaleDateString("es-ES", {
+                      day: "numeric",
+                      month: "short",
+                    })}
+                  </span>
                 </div>
               ))}
             </div>

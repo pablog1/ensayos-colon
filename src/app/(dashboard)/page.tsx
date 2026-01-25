@@ -2034,7 +2034,7 @@ export default function DashboardPage() {
           transition-all duration-300 z-50 md:z-auto
         `}>
           {rightSidebarOpen && (
-          <Card className="h-full md:h-auto md:sticky md:top-4 rounded-none md:rounded-lg overflow-y-auto">
+          <Card className="h-full md:max-h-[calc(100vh-2rem)] md:sticky md:top-4 rounded-none md:rounded-lg overflow-y-auto">
             <CardHeader className="pb-3">
               {/* Botón cerrar sidebar */}
               <div className="flex justify-end -mt-2 -mr-2 mb-1">
@@ -2216,7 +2216,15 @@ export default function DashboardPage() {
                               </div>
                               <Badge
                                 variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
-                                className="text-xs flex-shrink-0"
+                                className={`text-xs flex-shrink-0 ${
+                                  r.estado === "APROBADO" || r.estado === "APROBADA"
+                                    ? "bg-green-600 hover:bg-green-700"
+                                    : r.estado === "EN_ESPERA"
+                                      ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                      : r.estado === "PENDIENTE"
+                                        ? "bg-red-100 text-red-800 border border-red-300"
+                                        : ""
+                                }`}
                               >
                                 {r.estado === "APROBADA" ? "Aprobado" : r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? "En Espera" : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
                               </Badge>
