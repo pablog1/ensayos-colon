@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,10 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { History, Download, RefreshCw, ChevronLeft, ChevronRight, FileText, Upload, FileDown } from "lucide-react"
+import { History, RefreshCw, ChevronLeft, ChevronRight, FileText, Upload, FileDown } from "lucide-react"
 import { jsPDF } from "jspdf"
 import { toast } from "sonner"
-import { format, startOfMonth, endOfMonth, subMonths, addMonths, startOfYear, endOfYear } from "date-fns"
+import { format, startOfMonth, endOfMonth, subMonths, addMonths } from "date-fns"
 import { es } from "date-fns/locale"
 
 interface AuditLog {
@@ -235,6 +236,8 @@ function getActionLabel(action: string): string {
 }
 
 export default function LogsPage() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "ADMIN"
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState<string>("all")
@@ -300,73 +303,6 @@ export default function LogsPage() {
   }
 
   const isCurrentMonth = format(currentMonth, "yyyy-MM") === format(new Date(), "yyyy-MM")
-
-  const generateCSV = (logsData: AuditLog[], filename: string) => {
-    const headers = ["Fecha", "Hora", "Tipo", "Descripción", "Usuario"]
-    const rows = logsData.map((log) => {
-      const date = new Date(log.createdAt)
-      return [
-        format(date, "dd/MM/yyyy"),
-        format(date, "HH:mm"),
-        getActionLabel(log.action),
-        getLogDescription(log),
-        log.user?.alias || log.user?.name || "",
-      ]
-    })
-
-    const csvContent = [
-      headers.join(","),
-      ...rows.map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    ].join("\n")
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    link.href = URL.createObjectURL(blob)
-    link.download = filename
-    link.click()
-  }
-
-  const downloadCSV = () => {
-    const filename = `logs_${format(currentMonth, "yyyy-MM")}.csv`
-    generateCSV(logs, filename)
-  }
-
-  const downloadYearCSV = async () => {
-    const year = currentMonth.getFullYear()
-    const startDate = startOfYear(currentMonth)
-    const endDate = endOfYear(currentMonth)
-    const filename = `logs_${year}.csv`
-
-    try {
-      const params = new URLSearchParams({
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        limit: "10000",
-      })
-
-      // Si es categoría crítica, filtrar por isCritical en el servidor
-      const categoryConfig = LOG_CATEGORIES[category]
-      if (categoryConfig?.isCritical) {
-        params.set("isCritical", "true")
-      }
-
-      const res = await fetch(`/api/auditoria?${params}`)
-      if (res.ok) {
-        const data = await res.json()
-
-        // Filtrar por categoría si es necesario
-        let filteredLogs = data.logs
-        if (category !== "all" && !categoryConfig?.isCritical) {
-          const actions = categoryConfig.actions
-          filteredLogs = data.logs.filter((log: AuditLog) => actions.includes(log.action))
-        }
-
-        generateCSV(filteredLogs, filename)
-      }
-    } catch (error) {
-      console.error("Error downloading year logs:", error)
-    }
-  }
 
   const downloadPDF = () => {
     if (logs.length === 0) return
@@ -494,10 +430,6 @@ export default function LogsPage() {
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Actualizar
           </Button>
-          <Button variant="outline" size="sm" onClick={downloadCSV} disabled={logs.length === 0}>
-            <Download className="w-4 h-4 mr-2" />
-            CSV Mes
-          </Button>
           <Button variant="outline" size="sm" onClick={downloadPDF} disabled={logs.length === 0}>
             <FileText className="w-4 h-4 mr-2" />
             PDF
@@ -506,20 +438,22 @@ export default function LogsPage() {
             <FileDown className="w-4 h-4 mr-2" />
             Backup
           </Button>
-          <label className="cursor-pointer">
-            <Button variant="outline" size="sm" asChild>
-              <span>
-                <Upload className="w-4 h-4 mr-2" />
-                Restaurar
-              </span>
-            </Button>
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportBackup}
-              className="hidden"
-            />
-          </label>
+          {isAdmin && (
+            <label className="cursor-pointer">
+              <Button variant="outline" size="sm" asChild>
+                <span>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Restaurar
+                </span>
+              </Button>
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportBackup}
+                className="hidden"
+              />
+            </label>
+          )}
         </div>
       </div>
 

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Clock, CheckCircle, XCircle, RefreshCw, Ban, Hourglass } from "lucide-react"
+import { Clock, CheckCircle, XCircle, RefreshCw, Ban, Hourglass, AlertTriangle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,10 @@ interface SolicitudPendiente {
   porcentajeAlMomento: number | null
   createdAt: string
   motivo?: string | null
+  eventoTitle?: string
+  tituloName?: string
+  tituloType?: string
+  esEventoIndividualConcierto?: boolean
   user: {
     id: string
     name: string
@@ -241,8 +245,29 @@ export default function PendientesPage() {
               {solicitudes.map((s) => (
                 <div
                   key={s.id}
-                  className="border rounded-lg p-4 space-y-3"
+                  className={`border rounded-lg p-4 space-y-3 ${
+                    s.esEventoIndividualConcierto
+                      ? "border-orange-400 border-2 bg-orange-50"
+                      : ""
+                  }`}
                 >
+                  {/* Alerta: Evento individual de concierto */}
+                  {s.esEventoIndividualConcierto && (
+                    <div className="flex items-start gap-2 p-3 bg-orange-100 border border-orange-300 rounded-md">
+                      <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-orange-800">
+                          ⚠️ EVENTO INDIVIDUAL DE CONCIERTO
+                        </p>
+                        <p className="text-sm text-orange-700 mt-1">
+                          Esta solicitud es para un <strong>evento individual</strong> del concierto
+                          <strong> &quot;{s.tituloName}&quot;</strong>. Normalmente los conciertos se
+                          solicitan como bloque completo. Verificar si es intencional antes de aprobar.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Header: Usuario */}
                   <div className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
@@ -253,12 +278,23 @@ export default function PendientesPage() {
                         {s.user.email}
                       </p>
                     </div>
+                    {s.esEventoIndividualConcierto && (
+                      <Badge className="bg-orange-500 text-white">
+                        Concierto Individual
+                      </Badge>
+                    )}
                   </div>
 
-                  {/* Info: Fechas */}
+                  {/* Info: Evento y Fechas */}
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                    {s.eventoTitle && (
+                      <div>
+                        <span className="text-muted-foreground">Evento: </span>
+                        <span className="font-medium">{s.eventoTitle}</span>
+                      </div>
+                    )}
                     <div>
-                      <span className="text-muted-foreground">Rotativo: </span>
+                      <span className="text-muted-foreground">Fecha: </span>
                       <span className="font-medium">
                         {new Date(s.fecha + "T12:00:00").toLocaleDateString("es-ES", {
                           weekday: "short",
@@ -446,7 +482,10 @@ export default function PendientesPage() {
             <DialogDescription>
               {accionPendiente && (
                 <>
-                  Solicitud de <strong>{accionPendiente.solicitud.user.alias || accionPendiente.solicitud.user.name}</strong> para el{" "}
+                  Solicitud de <strong>{accionPendiente.solicitud.user.alias || accionPendiente.solicitud.user.name}</strong> para{" "}
+                  {accionPendiente.solicitud.eventoTitle && (
+                    <><strong>{accionPendiente.solicitud.eventoTitle}</strong> - </>
+                  )}
                   <strong>
                     {new Date(accionPendiente.solicitud.fecha + "T12:00:00").toLocaleDateString("es-ES", {
                       weekday: "long",
@@ -457,6 +496,18 @@ export default function PendientesPage() {
                 </>
               )}
             </DialogDescription>
+            {accionPendiente?.solicitud.esEventoIndividualConcierto && (
+              <div className="flex items-start gap-2 p-3 mt-2 bg-orange-100 border border-orange-300 rounded-md">
+                <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-orange-700">
+                  <strong>Atención:</strong> Este es un <strong>evento individual de concierto</strong>.
+                  Normalmente los conciertos se solicitan como bloque completo.
+                  {accionPendiente.tipo === "aprobar" && (
+                    <> Asegurate de que esta excepción es intencional.</>
+                  )}
+                </div>
+              </div>
+            )}
           </DialogHeader>
 
           <div className="space-y-4 py-4">

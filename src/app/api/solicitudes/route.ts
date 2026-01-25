@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
             select: {
               name: true,
               color: true,
+              type: true,
             },
           },
         },
@@ -102,6 +103,8 @@ export async function GET(req: NextRequest) {
       eventoType: r.event.eventoType,
       tituloName: r.event.titulo?.name,
       tituloColor: r.event.titulo?.color,
+      tituloType: r.event.titulo?.type,
+      esEventoIndividualConcierto: r.event.titulo?.type === "CONCIERTO" && !r.esParteDeBloqueId,
     }
   }))
 
@@ -146,13 +149,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 })
     }
 
-    // Verificar si es un concierto - solo se permiten bloques completos
-    if (evento.titulo?.type === "CONCIERTO") {
-      return NextResponse.json(
-        { error: "Los conciertos solo permiten rotativos por bloque completo. Usá la opción 'Solicitar bloque'." },
-        { status: 400 }
-      )
-    }
+    // Verificar si es un concierto - eventos individuales requieren aprobación obligatoria
+    const esEventoIndividualConcierto = evento.titulo?.type === "CONCIERTO"
 
     // Verificar si existe un rotativo del usuario en este evento
     const existente = await prisma.rotativo.findFirst({
@@ -198,17 +196,23 @@ export async function POST(req: NextRequest) {
 
     // Determinar estado del rotativo
     // Si no hay cupo, va a lista de espera
-    // Si requiere aprobación, queda pendiente
+    // Si es evento individual de concierto o requiere aprobación, queda pendiente
     // Si no, se aprueba directamente
     let nuevoEstado: "EN_ESPERA" | "PENDIENTE" | "APROBADO"
     if (sinCupo) {
       nuevoEstado = "EN_ESPERA"
-    } else if (requiereAprobacion) {
+    } else if (esEventoIndividualConcierto || requiereAprobacion) {
       nuevoEstado = "PENDIENTE"
     } else {
       nuevoEstado = "APROBADO"
     }
-    const motivoFinal = motivo || null
+
+    // Construir motivo final - agregar indicador si es evento individual de concierto
+    let motivoFinal = motivo || null
+    if (esEventoIndividualConcierto) {
+      const motivoConcierto = "[EVENTO INDIVIDUAL DE CONCIERTO - Requiere aprobación especial]"
+      motivoFinal = motivoFinal ? `${motivoConcierto} ${motivoFinal}` : motivoConcierto
+    }
 
     console.log("[POST /api/solicitudes] Creando rotativo con estado:", nuevoEstado, "sinCupo:", sinCupo)
 
