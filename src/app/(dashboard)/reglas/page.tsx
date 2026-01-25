@@ -320,6 +320,7 @@ export default function ReglasPage() {
                 <li>• Hay un límite anual para que todos tengan las mismas oportunidades</li>
                 <li>• Si pedís con anticipación, se aprueba automáticamente</li>
                 <li>• Si no hay cupo, podés anotarte en lista de espera</li>
+                <li>• Si algún pedido se sale de las reglas generales, va a revisión del administrador con validación de la fila</li>
               </ul>
             </div>
           </div>
