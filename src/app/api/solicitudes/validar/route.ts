@@ -90,6 +90,17 @@ export async function POST(req: NextRequest) {
 
   // Validar reglas y recopilar motivos
   const motivosAprobacion: string[] = []
+  let debugMaxProyectado: {
+    maxEfectivo: number
+    totalActual: number
+    rotativosReales: number
+    rotativosPorLicencia: number
+    tieneAjusteManual: boolean
+    maxGuardadoEnBD: number
+    balanceRotativosTomados: number
+    totalCuposTemporada: number
+    totalIntegrantes: number
+  } | null = null
 
   // ============================================
   // REGLA: SOBRECUPO (siempre activa)
@@ -216,16 +227,58 @@ export async function POST(req: NextRequest) {
       })
 
       if (balance) {
-        const maxEfectivo = balance.maxAjustadoManual ?? balance.maxProyectado
-        const totalActual =
-          balance.rotativosTomados +
-          balance.rotativosObligatorios +
-          balance.rotativosPorLicencia
+        // Si hay ajuste manual, usarlo. Si no, recalcular siempre en tiempo real
+        // (el maxProyectado guardado puede estar desactualizado)
+        let maxEfectivo: number
+
+        // Recalcular siempre: obtener total de cupos y total de integrantes
+        const titulosTemp = await prisma.titulo.findMany({
+          where: { seasonId: temporadaActiva.id },
+          include: { events: { select: { cupoOverride: true } } },
+        })
+        let totalCuposTemp = 0
+        for (const t of titulosTemp) {
+          for (const e of t.events) {
+            totalCuposTemp += e.cupoOverride ?? t.cupo
+          }
+        }
+        const totalIntegrantesTemp = await prisma.user.count()
+        const maxCalculado = totalIntegrantesTemp > 0 ? Math.max(1, Math.round(totalCuposTemp / totalIntegrantesTemp)) : 1
+
+        if (balance.maxAjustadoManual !== null) {
+          maxEfectivo = balance.maxAjustadoManual
+        } else {
+          maxEfectivo = maxCalculado
+        }
+
+        // Contar rotativos REALES de la base de datos (no usar balance que puede estar desactualizado)
+        const rotativosReales = await prisma.rotativo.count({
+          where: {
+            userId: userIdToValidate,
+            estado: { in: ["APROBADO", "PENDIENTE"] },
+            event: { seasonId: temporadaActiva.id },
+          },
+        })
+        const rotativosPorLicencia = Math.floor(balance.rotativosPorLicencia || 0)
+        const totalActual = rotativosReales + rotativosPorLicencia
 
         if (totalActual + 1 > maxEfectivo) {
           motivosAprobacion.push(
             `Excede máximo proyectado anual (${totalActual + 1}/${maxEfectivo})`
           )
+        }
+
+        // Guardar info de debug para mostrar en la respuesta
+        debugMaxProyectado = {
+          maxEfectivo,
+          totalActual,
+          rotativosReales,
+          rotativosPorLicencia,
+          tieneAjusteManual: balance.maxAjustadoManual !== null,
+          maxGuardadoEnBD: balance.maxProyectado,
+          balanceRotativosTomados: balance.rotativosTomados,
+          totalCuposTemporada: totalCuposTemp,
+          totalIntegrantes: totalIntegrantesTemp,
         }
       }
     }
@@ -329,5 +382,6 @@ export async function POST(req: NextRequest) {
     motivos: motivosAprobacion,
     motivoTexto: motivosAprobacion.join("; "),
     sinCupo, // indica que irá a lista de espera
+    debug: debugMaxProyectado, // Info de cálculo del máximo proyectado
   })
 }
