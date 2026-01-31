@@ -30,9 +30,14 @@ async function calcularMaxProyectadoReal(seasonId: string): Promise<number> {
   const totalIntegrantes = await prisma.user.count()
 
   // Máximo por integrante = total cupos / cantidad de integrantes
-  return totalIntegrantes > 0
-    ? Math.round(totalCuposDisponibles / totalIntegrantes)
-    : 0
+  // Si no hay integrantes o no hay cupos, usar un mínimo de 1 para evitar división por 0
+  if (totalIntegrantes === 0 || totalCuposDisponibles === 0) {
+    return 1 // Mínimo de 1 rotativo para evitar bloqueos
+  }
+
+  const calculado = Math.round(totalCuposDisponibles / totalIntegrantes)
+  // Garantizar un mínimo de 1 rotativo
+  return Math.max(1, calculado)
 }
 
 interface UpdateBalanceParams {

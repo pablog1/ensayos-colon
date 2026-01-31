@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
     orderBy: { name: "asc" },
   })
 
-  // Obtener balances de la temporada (incluye rotativosPorLicencia)
+  // Obtener balances de la temporada (incluye rotativosPorLicencia y justificación)
   const balances = await prisma.userSeasonBalance.findMany({
     where: { seasonId: season.id },
     select: {
@@ -182,15 +182,31 @@ export async function GET(req: NextRequest) {
       rotativosPorLicencia: true,
       maxProyectado: true,
       maxAjustadoManual: true,
+      fechaIngreso: true,
+      asignacionInicialRotativos: true,
+      asignacionFechaCalculo: true,
+      asignacionJustificacion: true,
     },
   })
 
-  const balancesMap: Record<string, { rotativosPorLicencia: number; maxProyectado: number; maxAjustadoManual: number | null }> = {}
+  interface BalanceInfo {
+    rotativosPorLicencia: number
+    maxProyectado: number
+    maxAjustadoManual: number | null
+    fechaIngreso: Date | null
+    asignacionInicialRotativos: number | null
+    asignacionJustificacion: string | null
+  }
+
+  const balancesMap: Record<string, BalanceInfo> = {}
   for (const b of balances) {
     balancesMap[b.userId] = {
       rotativosPorLicencia: b.rotativosPorLicencia,
       maxProyectado: b.maxProyectado,
       maxAjustadoManual: b.maxAjustadoManual,
+      fechaIngreso: b.fechaIngreso,
+      asignacionInicialRotativos: b.asignacionInicialRotativos,
+      asignacionJustificacion: b.asignacionJustificacion,
     }
   }
 
@@ -240,6 +256,14 @@ export async function GET(req: NextRequest) {
     const umbralInferior = promedioGrupo * (1 - umbralSubcupo / 100) // X% debajo del promedio
     const porDebajoDelPromedio = promedioGrupo > 2 && usadosReales < umbralInferior
 
+    // Información de justificación para miembros nuevos
+    const esNuevoIntegrante = balance?.fechaIngreso != null
+    const justificacion = esNuevoIntegrante ? {
+      fechaIngreso: balance?.fechaIngreso?.toISOString(),
+      asignacionInicial: balance?.asignacionInicialRotativos,
+      justificacion: balance?.asignacionJustificacion,
+    } : null
+
     return {
       id: usuario.id,
       nombre: usuario.alias || usuario.name,
@@ -255,6 +279,8 @@ export async function GET(req: NextRequest) {
         cercaDelLimite,
         porDebajoDelPromedio,
       },
+      esNuevoIntegrante,
+      justificacionAsignacion: justificacion,
     }
   })
 

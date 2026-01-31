@@ -107,6 +107,7 @@ const friendlyRules: Record<string, {
     summary: "Podés ausentarte durante un título completo",
     details: [
       "Un título por persona por temporada",
+      "Si hubieran más títulos disponibles se podrán tomar más títulos por persona, previa revisión del admin (con validación de la fila)",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null
@@ -154,7 +155,7 @@ const friendlyRules: Record<string, {
     title: "Licencias prolongadas",
     summary: "Cómo se manejan las ausencias extendidas",
     details: [
-      "Al volver, se te suma el promedio del grupo durante tu ausencia",
+      "Al volver, se te suma el promedio del grupo durante tu ausencia, independientemente si fueron cubiertas o no",
       "Esto evita ventajas o desventajas por haber tomado licencia",
       "Aplica para licencias médicas, de estudio, maternidad, etc., con o sin goce de sueldo",
     ],
@@ -231,7 +232,7 @@ const friendlyRules: Record<string, {
     details: [
       "Si el título tiene hasta 3 funciones: podés pedir rotativo en máximo 1",
       "Si el título tiene más de 3 funciones: podés pedir hasta el 30% del total",
-      "Las solicitudes que excedan el límite van a revisión del administrador",
+      "Las solicitudes que excedan el límite van a revisión del administrador (con validación de la fila)",
     ],
     getValue: (value) => {
       if (!value || typeof value !== "object") return null

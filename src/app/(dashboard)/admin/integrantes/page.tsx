@@ -35,7 +35,9 @@ interface Integrante {
   id: string
   email: string
   name: string
+  alias?: string
   role: "ADMIN" | "INTEGRANTE"
+  joinDate?: string
   createdAt: string
   _count: {
     solicitudes: number
@@ -54,6 +56,7 @@ export default function IntegrantesPage() {
     email: "",
     password: "",
     role: "INTEGRANTE" as "ADMIN" | "INTEGRANTE",
+    joinDate: "",
   })
   const [editFormData, setEditFormData] = useState({
     role: "INTEGRANTE" as "ADMIN" | "INTEGRANTE",
@@ -94,7 +97,7 @@ export default function IntegrantesPage() {
     if (res.ok) {
       toast.success("Usuario creado exitosamente")
       setDialogOpen(false)
-      setFormData({ name: "", email: "", password: "", role: "INTEGRANTE" })
+      setFormData({ name: "", email: "", password: "", role: "INTEGRANTE", joinDate: "" })
       fetchIntegrantes()
     } else {
       const error = await res.json()
@@ -299,6 +302,23 @@ export default function IntegrantesPage() {
                   Los administradores pueden gestionar usuarios, aprobar solicitudes y configurar reglas.
                 </p>
               </div>
+              {formData.role === "INTEGRANTE" && (
+                <div className="space-y-2">
+                  <Label htmlFor="joinDate">Fecha de inicio de actividad</Label>
+                  <Input
+                    id="joinDate"
+                    type="date"
+                    value={formData.joinDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, joinDate: e.target.value })
+                    }
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    El sistema calculará automáticamente los rotativos asignados en base a esta fecha.
+                  </p>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <Button
                   type="button"

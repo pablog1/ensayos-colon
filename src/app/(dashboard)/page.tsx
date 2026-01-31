@@ -2655,11 +2655,6 @@ export default function DashboardPage() {
                           ✓ Ya tenés el bloque completo
                         </p>
                       )}
-                      {tieneRotativosEnTitulo && puedesolicitarBloque && (
-                        <p className="text-xs text-blue-600 text-center py-1">
-                          Tenés {rotativosEnTitulo} rotativo(s), podés completar el bloque
-                        </p>
-                      )}
                       {!tieneRotativosEnTitulo && yaFinalizo && (
                         <p className="text-xs text-muted-foreground text-center py-1">
                           Este título ya finalizó

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BarChart3, Users, Calendar, Clock, AlertTriangle } from "lucide-react"
+import { BarChart3, Users, Calendar, Clock, AlertTriangle, Info, UserPlus } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface CuposUsuarioTemporada {
@@ -33,6 +33,12 @@ interface CuposUsuarioTemporada {
   porcentajeUsado: number
   cercaDelLimite?: boolean  // Alerta: cerca del límite superior
   porDebajoDelPromedio?: boolean  // Alerta: muy por debajo del promedio
+}
+
+interface JustificacionAsignacion {
+  fechaIngreso: string
+  asignacionInicial: number | null
+  justificacion: string | null
 }
 
 interface Stats {
@@ -48,6 +54,8 @@ interface Stats {
     nombre: string
     email: string
     cuposTemporada: CuposUsuarioTemporada
+    esNuevoIntegrante?: boolean
+    justificacionAsignacion?: JustificacionAsignacion | null
   }[]
   currentUserId: string
   promedioGrupo?: number
@@ -291,11 +299,21 @@ export default function EstadisticasPage() {
                     >
                       <div className="flex items-start justify-between">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium">
+                          <p className="font-medium flex items-center gap-1">
                             {i.nombre}
-                            {isCurrentUser && <span className="text-primary ml-2">(Vos)</span>}
+                            {isCurrentUser && <span className="text-primary ml-1">(Vos)</span>}
+                            {i.esNuevoIntegrante && (
+                              <span className="inline-flex items-center gap-0.5 text-blue-600" title={i.justificacionAsignacion?.justificacion || "Integrante nuevo"}>
+                                <UserPlus className="w-3 h-3" />
+                              </span>
+                            )}
                           </p>
                           <p className="text-sm text-muted-foreground truncate max-w-[200px]">{i.email}</p>
+                          {i.esNuevoIntegrante && i.justificacionAsignacion && (
+                            <p className="text-xs text-blue-600 mt-1">
+                              Ingreso: {new Date(i.justificacionAsignacion.fechaIngreso).toLocaleDateString("es-AR")} - Asignación inicial: {i.justificacionAsignacion.asignacionInicial} rotativos
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-1 justify-end">
                           {i.cuposTemporada.cercaDelLimite && (
@@ -318,7 +336,10 @@ export default function EstadisticasPage() {
                               <Badge className="bg-orange-100 text-orange-800">¡Sobre cupo!</Badge>
                             </span>
                           ) : i.cuposTemporada.restantes === 0 ? (
-                            <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                            <span className="flex items-center gap-1">
+                              <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                              <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                            </span>
                           ) : null}
                         </div>
                       </div>
@@ -375,8 +396,20 @@ export default function EstadisticasPage() {
                       return (
                         <TableRow key={i.id} className={isCurrentUser ? "bg-primary/10" : ""}>
                           <TableCell className="font-medium">
-                            {i.nombre}
-                            {isCurrentUser && <span className="text-primary ml-2">(Vos)</span>}
+                            <div className="flex items-center gap-1">
+                              {i.nombre}
+                              {isCurrentUser && <span className="text-primary ml-1">(Vos)</span>}
+                              {i.esNuevoIntegrante && (
+                                <span className="inline-flex items-center gap-0.5 text-blue-600" title={i.justificacionAsignacion?.justificacion || "Integrante nuevo"}>
+                                  <UserPlus className="w-3 h-3" />
+                                </span>
+                              )}
+                            </div>
+                            {i.esNuevoIntegrante && i.justificacionAsignacion && (
+                              <p className="text-xs text-blue-600 font-normal">
+                                Ingreso: {new Date(i.justificacionAsignacion.fechaIngreso).toLocaleDateString("es-AR")} (asignación: {i.justificacionAsignacion.asignacionInicial})
+                              </p>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             <span className="text-lg font-semibold text-muted-foreground">
@@ -432,7 +465,10 @@ export default function EstadisticasPage() {
                                   <Badge className="bg-orange-100 text-orange-800">¡Sobre cupo!</Badge>
                                 </span>
                               ) : i.cuposTemporada.restantes === 0 ? (
-                                <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                                <span className="inline-flex items-center gap-1">
+                                  <AlertTriangle className="w-4 h-4 text-yellow-600" />
+                                  <Badge className="bg-yellow-100 text-yellow-800">Cupo completo</Badge>
+                                </span>
                               ) : null}
                             </div>
                           </TableCell>

@@ -74,6 +74,44 @@ const LOG_CATEGORIES: Record<string, { label: string; actions: string[]; isCriti
   },
 }
 
+// Función auxiliar para formatear fecha y hora del evento
+function formatEventDateTime(details: Record<string, unknown>): string {
+  const fecha = details.fecha as string | undefined
+  const horario = details.horario as string | undefined
+  const tipoEvento = details.tipoEvento as string | undefined
+
+  if (!fecha) return ""
+
+  const parts: string[] = []
+
+  try {
+    const fechaObj = new Date(fecha)
+    parts.push(fechaObj.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }))
+  } catch {
+    // Si no se puede parsear, usar el string original
+    if (typeof fecha === "string" && fecha.includes("T")) {
+      parts.push(fecha.split("T")[0])
+    }
+  }
+
+  if (horario) {
+    parts.push(`a las ${horario}`)
+  }
+
+  if (tipoEvento) {
+    const tiposLabel: Record<string, string> = {
+      FUNCION: "Función",
+      ENSAYO: "Ensayo",
+      ENSAYO_GENERAL: "Ensayo General",
+      ENSAYO_PIANO: "Ensayo Piano",
+      PROBA: "Proba",
+    }
+    parts.push(`(${tiposLabel[tipoEvento] || tipoEvento})`)
+  }
+
+  return parts.length > 0 ? ` - ${parts.join(" ")}` : ""
+}
+
 // Función para generar descripción amigable del log
 function getLogDescription(log: AuditLog): string {
   const details = log.details || {}
@@ -91,25 +129,28 @@ function getLogDescription(log: AuditLog): string {
   const previousValue = details.previousValue as string | undefined
   const newValue = details.newValue as string | undefined
 
+  // Obtener información de fecha/hora/tipo del evento
+  const eventInfo = formatEventDateTime(details)
+
   switch (log.action) {
     case "ROTATIVO_CREADO":
-      return `${userName} solicitó rotativo para ${evento || titulo || "un evento"}`
+      return `${userName} solicitó rotativo para ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_APROBADO":
-      return `${userName} aprobó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}`
+      return `${userName} aprobó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_RECHAZADO":
-      return `${userName} rechazó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${motivo ? ` (${motivo})` : ""}`
+      return `${userName} rechazó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_CANCELADO":
-      return `${userName} canceló su rotativo para ${evento || titulo || "un evento"}`
+      return `${userName} canceló su rotativo para ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_ASIGNADO":
-      return `Se asignó rotativo a ${targetName || "un usuario"} para ${evento || titulo || "un evento"}`
+      return `Se asignó rotativo a ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_CREADO_EN_NOMBRE":
-      return `${userName} creó rotativo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}`
+      return `${userName} creó rotativo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_ELIMINADO_ADMIN":
-      return `${userName} eliminó el rotativo de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${motivo ? ` (${motivo})` : ""}`
+      return `${userName} eliminó el rotativo de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_PASADO_CREADO":
-      return `${userName} creó rotativo retroactivo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}`
+      return `${userName} creó rotativo retroactivo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_PASADO_ELIMINADO":
-      return `${userName} eliminó rotativo pasado de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${motivo ? ` (${motivo})` : ""}`
+      return `${userName} eliminó rotativo pasado de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
 
     case "BLOQUE_SOLICITADO":
       return `${userName} solicitó bloque completo de ${titulo || "un título"}`
@@ -165,9 +206,9 @@ function getLogDescription(log: AuditLog): string {
       return `${userName} eliminó licencia de ${targetName || "un integrante"}`
 
     case "LISTA_ESPERA_AGREGADO":
-      return `${userName} se agregó a lista de espera`
+      return `${userName} se agregó a lista de espera para ${evento || titulo || "un evento"}${eventInfo}`
     case "LISTA_ESPERA_PROMOVIDO":
-      return `${userName} fue promovido de la lista de espera`
+      return `${userName} fue promovido de la lista de espera para ${evento || titulo || "un evento"}${eventInfo}`
 
     case "CONSENSO_INICIADO":
       return `Se inició proceso de consenso`

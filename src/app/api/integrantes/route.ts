@@ -123,7 +123,9 @@ export async function POST(req: NextRequest) {
         rotativosCalculados = Math.round(totalRotativos / balances.length)
       }
 
-      // Crear balance para el nuevo integrante
+      // Crear balance para el nuevo integrante con justificación
+      const justificacion = `Promedio del grupo al momento del ingreso: ${rotativosCalculados} rotativos (${balances.length} integrantes activos)`
+
       await prisma.userSeasonBalance.create({
         data: {
           userId: integrante.id,
@@ -133,6 +135,9 @@ export async function POST(req: NextRequest) {
           rotativosPorLicencia: 0,
           maxProyectado: rotativosCalculados,
           fechaIngreso: new Date(joinDate),
+          asignacionInicialRotativos: rotativosCalculados,
+          asignacionFechaCalculo: new Date(),
+          asignacionJustificacion: justificacion,
         },
       })
 

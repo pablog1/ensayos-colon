@@ -1,21 +1,36 @@
+- Si se incorpara gente nueva, el sistema tiene que mostar junto a la lista de miembros en las estadisticas (ver: rotativos x integrante) el justificativo de los rotativos que asigno el sistema (fecha, cantidad, etc..). El admin tiene que poder modificar esta cantidad. Va ser importante registrar la fecha de comienzo de actividad de cualquier nuevo miembro. Como mínimo esta faltando que el crear un usuario nuevo, se ingrese la fecha de comienzo de actividad
+
+- Si un dia antes de cualquier evento, los cupos no estan perfectamente cubiertos, el admin debe recibir alerta y notificacion. Ojo que esto fue hecho pero no funciona
+- En estadisticas falta signo alerta cuando el  cupo está completo
+- en reglas > "titulos completos", agregar un punto mas que diga que si hubieran mas titulos disponibles se podran tomar mas titulos por persona, previa revision del admin (con validacion de la fila). (esto es solo una aclaración, no implica cambio lógico)
+- en reglas > "licencias prolongadas", agregar "independientemente si fueron cubiertas o no". (esto es solo una aclaración, no implica cambio lógico)
+- Alerta notificacion cercania limite no funicona, ej bajo cupo. Hice bajar a un usuario por debajo del limite , aparecio el cartel bajo cupo pero no alerto la campanita (no se emitió la notificacion)
+
+- en reglas > "funciones por titulo",  agregar "con validacion de la fila."  (esto es solo una aclaración, no implica cambio lógico)
+- En el listado de titulos disponibles para pedir rotativos a la derecha del calendario, si un usuario está cerca de haber pedido un bloque completo, sale un texto que dice por ejemplo "Tenés 5 rotativo(s), podés completar el bloque". Este texto, queremos que sea eliminado
+Agregar a los Logs de rotativos, donde dice por ejemplo "Vero solicitó rotativo para [titulo]  Ensayo, las fecha, horario, y tipo de evento. lo mismo (completar más detallas) para todos los tipos de registros. por ejemplo: "Contratado 1 fue promovido de la lista de espera": Ahí falta que diga día, tipo de evento, horario, etc..
+
+- El usuario "contratado 1" no pudo solicitar titulo "conc fuera de sede" aunque estaba disponible
+- En las alertas, los mensajes deben incluir fecha, horario y tipo de evento
 
 
+  1. Items de "aclaración" (líneas 5, 6, 9): Mencionan que no implican cambio lógico. ¿Son solo cambios de texto en la interfaz/documentación de reglas?                                                
+SI
 
-*Cobertura de rotativos vacantes.* 
-Quién rota cuando nadie quiere rotar.
+  2. Bug de "Contratado 1" (línea 13): El usuario no pudo solicitar un título disponible. ¿Es un bug a investigar o ya conocen la causa?                                                                
+Bug a investigar
 
-. Si es necesario cubrir los rotativos de un evento y faltando un día no hay voluntarios suficientes se busca consenso, pero luego el administrador puede designar a quiénes les tocaría rotar priorizando a quienes *menos* rotativos hayan utilizado.
+  3. Clasificación: ¿Quieres que clasifique las tareas por tipo? Por ejemplo:                                                                                                                           
+    - 🐛 Bugs (funcionalidades que no funcionan)                                                                                                                                                        
+    - ✨ Features (funcionalidad nueva)                                                                                                                                                                 
+    - 📝 Texto/Documentación (aclaraciones en reglas)            
+    No, aqui lo que falta es agregar mas info en la descripción de cada registro, pero los datos existen y no se requiere mayor clasificacion.
 
-. Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo.
-
-
-
-
-
-
-*Cobertura por emergencias.* 
-Quién cubre/toca cuando alguien no puede asistir de urgencia.
-
-. Se busca consenso pero el administrador puede designar a quiénes les correspondería tocar priorizando a quienes *más* rotativos hayan tomado. 
-
-. Esto garantiza una distribución equitativa de los rotativos y busca equilibrar el balance del grupo.
+  4. Prioridades: ¿Hay algún orden de prioridad que deba aplicar, o las ordeno como aparecen?                                                                                                           
+  simplemente hace todas las tareas, no importa el orden
+  
+  5. Formato de salida: ¿Prefieres que cree un archivo markdown, actualice el archivo existente, o simplemente te lo muestre aquí?  
+crea un .md
+  
+  Ademas agregamos:
+  El usuario "contratado 1" no pudo solicitar unirse a la lista de espera en el titulo "conc fuera de sede" aunque estaba disponible (se probó el 23 de abril). además, funciono con el usuario "fernando" el 18 de abril.. que hasta donde vemos, tiene la misma situación

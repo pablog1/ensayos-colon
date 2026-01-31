@@ -31,6 +31,8 @@ export async function POST(
         select: {
           title: true,
           date: true,
+          startTime: true,
+          eventoType: true,
         },
       },
     },
@@ -70,15 +72,23 @@ export async function POST(
   })
 
   // Create notification
+  const fechaStr = rotativo.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  const horaStr = rotativo.event.startTime
+    ? ` a las ${rotativo.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+    : ""
+  const tipoStr = rotativo.event.eventoType ? ` (${rotativo.event.eventoType})` : ""
+
   await createNotification({
     userId: rotativo.userId,
     type: "ROTATIVO_RECHAZADO",
     title: "Rotativo rechazado",
-    message: `Tu solicitud de rotativo para "${rotativo.event.title}" ha sido rechazada${motivoRechazo ? `: ${motivoRechazo}` : ""}`,
+    message: `Tu solicitud de rotativo para "${rotativo.event.title}" el ${fechaStr}${horaStr}${tipoStr} ha sido rechazada${motivoRechazo ? `: ${motivoRechazo}` : ""}`,
     data: {
       eventId: rotativo.eventId,
       eventTitle: rotativo.event.title,
       eventDate: rotativo.event.date.toISOString(),
+      eventStartTime: rotativo.event.startTime?.toISOString(),
+      eventType: rotativo.event.eventoType,
       motivo: motivoRechazo,
     },
   })
@@ -93,6 +103,8 @@ export async function POST(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
+      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      tipoEvento: rotativo.event.eventoType,
       motivo: motivoRechazo,
     },
   })

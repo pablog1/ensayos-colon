@@ -141,20 +141,30 @@ export async function notifyRotacionObligatoria(params: {
   userId: string
   eventTitle: string
   eventDate: Date
+  eventStartTime?: Date | null
+  eventType?: string
   eventId: string
   rotativoId: string
   diasHastaEvento: number
   motivo?: string
 }): Promise<void> {
+  // Formatear fecha y hora para el mensaje
+  const fechaStr = params.eventDate.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  const horaStr = params.eventStartTime
+    ? ` a las ${params.eventStartTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+    : ""
+
   await createNotification({
     userId: params.userId,
     type: "ROTACION_OBLIGATORIA",
     title: "Rotación obligatoria asignada",
-    message: `Se te ha asignado rotativo obligatorio para "${params.eventTitle}" (${params.diasHastaEvento} días restantes)`,
+    message: `Se te ha asignado rotativo obligatorio para "${params.eventTitle}" el ${fechaStr}${horaStr} (${params.diasHastaEvento} días restantes)`,
     data: {
       eventId: params.eventId,
       eventTitle: params.eventTitle,
       eventDate: params.eventDate.toISOString(),
+      eventStartTime: params.eventStartTime?.toISOString(),
+      eventType: params.eventType,
       rotativoId: params.rotativoId,
       diasHastaEvento: params.diasHastaEvento,
       motivo: params.motivo || "Asignación automática por falta de voluntarios",

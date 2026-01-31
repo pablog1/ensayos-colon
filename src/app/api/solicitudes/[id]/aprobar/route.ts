@@ -39,6 +39,8 @@ export async function POST(
         select: {
           title: true,
           date: true,
+          startTime: true,
+          eventoType: true,
         },
       },
     },
@@ -78,16 +80,24 @@ export async function POST(
   })
 
   // Create notification for user
+  const fechaStr = updated.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  const horaStr = updated.event.startTime
+    ? ` a las ${updated.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+    : ""
+  const tipoStr = updated.event.eventoType ? ` (${updated.event.eventoType})` : ""
+
   await createNotification({
     userId: updated.userId,
     type: "ROTATIVO_APROBADO",
     title: "Rotativo aprobado",
-    message: `Tu solicitud de rotativo para "${updated.event.title}" ha sido aprobada`,
+    message: `Tu solicitud de rotativo para "${updated.event.title}" el ${fechaStr}${horaStr}${tipoStr} ha sido aprobada`,
     data: {
       rotativoId: updated.id,
       eventId: updated.eventId,
       eventTitle: updated.event.title,
       eventDate: updated.event.date.toISOString(),
+      eventStartTime: updated.event.startTime?.toISOString(),
+      eventType: updated.event.eventoType,
       motivo: motivo,
     },
   })
@@ -102,6 +112,8 @@ export async function POST(
     details: {
       evento: updated.event.title,
       fecha: updated.event.date.toISOString(),
+      horario: updated.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      tipoEvento: updated.event.eventoType,
       motivo: motivo,
     },
   })

@@ -8,11 +8,21 @@ export async function addToWaitingList(
   eventId: string,
   seasonId: string
 ): Promise<{ position: number }> {
-  // Obtener ultima posicion
-  const lastEntry = await prisma.waitingListEntry.findFirst({
-    where: { eventId },
-    orderBy: { position: "desc" },
-  })
+  // Obtener ultima posicion y datos del evento
+  const [lastEntry, event] = await Promise.all([
+    prisma.waitingListEntry.findFirst({
+      where: { eventId },
+      orderBy: { position: "desc" },
+    }),
+    prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        titulo: {
+          select: { name: true },
+        },
+      },
+    }),
+  ])
 
   const position = (lastEntry?.position ?? 0) + 1
 
@@ -25,7 +35,15 @@ export async function addToWaitingList(
     entityType: "WaitingListEntry",
     entityId: eventId,
     userId,
-    details: { position, eventId },
+    details: {
+      position,
+      eventId,
+      evento: event?.title,
+      titulo: event?.titulo?.name,
+      fecha: event?.date?.toISOString(),
+      horario: event?.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      tipoEvento: event?.eventoType,
+    },
   })
 
   return { position }
@@ -60,7 +78,13 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
     where: { eventId },
     orderBy: { position: "asc" },
     include: {
-      event: true,
+      event: {
+        include: {
+          titulo: {
+            select: { name: true },
+          },
+        },
+      },
       user: true,
     },
   })
@@ -144,7 +168,11 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
     details: {
       previousPosition: nextEntry.position,
       eventId,
-      eventTitle: nextEntry.event.title,
+      evento: nextEntry.event.title,
+      titulo: nextEntry.event.titulo?.name,
+      fecha: nextEntry.event.date.toISOString(),
+      horario: nextEntry.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      tipoEvento: nextEntry.event.eventoType,
     },
   })
 

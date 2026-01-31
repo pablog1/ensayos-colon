@@ -257,6 +257,8 @@ export async function POST(req: NextRequest) {
               id: true,
               title: true,
               date: true,
+              startTime: true,
+              eventoType: true,
               titulo: {
                 select: { name: true },
               },
@@ -287,6 +289,8 @@ export async function POST(req: NextRequest) {
               id: true,
               title: true,
               date: true,
+              startTime: true,
+              eventoType: true,
               titulo: {
                 select: { name: true },
               },
@@ -325,6 +329,8 @@ export async function POST(req: NextRequest) {
         evento: rotativo.event.title,
         titulo: rotativo.event.titulo?.name,
         fecha: rotativo.event.date,
+        horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+        tipoEvento: rotativo.event.eventoType,
         estado: rotativo.estado,
         posicionEnEspera,
         requiereAprobacion: requiereAprobacion || false,
