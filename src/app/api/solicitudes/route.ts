@@ -425,8 +425,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Si el rotativo fue aprobado, verificar si hay usuarios con bajo cupo
-    if (nuevoEstado === "APROBADO") {
+    // Verificar si hay usuarios con bajo cupo (para APROBADO y PENDIENTE)
+    if (nuevoEstado === "APROBADO" || nuevoEstado === "PENDIENTE") {
       verificarYNotificarBajoCupo().catch((err) =>
         console.error("[POST /api/solicitudes] Error al verificar bajo cupo:", err)
       )

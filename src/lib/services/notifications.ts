@@ -229,11 +229,16 @@ export async function notifyAdminsUsuarioPorDebajo(params: {
 /**
  * Verificar y notificar sobre usuarios con bajo cupo de rotativos
  * Esta función se puede llamar después de aprobar/crear rotativos
+ *
+ * IMPORTANTE: Usa la misma lógica que /api/estadisticas para calcular "porDebajoDelPromedio"
  */
 export async function verificarYNotificarBajoCupo(): Promise<{
   notificado: boolean
   usuariosAfectados: number
+  debug?: Record<string, unknown>
 }> {
+  console.log("[verificarYNotificarBajoCupo] Iniciando verificación...")
+
   try {
     // Obtener temporada activa
     const season = await prisma.season.findFirst({
@@ -241,6 +246,7 @@ export async function verificarYNotificarBajoCupo(): Promise<{
     })
 
     if (!season) {
+      console.log("[verificarYNotificarBajoCupo] No hay temporada activa")
       return { notificado: false, usuariosAfectados: 0 }
     }
 
@@ -251,10 +257,12 @@ export async function verificarYNotificarBajoCupo(): Promise<{
 
     // Si la regla está deshabilitada, no verificar
     if (reglaSubcupo && !reglaSubcupo.enabled) {
+      console.log("[verificarYNotificarBajoCupo] Regla ALERTA_SUBCUPO deshabilitada")
       return { notificado: false, usuariosAfectados: 0 }
     }
 
     const umbralSubcupo = reglaSubcupo?.enabled ? parseInt(reglaSubcupo.value) || 30 : 30
+    console.log("[verificarYNotificarBajoCupo] Umbral subcupo:", umbralSubcupo, "%")
 
     // Obtener todos los usuarios
     const usuarios = await prisma.user.findMany({
@@ -262,10 +270,12 @@ export async function verificarYNotificarBajoCupo(): Promise<{
     })
 
     if (usuarios.length === 0) {
+      console.log("[verificarYNotificarBajoCupo] No hay usuarios")
       return { notificado: false, usuariosAfectados: 0 }
     }
 
-    // Contar rotativos REALES de cada usuario
+    // Contar rotativos APROBADOS y PENDIENTE de cada usuario
+    // Incluye PENDIENTE porque también cuentan como cupo reservado
     const rotativosPorUsuario = await prisma.rotativo.groupBy({
       by: ['userId'],
       where: {
@@ -280,20 +290,24 @@ export async function verificarYNotificarBajoCupo(): Promise<{
       rotativosMap[r.userId] = r._count.id
     }
 
-    // Calcular promedio del grupo
+    // Calcular promedio del grupo (igual que estadísticas)
     let totalRotativos = 0
     for (const usuario of usuarios) {
       totalRotativos += rotativosMap[usuario.id] || 0
     }
-    const promedioGrupo = totalRotativos / usuarios.length
+    const promedioGrupo = usuarios.length > 0 ? totalRotativos / usuarios.length : 0
 
-    // Si el promedio es muy bajo, no alertar
-    if (promedioGrupo < 2) {
+    console.log("[verificarYNotificarBajoCupo] Promedio grupo:", promedioGrupo.toFixed(2), "| Total usuarios:", usuarios.length)
+
+    // Si el promedio es muy bajo, no alertar (igual que estadísticas: promedioGrupo > 2)
+    if (promedioGrupo <= 2) {
+      console.log("[verificarYNotificarBajoCupo] Promedio muy bajo, no se evalúa")
       return { notificado: false, usuariosAfectados: 0 }
     }
 
-    // Calcular umbral inferior
+    // Calcular umbral inferior (igual que estadísticas)
     const umbralInferior = promedioGrupo * (1 - umbralSubcupo / 100)
+    console.log("[verificarYNotificarBajoCupo] Umbral inferior:", umbralInferior.toFixed(2))
 
     // Encontrar usuarios por debajo del promedio
     const usuariosConBajoCupo: Array<{
@@ -305,6 +319,7 @@ export async function verificarYNotificarBajoCupo(): Promise<{
 
     for (const usuario of usuarios) {
       const totalUsuario = rotativosMap[usuario.id] || 0
+      // Condición igual que estadísticas: usadosReales < umbralInferior
       if (totalUsuario < umbralInferior) {
         const nombre = usuario.alias || usuario.name || "Usuario"
         usuariosConBajoCupo.push({
@@ -316,8 +331,12 @@ export async function verificarYNotificarBajoCupo(): Promise<{
       }
     }
 
+    console.log("[verificarYNotificarBajoCupo] Usuarios con bajo cupo:", usuariosConBajoCupo.length)
+
     // Si hay usuarios con bajo cupo, notificar a los admins
     if (usuariosConBajoCupo.length > 0) {
+      console.log("[verificarYNotificarBajoCupo] Enviando notificación a admins...")
+
       const listaUsuarios = usuariosConBajoCupo
         .map(u => `• ${u.nombre}: ${u.rotativosTotales} rotativos (${u.diferencia} menos que el promedio)`)
         .join("\n")
@@ -330,15 +349,26 @@ export async function verificarYNotificarBajoCupo(): Promise<{
           usuariosConBajoCupo,
           promedioGrupo,
           umbralSubcupo,
+          umbralInferior,
         },
       })
 
-      return { notificado: true, usuariosAfectados: usuariosConBajoCupo.length }
+      console.log("[verificarYNotificarBajoCupo] Notificación enviada")
+      return {
+        notificado: true,
+        usuariosAfectados: usuariosConBajoCupo.length,
+        debug: { promedioGrupo, umbralInferior, umbralSubcupo }
+      }
     }
 
-    return { notificado: false, usuariosAfectados: 0 }
+    console.log("[verificarYNotificarBajoCupo] Todos los usuarios dentro del rango normal")
+    return {
+      notificado: false,
+      usuariosAfectados: 0,
+      debug: { promedioGrupo, umbralInferior, umbralSubcupo, totalUsuarios: usuarios.length }
+    }
   } catch (error) {
-    console.error("[Notificaciones] Error verificando bajo cupo:", error)
+    console.error("[verificarYNotificarBajoCupo] Error:", error)
     return { notificado: false, usuariosAfectados: 0 }
   }
 }
