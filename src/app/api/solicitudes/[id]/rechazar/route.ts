@@ -74,7 +74,7 @@ export async function POST(
   // Create notification
   const fechaStr = rotativo.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
   const horaStr = rotativo.event.startTime
-    ? ` a las ${rotativo.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+    ? ` a las ${rotativo.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
     : ""
   const tipoStr = rotativo.event.eventoType ? ` (${rotativo.event.eventoType})` : ""
 
@@ -103,7 +103,7 @@ export async function POST(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
-      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
       tipoEvento: rotativo.event.eventoType,
       motivo: motivoRechazo,
     },

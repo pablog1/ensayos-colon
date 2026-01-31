@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
       tituloType: r.event.titulo?.type,
       esEventoIndividualConcierto: r.event.titulo?.type === "CONCIERTO" && !r.esParteDeBloqueId,
       // Hora del evento
-      eventoHora: r.event.startTime ? r.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : null,
+      eventoHora: r.event.startTime ? r.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }) : null,
       // Información de bloque para cancelación
       esParteDeBloque: !!r.esParteDeBloqueId,
       bloqueId: r.esParteDeBloqueId,
@@ -329,7 +329,7 @@ export async function POST(req: NextRequest) {
         evento: rotativo.event.title,
         titulo: rotativo.event.titulo?.name,
         fecha: rotativo.event.date,
-        horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+        horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
         tipoEvento: rotativo.event.eventoType,
         estado: rotativo.estado,
         posicionEnEspera,
@@ -340,15 +340,24 @@ export async function POST(req: NextRequest) {
     // Notificar a admins si requiere aprobación (solo si no está en espera)
     if (requiereAprobacion && nuevoEstado === "PENDIENTE") {
       const userName = rotativo.user.alias || rotativo.user.name
+      const fechaStr = rotativo.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+      const horaStr = rotativo.event.startTime
+        ? ` a las ${rotativo.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+        : ""
+      const tipoStr = rotativo.event.eventoType ? ` (${rotativo.event.eventoType})` : ""
+
       console.log("[POST /api/solicitudes] Notificando a admins...")
       await notifyAdmins({
         type: "SOLICITUD_PENDIENTE",
         title: "Nueva solicitud pendiente",
-        message: `${userName} solicitó rotativo para "${rotativo.event.title}" y requiere aprobación`,
+        message: `${userName} solicitó rotativo para "${rotativo.event.title}" el ${fechaStr}${horaStr}${tipoStr}`,
         data: {
           rotativoId: rotativo.id,
           eventId: rotativo.eventId,
           eventTitle: rotativo.event.title,
+          eventDate: rotativo.event.date.toISOString(),
+          eventStartTime: rotativo.event.startTime?.toISOString(),
+          eventType: rotativo.event.eventoType,
           userId: rotativo.userId,
           userName,
           motivo: motivoFinal,

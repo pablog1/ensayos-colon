@@ -41,7 +41,7 @@ export async function addToWaitingList(
       evento: event?.title,
       titulo: event?.titulo?.name,
       fecha: event?.date?.toISOString(),
-      horario: event?.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      horario: event?.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
       tipoEvento: event?.eventoType,
     },
   })
@@ -171,7 +171,7 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
       evento: nextEntry.event.title,
       titulo: nextEntry.event.titulo?.name,
       fecha: nextEntry.event.date.toISOString(),
-      horario: nextEntry.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      horario: nextEntry.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
       tipoEvento: nextEntry.event.eventoType,
     },
   })

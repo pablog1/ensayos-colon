@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
 
       if (rotativosActuales < cupoEfectivo) {
         const horaStr = evento.startTime
-          ? evento.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+          ? evento.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
           : "Sin horario"
 
         eventosSinCubrir.push({

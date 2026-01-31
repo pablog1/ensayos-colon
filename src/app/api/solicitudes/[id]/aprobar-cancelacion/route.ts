@@ -29,7 +29,7 @@ export async function POST(
     where: { id },
     include: {
       event: {
-        select: { id: true, date: true, title: true },
+        select: { id: true, date: true, title: true, startTime: true, eventoType: true },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -63,6 +63,8 @@ export async function POST(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
+      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      tipoEvento: rotativo.event.eventoType,
       accion: "cancelacion_tardia_aprobada",
       aprobadoPor: session.user.name || session.user.email,
     },
@@ -110,7 +112,7 @@ export async function DELETE(
     where: { id },
     include: {
       event: {
-        select: { date: true, title: true },
+        select: { date: true, title: true, startTime: true, eventoType: true },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -151,6 +153,8 @@ export async function DELETE(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
+      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      tipoEvento: rotativo.event.eventoType,
       accion: "cancelacion_tardia_rechazada",
       rechazadoPor: session.user.name || session.user.email,
     },

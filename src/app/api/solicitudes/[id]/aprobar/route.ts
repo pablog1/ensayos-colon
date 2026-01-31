@@ -82,7 +82,7 @@ export async function POST(
   // Create notification for user
   const fechaStr = updated.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
   const horaStr = updated.event.startTime
-    ? ` a las ${updated.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+    ? ` a las ${updated.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
     : ""
   const tipoStr = updated.event.eventoType ? ` (${updated.event.eventoType})` : ""
 
@@ -112,7 +112,7 @@ export async function POST(
     details: {
       evento: updated.event.title,
       fecha: updated.event.date.toISOString(),
-      horario: updated.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      horario: updated.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
       tipoEvento: updated.event.eventoType,
       motivo: motivo,
     },

@@ -31,7 +31,7 @@ export async function DELETE(
     where: { id },
     include: {
       event: {
-        select: { id: true, date: true, title: true },
+        select: { id: true, date: true, title: true, startTime: true, eventoType: true },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -95,6 +95,8 @@ export async function DELETE(
       details: {
         evento: rotativo.event.title,
         fecha: rotativo.event.date.toISOString(),
+        horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+        tipoEvento: rotativo.event.eventoType,
         esCancelacionTardia: true,
         diasHastaEvento,
         estadoAnterior: rotativo.estado,
@@ -152,6 +154,8 @@ export async function DELETE(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
+      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      tipoEvento: rotativo.event.eventoType,
       esEventoPasado,
       esCancelacionTardia,
       diasHastaEvento,

@@ -151,7 +151,7 @@ export async function notifyRotacionObligatoria(params: {
   // Formatear fecha y hora para el mensaje
   const fechaStr = params.eventDate.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
   const horaStr = params.eventStartTime
-    ? ` a las ${params.eventStartTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}`
+    ? ` a las ${params.eventStartTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
     : ""
 
   await createNotification({
