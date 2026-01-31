@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
-import { notifyAdmins, notifyAlertaCercania } from "@/lib/services/notifications"
+import { notifyAdmins, notifyAlertaCercania, verificarYNotificarBajoCupo } from "@/lib/services/notifications"
 import { addToWaitingList, getUserWaitingListPosition } from "@/lib/services/waiting-list"
 
 // GET /api/solicitudes - Lista rotativos del usuario
@@ -423,6 +423,13 @@ export async function POST(req: NextRequest) {
       } catch (error) {
         console.error("[POST /api/solicitudes] Error al verificar alerta de cercanía:", error)
       }
+    }
+
+    // Si el rotativo fue aprobado, verificar si hay usuarios con bajo cupo
+    if (nuevoEstado === "APROBADO") {
+      verificarYNotificarBajoCupo().catch((err) =>
+        console.error("[POST /api/solicitudes] Error al verificar bajo cupo:", err)
+      )
     }
 
     console.log("[POST /api/solicitudes] Enviando respuesta. Tiempo total:", Date.now() - startTime, "ms")

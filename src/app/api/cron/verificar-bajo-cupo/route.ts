@@ -8,14 +8,21 @@ import { notifyAdmins } from "@/lib/services/notifications"
  * Verifica usuarios que están por debajo del promedio del grupo
  * y notifica a los admins si hay casos críticos.
  *
- * Se recomienda configurar como cron job periódico (ej: una vez por semana)
+ * Se puede ejecutar:
+ * - Como cron job periódico (configurado en vercel.json)
+ * - Manualmente desde la consola del navegador: fetch('/api/cron/verificar-bajo-cupo')
  */
 export async function GET(req: NextRequest) {
-  // Verificar token de autorización (opcional pero recomendado)
+  // Verificar token de autorización (opcional - permitir sin token para pruebas manuales)
   const authHeader = req.headers.get("authorization")
   const cronSecret = process.env.CRON_SECRET
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // En producción, el cron de Vercel envía el header automáticamente
+  // Pero permitimos llamadas manuales sin token para testing
+  const isVercelCron = authHeader === `Bearer ${cronSecret}`
+  const isManualCall = !cronSecret || !authHeader
+
+  if (cronSecret && authHeader && !isVercelCron) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 })
   }
 
@@ -38,27 +45,39 @@ export async function GET(req: NextRequest) {
     })
     const umbralSubcupo = reglaSubcupo?.enabled ? parseInt(reglaSubcupo.value) || 30 : 30
 
-    // Obtener todos los balances de la temporada
-    const balances = await prisma.userSeasonBalance.findMany({
-      where: { seasonId: season.id },
-      include: {
-        user: {
-          select: { id: true, name: true, alias: true, email: true },
-        },
-      },
+    // Obtener todos los usuarios
+    const usuarios = await prisma.user.findMany({
+      select: { id: true, name: true, alias: true, email: true },
     })
 
-    if (balances.length === 0) {
+    if (usuarios.length === 0) {
       return NextResponse.json({
-        message: "No hay balances en la temporada",
+        message: "No hay usuarios",
         usuariosConBajoCupo: 0,
       })
     }
 
-    // Calcular promedio del grupo
-    const totalRotativos = balances.reduce((sum, b) =>
-      sum + b.rotativosTomados + b.rotativosObligatorios, 0)
-    const promedioGrupo = totalRotativos / balances.length
+    // Contar rotativos REALES de cada usuario (no usar balance que puede estar desactualizado)
+    const rotativosPorUsuario = await prisma.rotativo.groupBy({
+      by: ['userId'],
+      where: {
+        estado: { in: ["APROBADO", "PENDIENTE"] },
+        event: { seasonId: season.id },
+      },
+      _count: { id: true },
+    })
+
+    const rotativosMap: Record<string, number> = {}
+    for (const r of rotativosPorUsuario) {
+      rotativosMap[r.userId] = r._count.id
+    }
+
+    // Calcular promedio del grupo (usando datos reales)
+    let totalRotativos = 0
+    for (const usuario of usuarios) {
+      totalRotativos += rotativosMap[usuario.id] || 0
+    }
+    const promedioGrupo = totalRotativos / usuarios.length
 
     // Si el promedio es muy bajo, no tiene sentido alertar
     if (promedioGrupo < 2) {
@@ -81,14 +100,14 @@ export async function GET(req: NextRequest) {
       diferencia: number
     }> = []
 
-    for (const balance of balances) {
-      const totalUsuario = balance.rotativosTomados + balance.rotativosObligatorios
+    for (const usuario of usuarios) {
+      const totalUsuario = rotativosMap[usuario.id] || 0
       if (totalUsuario < umbralInferior) {
-        const nombre = balance.user.alias || balance.user.name || "Usuario"
+        const nombre = usuario.alias || usuario.name || "Usuario"
         usuariosConBajoCupo.push({
-          id: balance.userId,
+          id: usuario.id,
           nombre,
-          email: balance.user.email,
+          email: usuario.email,
           rotativosTotales: totalUsuario,
           diferencia: Math.round(promedioGrupo - totalUsuario),
         })
@@ -110,6 +129,7 @@ export async function GET(req: NextRequest) {
           promedioGrupo,
           umbralSubcupo,
           temporadaId: season.id,
+          ejecutadoManualmente: isManualCall,
         },
       })
 
@@ -122,8 +142,11 @@ export async function GET(req: NextRequest) {
         : "Todos los usuarios están dentro del rango normal",
       promedioGrupo: Math.round(promedioGrupo * 10) / 10,
       umbralInferior: Math.round(umbralInferior * 10) / 10,
+      umbralSubcupo,
+      totalUsuarios: usuarios.length,
       usuariosConBajoCupo: usuariosConBajoCupo.length,
       detalles: usuariosConBajoCupo,
+      ejecutadoManualmente: isManualCall,
     })
 
   } catch (error) {

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { createNotification } from "./notifications"
+import { createNotification, verificarYNotificarBajoCupo } from "./notifications"
 import { createAuditLog } from "./audit"
 import { updateUserBalance } from "./balance"
 
@@ -175,6 +175,11 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
       tipoEvento: nextEntry.event.eventoType,
     },
   })
+
+  // Verificar si hay usuarios con bajo cupo y notificar a admins
+  verificarYNotificarBajoCupo().catch((err) =>
+    console.error("[WaitingList] Error al verificar bajo cupo:", err)
+  )
 
   return true
 }

@@ -227,6 +227,123 @@ export async function notifyAdminsUsuarioPorDebajo(params: {
 }
 
 /**
+ * Verificar y notificar sobre usuarios con bajo cupo de rotativos
+ * Esta función se puede llamar después de aprobar/crear rotativos
+ */
+export async function verificarYNotificarBajoCupo(): Promise<{
+  notificado: boolean
+  usuariosAfectados: number
+}> {
+  try {
+    // Obtener temporada activa
+    const season = await prisma.season.findFirst({
+      where: { isActive: true },
+    })
+
+    if (!season) {
+      return { notificado: false, usuariosAfectados: 0 }
+    }
+
+    // Obtener configuración de umbral de subcupo
+    const reglaSubcupo = await prisma.ruleConfig.findUnique({
+      where: { key: "ALERTA_SUBCUPO" },
+    })
+
+    // Si la regla está deshabilitada, no verificar
+    if (reglaSubcupo && !reglaSubcupo.enabled) {
+      return { notificado: false, usuariosAfectados: 0 }
+    }
+
+    const umbralSubcupo = reglaSubcupo?.enabled ? parseInt(reglaSubcupo.value) || 30 : 30
+
+    // Obtener todos los usuarios
+    const usuarios = await prisma.user.findMany({
+      select: { id: true, name: true, alias: true },
+    })
+
+    if (usuarios.length === 0) {
+      return { notificado: false, usuariosAfectados: 0 }
+    }
+
+    // Contar rotativos REALES de cada usuario
+    const rotativosPorUsuario = await prisma.rotativo.groupBy({
+      by: ['userId'],
+      where: {
+        estado: { in: ["APROBADO", "PENDIENTE"] },
+        event: { seasonId: season.id },
+      },
+      _count: { id: true },
+    })
+
+    const rotativosMap: Record<string, number> = {}
+    for (const r of rotativosPorUsuario) {
+      rotativosMap[r.userId] = r._count.id
+    }
+
+    // Calcular promedio del grupo
+    let totalRotativos = 0
+    for (const usuario of usuarios) {
+      totalRotativos += rotativosMap[usuario.id] || 0
+    }
+    const promedioGrupo = totalRotativos / usuarios.length
+
+    // Si el promedio es muy bajo, no alertar
+    if (promedioGrupo < 2) {
+      return { notificado: false, usuariosAfectados: 0 }
+    }
+
+    // Calcular umbral inferior
+    const umbralInferior = promedioGrupo * (1 - umbralSubcupo / 100)
+
+    // Encontrar usuarios por debajo del promedio
+    const usuariosConBajoCupo: Array<{
+      id: string
+      nombre: string
+      rotativosTotales: number
+      diferencia: number
+    }> = []
+
+    for (const usuario of usuarios) {
+      const totalUsuario = rotativosMap[usuario.id] || 0
+      if (totalUsuario < umbralInferior) {
+        const nombre = usuario.alias || usuario.name || "Usuario"
+        usuariosConBajoCupo.push({
+          id: usuario.id,
+          nombre,
+          rotativosTotales: totalUsuario,
+          diferencia: Math.round(promedioGrupo - totalUsuario),
+        })
+      }
+    }
+
+    // Si hay usuarios con bajo cupo, notificar a los admins
+    if (usuariosConBajoCupo.length > 0) {
+      const listaUsuarios = usuariosConBajoCupo
+        .map(u => `• ${u.nombre}: ${u.rotativosTotales} rotativos (${u.diferencia} menos que el promedio)`)
+        .join("\n")
+
+      await notifyAdmins({
+        type: "SISTEMA",
+        title: `Alerta: ${usuariosConBajoCupo.length} usuario(s) con bajo cupo`,
+        message: `Usuarios por debajo del ${umbralSubcupo}% del promedio (${promedioGrupo.toFixed(1)}):\n${listaUsuarios}`,
+        data: {
+          usuariosConBajoCupo,
+          promedioGrupo,
+          umbralSubcupo,
+        },
+      })
+
+      return { notificado: true, usuariosAfectados: usuariosConBajoCupo.length }
+    }
+
+    return { notificado: false, usuariosAfectados: 0 }
+  } catch (error) {
+    console.error("[Notificaciones] Error verificando bajo cupo:", error)
+    return { notificado: false, usuariosAfectados: 0 }
+  }
+}
+
+/**
  * Notificar a admins cuando se asigna rotación obligatoria
  */
 export async function notifyAdminsRotacionObligatoriaAsignada(params: {
