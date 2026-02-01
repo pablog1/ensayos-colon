@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { createNotification } from "./notifications"
 import { createAuditLog } from "./audit"
 import { updateUserBalance } from "./balance"
+import { formatTimeAR, formatDateMediumAR } from "@/lib/utils"
 
 export async function addToWaitingList(
   userId: string,
@@ -41,7 +42,7 @@ export async function addToWaitingList(
       evento: event?.title,
       titulo: event?.titulo?.name,
       fecha: event?.date?.toISOString(),
-      horario: event?.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(event?.startTime),
       tipoEvento: event?.eventoType,
     },
   })
@@ -154,18 +155,8 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
   // Notificar al usuario
   const eventDate = nextEntry.event.date
   const tipoEvento = nextEntry.event.eventType === "ENSAYO" ? "Ensayo" : "Función"
-  const fechaFormateada = eventDate.toLocaleDateString("es-AR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  })
-  const horaFormateada = nextEntry.event.startTime
-    ? nextEntry.event.startTime.toLocaleTimeString("es-AR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      })
-    : null
+  const fechaFormateada = formatDateMediumAR(eventDate)
+  const horaFormateada = formatTimeAR(nextEntry.event.startTime)
 
   const detalleEvento = horaFormateada
     ? `${tipoEvento} - ${fechaFormateada} ${horaFormateada}`
@@ -190,7 +181,7 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
       evento: nextEntry.event.title,
       titulo: nextEntry.event.titulo?.name,
       fecha: nextEntry.event.date.toISOString(),
-      horario: nextEntry.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(nextEntry.event.startTime),
       tipoEvento: nextEntry.event.eventoType,
     },
   })

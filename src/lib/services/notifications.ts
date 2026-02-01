@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Prisma, type NotificationType } from "@/generated/prisma"
 import { sendPushToUser, sendPushToAdmins } from "./push-notifications"
+import { formatDateLongAR, formatTimeAR } from "@/lib/utils"
 
 // URLs para cada tipo de notificación - todas van a home por ahora
 const NOTIFICATION_URLS: Record<NotificationType, string> = {
@@ -149,9 +150,9 @@ export async function notifyRotacionObligatoria(params: {
   motivo?: string
 }): Promise<void> {
   // Formatear fecha y hora para el mensaje
-  const fechaStr = params.eventDate.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  const fechaStr = formatDateLongAR(params.eventDate)
   const horaStr = params.eventStartTime
-    ? ` a las ${params.eventStartTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+    ? ` a las ${formatTimeAR(params.eventStartTime)}`
     : ""
 
   await createNotification({

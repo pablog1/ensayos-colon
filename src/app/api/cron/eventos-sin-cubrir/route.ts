@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { notifyAdmins } from "@/lib/services/notifications"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
+import { formatTimeAR, formatDateAR } from "@/lib/utils"
 
 /**
  * GET /api/cron/eventos-sin-cubrir
@@ -79,14 +80,12 @@ export async function GET(req: NextRequest) {
       const rotativosActuales = evento.rotativos.length
 
       if (rotativosActuales < cupoEfectivo) {
-        const horaStr = evento.startTime
-          ? evento.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
-          : "Sin horario"
+        const horaStr = formatTimeAR(evento.startTime) || "Sin horario"
 
         eventosSinCubrir.push({
           id: evento.id,
           titulo: evento.titulo?.name || evento.title || "Sin título",
-          fecha: manana.toLocaleDateString("es-AR"),
+          fecha: formatDateAR(manana),
           hora: horaStr,
           cupoNecesario: cupoEfectivo,
           cupoActual: rotativosActuales,

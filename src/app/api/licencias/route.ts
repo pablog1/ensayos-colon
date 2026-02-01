@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@/generated/prisma"
 import { createAuditLog } from "@/lib/services/audit"
 import { createNotification } from "@/lib/services/notifications"
+import { formatDateAR } from "@/lib/utils"
 
 // GET /api/licencias - Lista licencias
 export async function GET(req: NextRequest) {
@@ -208,7 +209,7 @@ export async function POST(req: NextRequest) {
     userId: targetUserId,
     type: "LICENCIA_REGISTRADA",
     title: "Licencia registrada",
-    message: `${session.user.name} te registró una licencia del ${start.toLocaleDateString()} al ${end.toLocaleDateString()}. Se sumaron ${rotativosCalculados} rotativos a tu balance.${mensajeRotativosEliminados}`,
+    message: `${session.user.name} te registró una licencia del ${formatDateAR(start)} al ${formatDateAR(end)}. Se sumaron ${rotativosCalculados} rotativos a tu balance.${mensajeRotativosEliminados}`,
   })
 
   return NextResponse.json(license)
@@ -335,7 +336,7 @@ async function eliminarRotativosDuranteLicencia(
   }
 
   const eventosInfo = rotativosAprobados.map(
-    (r) => `${r.event.title} (${r.event.date.toLocaleDateString()})`
+    (r) => `${r.event.title} (${formatDateAR(r.event.date)})`
   )
 
   // Eliminar los rotativos

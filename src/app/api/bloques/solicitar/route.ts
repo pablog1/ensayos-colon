@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
+import { formatDateShortAR } from "@/lib/utils"
 
 // POST /api/bloques/solicitar - Solicitar bloque completo de un título
 export async function POST(req: NextRequest) {
@@ -195,9 +196,7 @@ export async function POST(req: NextRequest) {
     ).length
     const cupoEfectivo = evento.cupoOverride ?? titulo.cupo
     if (rotativosActivos >= cupoEfectivo) {
-      eventosSinCupo.push(
-        new Date(evento.date).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
-      )
+      eventosSinCupo.push(formatDateShortAR(new Date(evento.date)))
     }
   }
 

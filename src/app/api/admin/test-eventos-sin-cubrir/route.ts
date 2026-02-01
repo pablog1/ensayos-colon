@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { notifyAdmins } from "@/lib/services/notifications"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
+import { formatTimeAR, formatDateAR } from "@/lib/utils"
 
 /**
  * GET /api/admin/test-eventos-sin-cubrir
@@ -77,7 +78,7 @@ export async function GET(req: NextRequest) {
     if (eventos.length === 0) {
       return NextResponse.json({
         mensaje: "No hay eventos en la fecha especificada",
-        fecha: fechaVerificar.toLocaleDateString("es-AR"),
+        fecha: formatDateAR(fechaVerificar),
         fechaISO: fechaVerificar.toISOString(),
         eventosEncontrados: 0,
         eventosSinCubrir: 0,
@@ -117,9 +118,7 @@ export async function GET(req: NextRequest) {
       const faltantes = cupoEfectivo - rotativosActuales
       const cubierto = rotativosActuales >= cupoEfectivo
 
-      const horaStr = evento.startTime
-        ? evento.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
-        : "Sin horario"
+      const horaStr = formatTimeAR(evento.startTime) || "Sin horario"
 
       analisisEventos.push({
         id: evento.id,
@@ -137,7 +136,7 @@ export async function GET(req: NextRequest) {
         eventosSinCubrir.push({
           id: evento.id,
           titulo: evento.titulo?.name || evento.title || "Sin título",
-          fecha: fechaVerificar.toLocaleDateString("es-AR"),
+          fecha: formatDateAR(fechaVerificar),
           hora: horaStr,
           cupoNecesario: cupoEfectivo,
           cupoActual: rotativosActuales,
@@ -155,7 +154,7 @@ export async function GET(req: NextRequest) {
 
       await notifyAdmins({
         type: "SISTEMA",
-        title: `${eventosSinCubrir.length} evento(s) sin cubrir para ${fechaVerificar.toLocaleDateString("es-AR")}`,
+        title: `${eventosSinCubrir.length} evento(s) sin cubrir para ${formatDateAR(fechaVerificar)}`,
         message: `Los siguientes eventos no tienen el cupo completo:\n${listaEventos}`,
         data: {
           eventosSinCubrir,
@@ -169,7 +168,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      fecha: fechaVerificar.toLocaleDateString("es-AR"),
+      fecha: formatDateAR(fechaVerificar),
       fechaISO: fechaVerificar.toISOString(),
       eventosEncontrados: eventos.length,
       eventosSinCubrir: eventosSinCubrir.length,

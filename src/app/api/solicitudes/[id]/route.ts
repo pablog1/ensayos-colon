@@ -5,6 +5,7 @@ import { createAuditLog } from "@/lib/services/audit"
 import { createNotification } from "@/lib/services/notifications"
 import { promoteFromWaitingList, removeFromWaitingList } from "@/lib/services/waiting-list"
 import type { AuditAction } from "@/generated/prisma"
+import { formatTimeAR, formatDateAR } from "@/lib/utils"
 
 // DELETE /api/solicitudes/[id] - Cancelar rotativo
 export async function DELETE(
@@ -95,7 +96,7 @@ export async function DELETE(
       details: {
         evento: rotativo.event.title,
         fecha: rotativo.event.date.toISOString(),
-        horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+        horario: formatTimeAR(rotativo.event.startTime),
         tipoEvento: rotativo.event.eventoType,
         esCancelacionTardia: true,
         diasHastaEvento,
@@ -116,7 +117,7 @@ export async function DELETE(
         userId: admin.id,
         type: "SOLICITUD_PENDIENTE",
         title: "Cancelacion tardia pendiente",
-        message: `${rotativo.user.alias || rotativo.user.name} solicita cancelar rotativo del ${eventoDate.toLocaleDateString()} (${diasHastaEvento} dias de anticipacion)`,
+        message: `${rotativo.user.alias || rotativo.user.name} solicita cancelar rotativo del ${formatDateAR(eventoDate)} (${diasHastaEvento} dias de anticipacion)`,
       })
     }
 
@@ -154,7 +155,7 @@ export async function DELETE(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
-      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,
       esEventoPasado,
       esCancelacionTardia,

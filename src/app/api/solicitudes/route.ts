@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
 import { notifyAdmins, notifyAlertaCercania } from "@/lib/services/notifications"
+import { formatDateLongAR, formatTimeAR } from "@/lib/utils"
 import { addToWaitingList, getUserWaitingListPosition } from "@/lib/services/waiting-list"
 
 // GET /api/solicitudes - Lista rotativos del usuario
@@ -117,7 +118,7 @@ export async function GET(req: NextRequest) {
       tituloType: r.event.titulo?.type,
       esEventoIndividualConcierto: r.event.titulo?.type === "CONCIERTO" && !r.esParteDeBloqueId,
       // Hora del evento
-      eventoHora: r.event.startTime ? r.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }) : null,
+      eventoHora: formatTimeAR(r.event.startTime),
       // Información de bloque para cancelación
       esParteDeBloque: !!r.esParteDeBloqueId,
       bloqueId: r.esParteDeBloqueId,
@@ -329,7 +330,7 @@ export async function POST(req: NextRequest) {
         evento: rotativo.event.title,
         titulo: rotativo.event.titulo?.name,
         fecha: rotativo.event.date,
-        horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+        horario: formatTimeAR(rotativo.event.startTime),
         tipoEvento: rotativo.event.eventoType,
         estado: rotativo.estado,
         posicionEnEspera,
@@ -340,9 +341,9 @@ export async function POST(req: NextRequest) {
     // Notificar a admins si requiere aprobación (solo si no está en espera)
     if (requiereAprobacion && nuevoEstado === "PENDIENTE") {
       const userName = rotativo.user.alias || rotativo.user.name
-      const fechaStr = rotativo.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+      const fechaStr = formatDateLongAR(rotativo.event.date)
       const horaStr = rotativo.event.startTime
-        ? ` a las ${rotativo.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+        ? ` a las ${formatTimeAR(rotativo.event.startTime)}`
         : ""
       const tipoStr = rotativo.event.eventoType ? ` (${rotativo.event.eventoType})` : ""
 

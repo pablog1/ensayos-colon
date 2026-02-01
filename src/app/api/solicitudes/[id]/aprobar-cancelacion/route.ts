@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createAuditLog } from "@/lib/services/audit"
 import { createNotification } from "@/lib/services/notifications"
 import { promoteFromWaitingList } from "@/lib/services/waiting-list"
+import { formatTimeAR, formatDateAR } from "@/lib/utils"
 
 // POST /api/solicitudes/[id]/aprobar-cancelacion - Aprobar cancelacion tardia
 export async function POST(
@@ -63,7 +64,7 @@ export async function POST(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
-      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,
       accion: "cancelacion_tardia_aprobada",
       aprobadoPor: session.user.name || session.user.email,
@@ -83,7 +84,7 @@ export async function POST(
     userId: rotativo.userId,
     type: "ROTATIVO_RECHAZADO",
     title: "Cancelacion aprobada",
-    message: `Tu solicitud de cancelacion del rotativo del ${new Date(rotativo.event.date).toLocaleDateString()} fue aprobada`,
+    message: `Tu solicitud de cancelacion del rotativo del ${formatDateAR(new Date(rotativo.event.date))} fue aprobada`,
   })
 
   return NextResponse.json({ success: true })
@@ -153,7 +154,7 @@ export async function DELETE(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
-      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,
       accion: "cancelacion_tardia_rechazada",
       rechazadoPor: session.user.name || session.user.email,
@@ -165,7 +166,7 @@ export async function DELETE(
     userId: rotativo.userId,
     type: "ROTATIVO_RECHAZADO",
     title: "Cancelacion rechazada",
-    message: `Tu solicitud de cancelacion del rotativo del ${new Date(rotativo.event.date).toLocaleDateString()} fue rechazada. El rotativo sigue activo.`,
+    message: `Tu solicitud de cancelacion del rotativo del ${formatDateAR(new Date(rotativo.event.date))} fue rechazada. El rotativo sigue activo.`,
   })
 
   return NextResponse.json({ success: true })

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification, notifyAlertaCercania } from "@/lib/services/notifications"
 import { createAuditLog } from "@/lib/services/audit"
+import { formatDateLongAR, formatTimeAR } from "@/lib/utils"
 
 // POST /api/solicitudes/[id]/aprobar - Aprobar rotativo pendiente (solo admin)
 export async function POST(
@@ -80,9 +81,9 @@ export async function POST(
   })
 
   // Create notification for user
-  const fechaStr = updated.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  const fechaStr = formatDateLongAR(updated.event.date)
   const horaStr = updated.event.startTime
-    ? ` a las ${updated.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+    ? ` a las ${formatTimeAR(updated.event.startTime)}`
     : ""
   const tipoStr = updated.event.eventoType ? ` (${updated.event.eventoType})` : ""
 
@@ -112,7 +113,7 @@ export async function POST(
     details: {
       evento: updated.event.title,
       fecha: updated.event.date.toISOString(),
-      horario: updated.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(updated.event.startTime),
       tipoEvento: updated.event.eventoType,
       motivo: motivo,
     },

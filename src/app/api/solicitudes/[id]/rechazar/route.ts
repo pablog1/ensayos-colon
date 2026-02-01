@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/services/notifications"
 import { createAuditLog } from "@/lib/services/audit"
 import { promoteFromWaitingList } from "@/lib/services/waiting-list"
+import { formatDateLongAR, formatTimeAR } from "@/lib/utils"
 
 // POST /api/solicitudes/[id]/rechazar - Rechazar rotativo pendiente (solo admin)
 export async function POST(
@@ -72,9 +73,9 @@ export async function POST(
   })
 
   // Create notification
-  const fechaStr = rotativo.event.date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+  const fechaStr = formatDateLongAR(rotativo.event.date)
   const horaStr = rotativo.event.startTime
-    ? ` a las ${rotativo.event.startTime.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}`
+    ? ` a las ${formatTimeAR(rotativo.event.startTime)}`
     : ""
   const tipoStr = rotativo.event.eventoType ? ` (${rotativo.event.eventoType})` : ""
 
@@ -103,7 +104,7 @@ export async function POST(
     details: {
       evento: rotativo.event.title,
       fecha: rotativo.event.date.toISOString(),
-      horario: rotativo.event.startTime?.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,
       motivo: motivoRechazo,
     },
