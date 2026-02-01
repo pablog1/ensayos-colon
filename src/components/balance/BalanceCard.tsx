@@ -18,7 +18,8 @@ interface BalanceCardProps {
 }
 
 export function BalanceCard({ balance, alertaUmbral = 90 }: BalanceCardProps) {
-  const maxEfectivo = balance.maxAjustadoManual ?? balance.maxProyectado
+  // Siempre usar maxProyectado calculado en tiempo real
+  const maxEfectivo = balance.maxProyectado
   const totalRotativos =
     balance.rotativosTomados +
     balance.rotativosObligatorios +

@@ -155,25 +155,19 @@ export async function POST(req: NextRequest) {
   })
 
   if (reglaMaxProyectado?.enabled && balance) {
-    // Calcular máximo proyectado en tiempo real si no hay ajuste manual
-    let maxEfectivo: number
-    if (balance.maxAjustadoManual !== null) {
-      maxEfectivo = balance.maxAjustadoManual
-    } else {
-      // Calcular basado en cupos totales / integrantes
-      const titulosTemp = await prisma.titulo.findMany({
-        where: { seasonId: temporadaActiva.id },
-        include: { events: { select: { cupoOverride: true } } },
-      })
-      let totalCuposTemp = 0
-      for (const t of titulosTemp) {
-        for (const e of t.events) {
-          totalCuposTemp += e.cupoOverride ?? t.cupo
-        }
+    // Calcular máximo proyectado siempre en tiempo real
+    const titulosTemp = await prisma.titulo.findMany({
+      where: { seasonId: temporadaActiva.id },
+      include: { events: { select: { cupoOverride: true } } },
+    })
+    let totalCuposTemp = 0
+    for (const t of titulosTemp) {
+      for (const e of t.events) {
+        totalCuposTemp += e.cupoOverride ?? t.cupo
       }
-      const totalIntegrantesTemp = await prisma.user.count()
-      maxEfectivo = totalIntegrantesTemp > 0 ? Math.max(1, Math.floor(totalCuposTemp / totalIntegrantesTemp)) : 1
     }
+    const totalIntegrantesTemp = await prisma.user.count()
+    const maxEfectivo = totalIntegrantesTemp > 0 ? Math.max(1, Math.floor(totalCuposTemp / totalIntegrantesTemp)) : 1
     const totalActual =
       balance.rotativosTomados +
       balance.rotativosObligatorios +

@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
       rotativosTomados: b.rotativosTomados,
       rotativosObligatorios: b.rotativosObligatorios,
       rotativosPorLicencia: b.rotativosPorLicencia,
-      maxProyectado: b.maxAjustadoManual ?? maxProyectadoCalculado,
+      maxProyectado: maxProyectadoCalculado, // Siempre usar el calculado en tiempo real
     }))
     .sort((a, b) => a.total - b.total) // Ordenar de menor a mayor
 

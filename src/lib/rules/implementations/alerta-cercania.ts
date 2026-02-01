@@ -24,13 +24,13 @@ export const alertaCercaniaRule: RuleDefinition = {
 
     const {
       maxProyectado,
-      maxAjustadoManual,
       rotativosTomados,
       rotativosObligatorios,
       rotativosPorLicencia,
     } = context.userBalance
 
-    const maxEfectivo = maxAjustadoManual ?? maxProyectado
+    // Siempre usar maxProyectado calculado en tiempo real
+    const maxEfectivo = maxProyectado
     const totalActual = rotativosTomados + rotativosObligatorios + rotativosPorLicencia
     const totalConNuevo = totalActual + 1
     const porcentajeActual = (totalActual / maxEfectivo) * 100

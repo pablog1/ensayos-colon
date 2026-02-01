@@ -182,6 +182,15 @@ export async function notifyAlertaCercania(params: {
   porcentaje: number
   nivelAlerta: "CERCANIA" | "LIMITE" | "EXCESO"
 }): Promise<void> {
+  console.log("[notifyAlertaCercania] ===== ALERTA MÁXIMO =====")
+  console.log("[notifyAlertaCercania] userId:", params.userId)
+  console.log("[notifyAlertaCercania] totalActual:", params.totalActual)
+  console.log("[notifyAlertaCercania] maxProyectado:", params.maxProyectado)
+  console.log("[notifyAlertaCercania] porcentaje:", params.porcentaje)
+  console.log("[notifyAlertaCercania] nivelAlerta:", params.nivelAlerta)
+  console.log("[notifyAlertaCercania] Llamado desde:", new Error().stack?.split("\n").slice(2, 5).join("\n"))
+  console.log("[notifyAlertaCercania] ========================")
+
   const mensajes = {
     CERCANIA: `Estás en ${params.porcentaje.toFixed(0)}% de tu máximo anual (${params.totalActual}/${params.maxProyectado} rotativos)`,
     LIMITE: `Has alcanzado el umbral del máximo anual (${params.totalActual}/${params.maxProyectado} rotativos)`,

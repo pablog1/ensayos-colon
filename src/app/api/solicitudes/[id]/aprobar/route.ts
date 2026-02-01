@@ -119,75 +119,69 @@ export async function POST(
   })
 
   // Verificar si el usuario está cerca del máximo y enviar alerta
+  // Usar la temporada del evento, no la temporada "activa"
+  const seasonId = updated.event.seasonId
   try {
-    const temporadaActiva = await prisma.season.findFirst({
-      where: { isActive: true },
+    console.log("[DEBUG Aprobar] Usando seasonId del evento:", seasonId)
+
+    const balance = await prisma.userSeasonBalance.findUnique({
+      where: {
+        userId_seasonId: {
+          userId: updated.userId,
+          seasonId: seasonId,
+        },
+      },
     })
 
-    if (temporadaActiva) {
-      const balance = await prisma.userSeasonBalance.findUnique({
-        where: {
-          userId_seasonId: {
-            userId: updated.userId,
-            seasonId: temporadaActiva.id,
-          },
-        },
+    if (balance) {
+      // Calcular máximo proyectado siempre en tiempo real
+      const titulos = await prisma.titulo.findMany({
+        where: { seasonId: seasonId },
+        include: { events: { select: { cupoOverride: true } } },
       })
-
-      if (balance) {
-        // Calcular máximo proyectado en tiempo real si no hay ajuste manual
-        let maxEfectivo: number
-        if (balance.maxAjustadoManual !== null) {
-          maxEfectivo = balance.maxAjustadoManual
-        } else {
-          // Calcular basado en cupos totales / integrantes
-          const titulos = await prisma.titulo.findMany({
-            where: { seasonId: temporadaActiva.id },
-            include: { events: { select: { cupoOverride: true } } },
-          })
-          let totalCupos = 0
-          for (const t of titulos) {
-            for (const e of t.events) {
-              totalCupos += e.cupoOverride ?? t.cupo
-            }
-          }
-          const totalIntegrantes = await prisma.user.count()
-          maxEfectivo = totalIntegrantes > 0 ? Math.max(1, Math.floor(totalCupos / totalIntegrantes)) : 1
+      let totalCupos = 0
+      for (const t of titulos) {
+        for (const e of t.events) {
+          totalCupos += e.cupoOverride ?? t.cupo
         }
-        const totalActual =
-          balance.rotativosTomados +
-          balance.rotativosObligatorios +
-          balance.rotativosPorLicencia
+      }
+      const totalIntegrantes = await prisma.user.count()
+      const maxEfectivo = totalIntegrantes > 0 ? Math.max(1, Math.floor(totalCupos / totalIntegrantes)) : 1
 
-        // Obtener umbral de alerta (default 90%)
-        const reglaUmbral = await prisma.ruleConfig.findUnique({
-          where: { key: "ALERTA_UMBRAL" },
+      console.log("[DEBUG Alerta] totalCupos:", totalCupos, "totalIntegrantes:", totalIntegrantes, "maxEfectivo:", maxEfectivo, "titulos:", titulos.length)
+      const totalActual =
+        balance.rotativosTomados +
+        balance.rotativosObligatorios +
+        balance.rotativosPorLicencia
+
+      // Obtener umbral de alerta (default 90%)
+      const reglaUmbral = await prisma.ruleConfig.findUnique({
+        where: { key: "ALERTA_UMBRAL" },
+      })
+      const umbral = reglaUmbral?.enabled ? parseInt(reglaUmbral.value) || 90 : 90
+
+      const porcentaje = (totalActual / maxEfectivo) * 100
+
+      // Determinar nivel de alerta
+      let nivelAlerta: "CERCANIA" | "LIMITE" | "EXCESO" | null = null
+      if (totalActual > maxEfectivo) {
+        nivelAlerta = "EXCESO"
+      } else if (porcentaje >= umbral) {
+        nivelAlerta = "LIMITE"
+      } else if (porcentaje >= umbral - 10) {
+        // Alertar cuando esté a 10% del umbral
+        nivelAlerta = "CERCANIA"
+      }
+
+      // Enviar notificación si hay alerta
+      if (nivelAlerta) {
+        await notifyAlertaCercania({
+          userId: updated.userId,
+          totalActual,
+          maxProyectado: maxEfectivo,
+          porcentaje,
+          nivelAlerta,
         })
-        const umbral = reglaUmbral?.enabled ? parseInt(reglaUmbral.value) || 90 : 90
-
-        const porcentaje = (totalActual / maxEfectivo) * 100
-
-        // Determinar nivel de alerta
-        let nivelAlerta: "CERCANIA" | "LIMITE" | "EXCESO" | null = null
-        if (totalActual > maxEfectivo) {
-          nivelAlerta = "EXCESO"
-        } else if (porcentaje >= umbral) {
-          nivelAlerta = "LIMITE"
-        } else if (porcentaje >= umbral - 10) {
-          // Alertar cuando esté a 10% del umbral
-          nivelAlerta = "CERCANIA"
-        }
-
-        // Enviar notificación si hay alerta
-        if (nivelAlerta) {
-          await notifyAlertaCercania({
-            userId: updated.userId,
-            totalActual,
-            maxProyectado: maxEfectivo,
-            porcentaje,
-            nivelAlerta,
-          })
-        }
       }
     }
   } catch (error) {

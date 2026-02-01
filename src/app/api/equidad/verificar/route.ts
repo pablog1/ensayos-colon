@@ -86,7 +86,7 @@ export async function GET(req: NextRequest) {
     rotativosTomados: b.rotativosTomados,
     rotativosObligatorios: b.rotativosObligatorios,
     rotativosPorLicencia: b.rotativosPorLicencia,
-    maxProyectado: b.maxAjustadoManual ?? maxProyectadoCalculado,
+    maxProyectado: maxProyectadoCalculado, // Siempre usar el calculado en tiempo real
   }))
 
   // Calcular estadísticas del grupo

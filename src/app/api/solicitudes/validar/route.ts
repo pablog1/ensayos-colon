@@ -244,11 +244,8 @@ export async function POST(req: NextRequest) {
         const totalIntegrantesTemp = await prisma.user.count()
         const maxCalculado = totalIntegrantesTemp > 0 ? Math.max(1, Math.floor(totalCuposTemp / totalIntegrantesTemp)) : 1
 
-        if (balance.maxAjustadoManual !== null) {
-          maxEfectivo = balance.maxAjustadoManual
-        } else {
-          maxEfectivo = maxCalculado
-        }
+        // Siempre usar el máximo calculado en tiempo real
+        maxEfectivo = maxCalculado
 
         // Contar rotativos REALES de la base de datos (no usar balance que puede estar desactualizado)
         const rotativosReales = await prisma.rotativo.count({

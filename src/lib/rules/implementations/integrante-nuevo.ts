@@ -30,7 +30,7 @@ export const integranteNuevoRule: RuleDefinition = {
   ): Promise<ValidationResult> {
     const integranteConfig = (config.value as IntegranteNuevoConfig) ?? DEFAULT_CONFIG
 
-    const { fechaIngreso, maxProyectado, maxAjustadoManual } = context.userBalance
+    const { fechaIngreso, maxProyectado } = context.userBalance
 
     // Verificar si es integrante nuevo (tiene fecha de ingreso registrada)
     const esIntegranteNuevo = !!fechaIngreso
@@ -56,26 +56,20 @@ export const integranteNuevoRule: RuleDefinition = {
       (hoy.getTime() - fechaIngresoDate.getTime()) / (1000 * 60 * 60 * 24)
     )
 
-    // Verificar si el max fue ajustado por admin
-    const maxEfectivo = maxAjustadoManual ?? maxProyectado
-    const fueAjustado = maxAjustadoManual !== null && maxAjustadoManual !== undefined
+    // Siempre usar maxProyectado calculado en tiempo real
+    const maxEfectivo = maxProyectado
 
     return {
       ruleId: this.id,
       ruleName: this.name,
       passed: true,
       blocking: false,
-      message: fueAjustado
-        ? `Integrante nuevo con máximo ajustado por admin: ${maxEfectivo}`
-        : `Integrante nuevo con máximo basado en promedio: ${maxEfectivo}`,
+      message: `Integrante nuevo con máximo basado en promedio: ${maxEfectivo}`,
       details: {
         esIntegranteNuevo: true,
         fechaIngreso: fechaIngresoDate.toISOString(),
         diasDesdeIngreso,
-        maxProyectadoOriginal: maxProyectado,
-        maxAjustadoManual,
         maxEfectivo,
-        fueAjustadoPorAdmin: fueAjustado,
         usarPromedio: integranteConfig.usarPromedio,
         permitirOverride: integranteConfig.adminOverride,
       },

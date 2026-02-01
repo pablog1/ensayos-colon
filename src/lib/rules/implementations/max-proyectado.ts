@@ -20,13 +20,13 @@ export const maxProyectadoRule: RuleDefinition = {
   ): Promise<ValidationResult> {
     const {
       maxProyectado,
-      maxAjustadoManual,
       rotativosTomados,
       rotativosObligatorios,
       rotativosPorLicencia,
     } = context.userBalance
 
-    const maxEfectivo = maxAjustadoManual ?? maxProyectado
+    // Siempre usar maxProyectado calculado en tiempo real
+    const maxEfectivo = maxProyectado
     const totalActual = rotativosTomados + rotativosObligatorios + rotativosPorLicencia
     const totalConNuevo = totalActual + 1
 
@@ -66,8 +66,6 @@ export const maxProyectadoRule: RuleDefinition = {
           totalActual,
           totalConNuevo,
           maxProyectado: maxEfectivo,
-          maxOriginal: maxProyectado,
-          maxAjustado: maxAjustadoManual,
           porcentajeUsado,
           yaEnSobrecupo: true,
         },
@@ -90,8 +88,6 @@ export const maxProyectadoRule: RuleDefinition = {
         totalActual,
         totalConNuevo,
         maxProyectado: maxEfectivo,
-        maxOriginal: maxProyectado,
-        maxAjustado: maxAjustadoManual,
         porcentajeUsado,
       },
       suggestedAction: dentroDelLimite ? "APPROVE" : "PENDING_ADMIN",

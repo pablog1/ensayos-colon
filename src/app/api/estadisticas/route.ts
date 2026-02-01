@@ -279,8 +279,8 @@ export async function GET(req: NextRequest) {
     const usadosFuturos = rotativosFuturosMap[usuario.id] || 0
     const balance = balancesMap[usuario.id]
     const rotativosPorLicencia = Math.floor(balance?.rotativosPorLicencia || 0)
-    // Usar ajuste manual si existe, sino el máximo proporcional (ajustado por fecha de ingreso)
-    const maxIndividual = balance?.maxAjustadoManual ?? calcularMaximoProporcional(balance?.fechaIngreso ?? null)
+    // Siempre usar el máximo proporcional calculado en tiempo real
+    const maxIndividual = calcularMaximoProporcional(balance?.fechaIngreso ?? null)
 
     // Total consumidos incluye los rotativos por licencia
     const consumidos = usadosPasados + usadosFuturos + rotativosPorLicencia
@@ -350,8 +350,8 @@ export async function GET(req: NextRequest) {
   const usadosFuturosUsuario = rotativosFuturosMap[session.user.id] || 0
   const balanceUsuario = balancesMap[session.user.id]
   const rotativosPorLicenciaUsuario = Math.floor(balanceUsuario?.rotativosPorLicencia || 0)
-  // Usar ajuste manual si existe, sino el máximo proporcional (ajustado por fecha de ingreso)
-  const maxUsuario = balanceUsuario?.maxAjustadoManual ?? calcularMaximoProporcional(balanceUsuario?.fechaIngreso ?? null)
+  // Siempre usar el máximo proporcional calculado en tiempo real
+  const maxUsuario = calcularMaximoProporcional(balanceUsuario?.fechaIngreso ?? null)
   const consumidosUsuario = usadosPasadosUsuario + usadosFuturosUsuario + rotativosPorLicenciaUsuario
   const restantesUsuario = Math.max(0, maxUsuario - consumidosUsuario)
   const porcentajeUsadoUsuario = maxUsuario > 0
