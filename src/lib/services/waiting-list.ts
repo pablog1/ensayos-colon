@@ -152,11 +152,30 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
   })
 
   // Notificar al usuario
+  const eventDate = nextEntry.event.date
+  const tipoEvento = nextEntry.event.eventType === "ENSAYO" ? "Ensayo" : "Función"
+  const fechaFormateada = eventDate.toLocaleDateString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  })
+  const horaFormateada = nextEntry.event.startTime
+    ? nextEntry.event.startTime.toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      })
+    : null
+
+  const detalleEvento = horaFormateada
+    ? `${tipoEvento} - ${fechaFormateada} ${horaFormateada}`
+    : `${tipoEvento} - ${fechaFormateada}`
+
   await createNotification({
     userId: nextEntry.userId,
     type: "LISTA_ESPERA_CUPO",
     title: "Cupo disponible",
-    message: `Se liberó un cupo para ${nextEntry.event.title} y tu rotativo fue aprobado`,
+    message: `Se liberó un cupo para ${nextEntry.event.title} (${detalleEvento}) y tu rotativo fue aprobado`,
     data: { eventId, eventTitle: nextEntry.event.title },
   })
 
