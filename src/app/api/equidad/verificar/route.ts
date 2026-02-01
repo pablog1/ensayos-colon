@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { notifyAdminsUsuarioPorDebajo } from "@/lib/services/notifications"
 
 // GET /api/equidad/verificar - Verificar equilibrio de rotativos y detectar usuarios por debajo
 export async function GET(req: NextRequest) {
@@ -18,7 +17,6 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url)
-  const notificar = searchParams.get("notificar") === "true"
   const umbralDiferencia = parseInt(searchParams.get("umbral") || "5")
 
   // Obtener temporada activa
@@ -115,19 +113,6 @@ export async function GET(req: NextRequest) {
     }))
     .sort((a, b) => b.total - a.total) // Ordenar de mayor a menor
 
-  // Notificar a admins si se solicitó
-  if (notificar && usuariosPorDebajo.length > 0) {
-    for (const usuario of usuariosPorDebajo) {
-      await notifyAdminsUsuarioPorDebajo({
-        userId: usuario.userId,
-        userName: usuario.userName,
-        totalRotativos: usuario.total,
-        promedioGrupo: promedio,
-        diferencia: usuario.diferencia,
-      })
-    }
-  }
-
   return NextResponse.json({
     temporada: temporadaActiva.name,
     estadisticas: {
@@ -140,7 +125,6 @@ export async function GET(req: NextRequest) {
     usuariosPorDebajo,
     usuariosPorEncima,
     todosLosUsuarios: usuariosConTotales.sort((a, b) => a.total - b.total),
-    notificacionesEnviadas: notificar ? usuariosPorDebajo.length : 0,
   })
 }
 
@@ -210,22 +194,10 @@ export async function POST(req: NextRequest) {
   const totales = usuariosConTotales.map((u) => u.total)
   const promedio = totales.reduce((a, b) => a + b, 0) / totales.length
 
-  // Detectar usuarios por debajo y notificar
+  // Detectar usuarios por debajo
   const usuariosPorDebajo = usuariosConTotales.filter(
     (u) => promedio - u.total >= umbralDiferencia
   )
-
-  let notificacionesEnviadas = 0
-  for (const usuario of usuariosPorDebajo) {
-    await notifyAdminsUsuarioPorDebajo({
-      userId: usuario.userId,
-      userName: usuario.userName,
-      totalRotativos: usuario.total,
-      promedioGrupo: promedio,
-      diferencia: Math.round(promedio - usuario.total),
-    })
-    notificacionesEnviadas++
-  }
 
   return NextResponse.json({
     success: true,
@@ -236,6 +208,5 @@ export async function POST(req: NextRequest) {
       total: u.total,
       diferencia: Math.round(promedio - u.total),
     })),
-    notificacionesEnviadas,
   })
 }

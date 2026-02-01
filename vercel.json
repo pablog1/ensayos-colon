@@ -4,10 +4,6 @@
     {
       "path": "/api/cron/eventos-sin-cubrir",
       "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/verificar-bajo-cupo",
-      "schedule": "0 10 * * 1"
     }
   ]
 }

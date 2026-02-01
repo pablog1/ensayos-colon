@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { createNotification, notifyAlertaCercania, verificarYNotificarBajoCupo } from "@/lib/services/notifications"
+import { createNotification, notifyAlertaCercania } from "@/lib/services/notifications"
 import { createAuditLog } from "@/lib/services/audit"
 
 // POST /api/solicitudes/[id]/aprobar - Aprobar rotativo pendiente (solo admin)
@@ -188,12 +188,6 @@ export async function POST(
     // No fallar la aprobación si hay error en la alerta
     console.error("[Aprobar] Error al verificar alerta de cercanía:", error)
   }
-
-  // Verificar si hay usuarios con bajo cupo y notificar a admins
-  // (esto se ejecuta en background, no bloquea la respuesta)
-  verificarYNotificarBajoCupo().catch((err) =>
-    console.error("[Aprobar] Error al verificar bajo cupo:", err)
-  )
 
   return NextResponse.json(updated)
 }

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { createAuditLog } from "@/lib/services/audit"
-import { notifyAdmins, notifyAlertaCercania, verificarYNotificarBajoCupo } from "@/lib/services/notifications"
+import { notifyAdmins, notifyAlertaCercania } from "@/lib/services/notifications"
 import { addToWaitingList, getUserWaitingListPosition } from "@/lib/services/waiting-list"
 
 // GET /api/solicitudes - Lista rotativos del usuario
@@ -438,12 +438,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Verificar si hay usuarios con bajo cupo (para APROBADO y PENDIENTE)
-    if (nuevoEstado === "APROBADO" || nuevoEstado === "PENDIENTE") {
-      verificarYNotificarBajoCupo().catch((err) =>
-        console.error("[POST /api/solicitudes] Error al verificar bajo cupo:", err)
-      )
-    }
 
     console.log("[POST /api/solicitudes] Enviando respuesta. Tiempo total:", Date.now() - startTime, "ms")
 
