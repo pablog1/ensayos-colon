@@ -20,8 +20,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { BarChart3, Users, Calendar, Clock, AlertTriangle, Info, UserPlus } from "lucide-react"
+import { BarChart3, Users, Calendar, Clock, AlertTriangle, Info, UserPlus, Eye, ChevronDown, ChevronRight } from "lucide-react"
 import { useDebugDate } from "@/contexts/debug-date-context"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 interface CuposUsuarioTemporada {
   maximoAsignado: number
@@ -73,6 +86,27 @@ interface Stats {
   }
 }
 
+interface DesgloseTitulo {
+  id: string
+  nombre: string
+  cupoDefault: number
+  cantidadEventos: number
+  fechaInicio: string | null
+  fechaFin: string | null
+  eventos: {
+    id: string
+    fecha: string
+    cupo: number
+  }[]
+  subtotal: number
+}
+
+interface Desglose {
+  temporada: string
+  titulos: DesgloseTitulo[]
+  totalGeneral: number
+}
+
 export default function EstadisticasPage() {
   const { data: session } = useSession()
   const { debugDate } = useDebugDate()
@@ -80,9 +114,15 @@ export default function EstadisticasPage() {
   const [loading, setLoading] = useState(true)
   const currentYear = debugDate.getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
+  const [desglose, setDesglose] = useState<Desglose | null>(null)
+  const [loadingDesglose, setLoadingDesglose] = useState(false)
+  const [desgloseOpen, setDesgloseOpen] = useState(false)
+  const [expandedTitulos, setExpandedTitulos] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchStats()
+    setDesglose(null) // Reset desglose cuando cambia el año
+    setExpandedTitulos(new Set())
   }, [selectedYear, debugDate])
 
   const fetchStats = async () => {
@@ -92,6 +132,27 @@ export default function EstadisticasPage() {
     const data = await res.json()
     setStats(data)
     setLoading(false)
+  }
+
+  const fetchDesglose = async () => {
+    if (desglose) return // Ya cargado
+    setLoadingDesglose(true)
+    const res = await fetch(`/api/estadisticas/desglose?year=${selectedYear}`)
+    const data = await res.json()
+    setDesglose(data)
+    setLoadingDesglose(false)
+  }
+
+  const toggleTitulo = (tituloId: string) => {
+    setExpandedTitulos(prev => {
+      const next = new Set(prev)
+      if (next.has(tituloId)) {
+        next.delete(tituloId)
+      } else {
+        next.add(tituloId)
+      }
+      return next
+    })
   }
 
   // Generar años: anterior, actual, siguiente
@@ -185,6 +246,69 @@ export default function EstadisticasPage() {
                 <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Cupos temporada
+                  <Dialog open={desgloseOpen} onOpenChange={(open) => {
+                    setDesgloseOpen(open)
+                    if (open) fetchDesglose()
+                  }}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto" title="Ver desglose">
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Desglose de cupos - {desglose?.temporada}</DialogTitle>
+                      </DialogHeader>
+                      {loadingDesglose ? (
+                        <div className="py-8 text-center text-muted-foreground">Cargando...</div>
+                      ) : desglose ? (
+                        <div className="space-y-2">
+                          {desglose.titulos.map((titulo) => (
+                            <Collapsible key={titulo.id} open={expandedTitulos.has(titulo.id)}>
+                              <CollapsibleTrigger
+                                onClick={() => toggleTitulo(titulo.id)}
+                                className="flex items-center w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                              >
+                                {expandedTitulos.has(titulo.id) ? (
+                                  <ChevronDown className="h-4 w-4 mr-2 flex-shrink-0" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 mr-2 flex-shrink-0" />
+                                )}
+                                <div className="flex-1 text-left">
+                                  <span className="font-medium">{titulo.nombre}</span>
+                                  {titulo.fechaInicio && titulo.fechaFin && (
+                                    <div className="text-xs text-muted-foreground">
+                                      {new Date(titulo.fechaInicio).toLocaleDateString("es-AR", { day: "numeric", month: "short" })} - {new Date(titulo.fechaFin).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-sm text-muted-foreground mr-4 flex-shrink-0">
+                                  {titulo.cantidadEventos} × {titulo.cupoDefault}
+                                </span>
+                                <span className="font-bold flex-shrink-0">{titulo.subtotal}</span>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="ml-6 mt-1 mb-2 space-y-1">
+                                  {titulo.eventos.map((evento, idx) => (
+                                    <div key={evento.id} className="flex justify-between text-sm py-1 px-3 bg-background rounded">
+                                      <span className="text-muted-foreground">
+                                        {idx + 1}. {new Date(evento.fecha).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}
+                                      </span>
+                                      <span>{evento.cupo}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))}
+                          <div className="flex justify-between p-3 bg-primary/10 rounded-lg font-bold text-lg border-t-2 border-primary mt-4">
+                            <span>Total General</span>
+                            <span>{desglose.totalGeneral}</span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </DialogContent>
+                  </Dialog>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
