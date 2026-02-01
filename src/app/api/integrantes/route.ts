@@ -102,8 +102,18 @@ export async function POST(req: NextRequest) {
   // Si es integrante nuevo, calcular su maximo proporcional
   let rotativosCalculados = 0
   if (esIntegranteNuevo) {
+    // Buscar la temporada que contenga la fecha de ingreso
+    const fechaIngresoDate = new Date(joinDate)
     const season = await prisma.season.findFirst({
+      where: {
+        isActive: true,
+        startDate: { lte: fechaIngresoDate },
+        endDate: { gte: fechaIngresoDate },
+      },
+    }) ?? await prisma.season.findFirst({
+      // Fallback: temporada activa más reciente
       where: { isActive: true },
+      orderBy: { startDate: 'desc' },
     })
 
     if (season) {
@@ -134,7 +144,9 @@ export async function POST(req: NextRequest) {
 
       let cuposDesdeIngreso = 0
       for (const evento of eventosDesdeIngreso) {
-        cuposDesdeIngreso += evento.cupoOverride ?? evento.titulo.cupo
+        if (evento.titulo) {
+          cuposDesdeIngreso += evento.cupoOverride ?? evento.titulo.cupo
+        }
       }
 
       // Total de integrantes (incluyendo el nuevo)

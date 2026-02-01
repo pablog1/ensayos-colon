@@ -151,7 +151,7 @@ export async function GET(req: NextRequest) {
       const fechaEvento = new Date(evento.date)
       fechaEvento.setHours(0, 0, 0, 0)
 
-      if (fechaEvento >= inicioIntegrante) {
+      if (fechaEvento >= inicioIntegrante && evento.titulo) {
         const cupo = evento.cupoOverride ?? evento.titulo.cupo
         cuposDesdeIngreso += cupo
       }
