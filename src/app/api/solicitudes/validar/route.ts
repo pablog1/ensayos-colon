@@ -96,7 +96,6 @@ export async function POST(req: NextRequest) {
     rotativosReales: number
     rotativosPorLicencia: number
     tieneAjusteManual: boolean
-    maxGuardadoEnBD: number
     balanceRotativosTomados: number
     totalCuposTemporada: number
     totalIntegrantes: number
@@ -134,7 +133,7 @@ export async function POST(req: NextRequest) {
 
     // Calcular máximo por integrante
     const maximoPorIntegrante = totalIntegrantes > 0
-      ? Math.round(totalCuposDisponibles / totalIntegrantes)
+      ? Math.floor(totalCuposDisponibles / totalIntegrantes)
       : 0
 
     // Contar rotativos actuales del usuario en la temporada (APROBADO o PENDIENTE)
@@ -243,7 +242,7 @@ export async function POST(req: NextRequest) {
           }
         }
         const totalIntegrantesTemp = await prisma.user.count()
-        const maxCalculado = totalIntegrantesTemp > 0 ? Math.max(1, Math.round(totalCuposTemp / totalIntegrantesTemp)) : 1
+        const maxCalculado = totalIntegrantesTemp > 0 ? Math.max(1, Math.floor(totalCuposTemp / totalIntegrantesTemp)) : 1
 
         if (balance.maxAjustadoManual !== null) {
           maxEfectivo = balance.maxAjustadoManual
@@ -275,7 +274,6 @@ export async function POST(req: NextRequest) {
           rotativosReales,
           rotativosPorLicencia,
           tieneAjusteManual: balance.maxAjustadoManual !== null,
-          maxGuardadoEnBD: balance.maxProyectado,
           balanceRotativosTomados: balance.rotativosTomados,
           totalCuposTemporada: totalCuposTemp,
           totalIntegrantes: totalIntegrantesTemp,

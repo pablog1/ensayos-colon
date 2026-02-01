@@ -267,7 +267,7 @@ export async function obtenerCuposTemporada(): Promise<CuposTemporada> {
 
   const cuposRestantes = totalCuposDisponibles - cuposConsumidos
   const maximoPorIntegrante = totalIntegrantes > 0
-    ? Math.round(totalCuposDisponibles / totalIntegrantes)
+    ? Math.floor(totalCuposDisponibles / totalIntegrantes)
     : 0
 
   return {

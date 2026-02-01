@@ -52,12 +52,12 @@ export async function PUT(
   })
 
   if (!balance) {
-    // Crear balance inicial
+    // Crear balance inicial con ajuste manual (para integrantes con asignación especial)
     balance = await prisma.userSeasonBalance.create({
       data: {
         userId,
         seasonId,
-        maxProyectado: asignacionInicialRotativos,
+        maxAjustadoManual: asignacionInicialRotativos,
         asignacionInicialRotativos,
         asignacionFechaCalculo: new Date(),
         asignacionJustificacion,
@@ -161,7 +161,6 @@ export async function GET(
     id: balance.id,
     userId: balance.userId,
     seasonId: balance.seasonId,
-    maxProyectado: balance.maxProyectado,
     maxAjustadoManual: balance.maxAjustadoManual,
     asignacionInicialRotativos: balance.asignacionInicialRotativos,
     asignacionFechaCalculo: balance.asignacionFechaCalculo,

@@ -70,7 +70,7 @@ export async function GET() {
   // Calcular promedio de rotativos por integrante
   const promedioRotativosPorIntegrante =
     totalIntegrantes > 0
-      ? Math.round(totalRotativosDisponibles / totalIntegrantes)
+      ? Math.floor(totalRotativosDisponibles / totalIntegrantes)
       : 0
 
   return NextResponse.json({

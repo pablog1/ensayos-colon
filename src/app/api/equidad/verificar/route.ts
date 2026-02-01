@@ -62,6 +62,22 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // Calcular máximo proyectado en tiempo real
+  const titulos = await prisma.titulo.findMany({
+    where: { seasonId: temporadaActiva.id },
+    include: { events: { select: { cupoOverride: true } } },
+  })
+  let totalCuposDisponibles = 0
+  for (const titulo of titulos) {
+    for (const ev of titulo.events) {
+      totalCuposDisponibles += ev.cupoOverride ?? titulo.cupo
+    }
+  }
+  const totalIntegrantes = await prisma.user.count()
+  const maxProyectadoCalculado = totalIntegrantes > 0
+    ? Math.max(1, Math.floor(totalCuposDisponibles / totalIntegrantes))
+    : 1
+
   // Calcular totales de cada usuario
   const usuariosConTotales = balancesIntegrantes.map((b) => ({
     userId: b.userId,
@@ -70,7 +86,7 @@ export async function GET(req: NextRequest) {
     rotativosTomados: b.rotativosTomados,
     rotativosObligatorios: b.rotativosObligatorios,
     rotativosPorLicencia: b.rotativosPorLicencia,
-    maxProyectado: b.maxAjustadoManual ?? b.maxProyectado,
+    maxProyectado: b.maxAjustadoManual ?? maxProyectadoCalculado,
   }))
 
   // Calcular estadísticas del grupo

@@ -155,7 +155,25 @@ export async function POST(req: NextRequest) {
   })
 
   if (reglaMaxProyectado?.enabled && balance) {
-    const maxEfectivo = balance.maxAjustadoManual ?? balance.maxProyectado
+    // Calcular máximo proyectado en tiempo real si no hay ajuste manual
+    let maxEfectivo: number
+    if (balance.maxAjustadoManual !== null) {
+      maxEfectivo = balance.maxAjustadoManual
+    } else {
+      // Calcular basado en cupos totales / integrantes
+      const titulosTemp = await prisma.titulo.findMany({
+        where: { seasonId: temporadaActiva.id },
+        include: { events: { select: { cupoOverride: true } } },
+      })
+      let totalCuposTemp = 0
+      for (const t of titulosTemp) {
+        for (const e of t.events) {
+          totalCuposTemp += e.cupoOverride ?? t.cupo
+        }
+      }
+      const totalIntegrantesTemp = await prisma.user.count()
+      maxEfectivo = totalIntegrantesTemp > 0 ? Math.max(1, Math.floor(totalCuposTemp / totalIntegrantesTemp)) : 1
+    }
     const totalActual =
       balance.rotativosTomados +
       balance.rotativosObligatorios +
@@ -296,7 +314,6 @@ export async function POST(req: NextRequest) {
       rotativosTomados: 0,
       rotativosObligatorios: 0,
       rotativosPorLicencia: 0,
-      maxProyectado: 50, // Valor por defecto, se recalculará
       finesDeSemanaMes: {},
     },
     update: {

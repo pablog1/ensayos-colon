@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
 
   const cuposRestantes = totalCuposDisponibles - cuposConsumidos
   const maximoPorIntegrante = totalIntegrantes > 0
-    ? Math.round(totalCuposDisponibles / totalIntegrantes)
+    ? Math.floor(totalCuposDisponibles / totalIntegrantes)
     : 0
 
   // Obtener rotativos de temporada agrupados por usuario - pasados
@@ -180,7 +180,6 @@ export async function GET(req: NextRequest) {
     select: {
       userId: true,
       rotativosPorLicencia: true,
-      maxProyectado: true,
       maxAjustadoManual: true,
       fechaIngreso: true,
       asignacionInicialRotativos: true,
@@ -191,7 +190,6 @@ export async function GET(req: NextRequest) {
 
   interface BalanceInfo {
     rotativosPorLicencia: number
-    maxProyectado: number
     maxAjustadoManual: number | null
     fechaIngreso: Date | null
     asignacionInicialRotativos: number | null
@@ -202,7 +200,6 @@ export async function GET(req: NextRequest) {
   for (const b of balances) {
     balancesMap[b.userId] = {
       rotativosPorLicencia: b.rotativosPorLicencia,
-      maxProyectado: b.maxProyectado,
       maxAjustadoManual: b.maxAjustadoManual,
       fechaIngreso: b.fechaIngreso,
       asignacionInicialRotativos: b.asignacionInicialRotativos,
@@ -238,7 +235,8 @@ export async function GET(req: NextRequest) {
     const usadosFuturos = rotativosFuturosMap[usuario.id] || 0
     const balance = balancesMap[usuario.id]
     const rotativosPorLicencia = Math.floor(balance?.rotativosPorLicencia || 0)
-    const maxIndividual = balance?.maxAjustadoManual ?? balance?.maxProyectado ?? maximoPorIntegrante
+    // Usar ajuste manual si existe, sino el máximo calculado en tiempo real
+    const maxIndividual = balance?.maxAjustadoManual ?? maximoPorIntegrante
 
     // Total consumidos incluye los rotativos por licencia
     const consumidos = usadosPasados + usadosFuturos + rotativosPorLicencia
@@ -308,7 +306,8 @@ export async function GET(req: NextRequest) {
   const usadosFuturosUsuario = rotativosFuturosMap[session.user.id] || 0
   const balanceUsuario = balancesMap[session.user.id]
   const rotativosPorLicenciaUsuario = Math.floor(balanceUsuario?.rotativosPorLicencia || 0)
-  const maxUsuario = balanceUsuario?.maxAjustadoManual ?? balanceUsuario?.maxProyectado ?? maximoPorIntegrante
+  // Usar ajuste manual si existe, sino el máximo calculado en tiempo real
+  const maxUsuario = balanceUsuario?.maxAjustadoManual ?? maximoPorIntegrante
   const consumidosUsuario = usadosPasadosUsuario + usadosFuturosUsuario + rotativosPorLicenciaUsuario
   const restantesUsuario = Math.max(0, maxUsuario - consumidosUsuario)
   const porcentajeUsadoUsuario = maxUsuario > 0

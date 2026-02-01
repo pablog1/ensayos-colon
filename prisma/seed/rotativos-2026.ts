@@ -228,14 +228,12 @@ async function main() {
       },
       update: {
         rotativosTomados: stats.rotativosTomados,
-        maxProyectado: maxProyectado,
         finesDeSemanaMes: stats.finesDeSemanaPorMes,
       },
       create: {
         userId,
         seasonId: season2026.id,
         rotativosTomados: stats.rotativosTomados,
-        maxProyectado: maxProyectado,
         finesDeSemanaMes: stats.finesDeSemanaPorMes,
       },
     })

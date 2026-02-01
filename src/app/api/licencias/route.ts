@@ -295,7 +295,6 @@ async function actualizarBalancePorLicencia(
       userId,
       seasonId,
       rotativosPorLicencia: rotativos,
-      maxProyectado: 0,
     },
   })
 }

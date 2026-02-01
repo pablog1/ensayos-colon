@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Crear balance para el nuevo integrante con justificación
+      // Usamos maxAjustadoManual para nuevos integrantes ya que su máximo es proporcional
       const justificacion = `Promedio del grupo al momento del ingreso: ${rotativosCalculados} rotativos (${balances.length} integrantes activos)`
 
       await prisma.userSeasonBalance.create({
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
           rotativosTomados: 0,
           rotativosObligatorios: 0,
           rotativosPorLicencia: 0,
-          maxProyectado: rotativosCalculados,
+          maxAjustadoManual: rotativosCalculados,
           fechaIngreso: new Date(joinDate),
           asignacionInicialRotativos: rotativosCalculados,
           asignacionFechaCalculo: new Date(),
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest) {
         details: {
           esIntegranteNuevo: true,
           fechaIngreso: joinDate,
-          maxProyectadoCalculado: rotativosCalculados,
+          maxAjustadoManual: rotativosCalculados,
           promedioGrupoAlIngreso: rotativosCalculados,
         },
       })

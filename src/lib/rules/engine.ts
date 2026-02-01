@@ -190,9 +190,7 @@ export async function buildValidationContext(
   }
 
   // Calcular estadisticas de temporada
-  const totalIntegrantes = await prisma.user.count({
-    where: { role: "INTEGRANTE" },
-  })
+  const totalIntegrantes = await prisma.user.count()
 
   const totalRotativos = await prisma.rotativo.count({
     where: {
@@ -203,6 +201,21 @@ export async function buildValidationContext(
 
   const promedioRotativos =
     totalIntegrantes > 0 ? totalRotativos / totalIntegrantes : 0
+
+  // Calcular máximo proyectado en tiempo real (no usar valor guardado)
+  const titulos = await prisma.titulo.findMany({
+    where: { seasonId: event.seasonId },
+    include: { events: { select: { cupoOverride: true } } },
+  })
+  let totalCuposDisponibles = 0
+  for (const titulo of titulos) {
+    for (const ev of titulo.events) {
+      totalCuposDisponibles += ev.cupoOverride ?? titulo.cupo
+    }
+  }
+  const maxProyectadoCalculado = totalIntegrantes > 0
+    ? Math.max(1, Math.floor(totalCuposDisponibles / totalIntegrantes))
+    : 1
 
   // Determinar si es fin de semana
   const dayOfWeek = event.date.getDay()
@@ -227,7 +240,7 @@ export async function buildValidationContext(
       rotativosTomados: balance?.rotativosTomados ?? 0,
       rotativosObligatorios: balance?.rotativosObligatorios ?? 0,
       rotativosPorLicencia: balance?.rotativosPorLicencia ?? 0,
-      maxProyectado: balance?.maxProyectado ?? 50,
+      maxProyectado: maxProyectadoCalculado, // Siempre calculado en tiempo real
       maxAjustadoManual: balance?.maxAjustadoManual ?? undefined,
       finesDeSemanaMes,
       bloqueUsado: balance?.bloqueUsado ?? false,

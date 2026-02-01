@@ -382,7 +382,6 @@ model UserSeasonBalance {
   rotativosTomados      Int   @default(0)
   rotativosObligatorios Int   @default(0)
   rotativosPorLicencia  Float @default(0)
-  maxProyectado         Float // Calculado segun formula
   maxAjustadoManual     Float? // Override del admin
 
   finesDeSemanaMes Json    @default("{}") // {"2024-01": 1, "2024-02": 0}

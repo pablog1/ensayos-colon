@@ -2,9 +2,10 @@ import { prisma } from "@/lib/prisma"
 
 /**
  * Calcula el máximo proyectado basado en los cupos reales de todos los eventos
- * de la temporada dividido por la cantidad de integrantes
+ * de la temporada dividido por la cantidad de integrantes.
+ * Siempre usa Math.floor para redondear hacia abajo y evitar inconsistencias.
  */
-async function calcularMaxProyectadoReal(seasonId: string): Promise<number> {
+export async function calcularMaximoProyectado(seasonId: string): Promise<number> {
   // Obtener todos los titulos con sus eventos
   const titulos = await prisma.titulo.findMany({
     where: { seasonId },
@@ -35,7 +36,7 @@ async function calcularMaxProyectadoReal(seasonId: string): Promise<number> {
     return 1 // Mínimo de 1 rotativo para evitar bloqueos
   }
 
-  const calculado = Math.round(totalCuposDisponibles / totalIntegrantes)
+  const calculado = Math.floor(totalCuposDisponibles / totalIntegrantes)
   // Garantizar un mínimo de 1 rotativo
   return Math.max(1, calculado)
 }
@@ -58,15 +59,12 @@ export async function updateUserBalance(
 
   if (!balance) {
     // Crear balance si no existe
-    const maxProyectado = await calcularMaxProyectadoReal(seasonId)
-
     await prisma.userSeasonBalance.create({
       data: {
         userId,
         seasonId,
         rotativosTomados: params.incrementRotativos ? 1 : 0,
         rotativosObligatorios: params.incrementObligatorios ? 1 : 0,
-        maxProyectado,
         finesDeSemanaMes: params.isWeekend && params.eventDate
           ? { [params.eventDate.toISOString().slice(0, 7)]: 1 }
           : {},
@@ -183,9 +181,6 @@ export async function recalculateBalance(userId: string, seasonId: string): Prom
     },
   }) > 0
 
-  // Calcular maximo proyectado basado en cupos reales
-  const maxProyectado = await calcularMaxProyectadoReal(seasonId)
-
   await prisma.userSeasonBalance.upsert({
     where: { userId_seasonId: { userId, seasonId } },
     create: {
@@ -193,14 +188,12 @@ export async function recalculateBalance(userId: string, seasonId: string): Prom
       seasonId,
       rotativosTomados,
       rotativosObligatorios,
-      maxProyectado,
       finesDeSemanaMes,
       bloqueUsado,
     },
     update: {
       rotativosTomados,
       rotativosObligatorios,
-      maxProyectado,
       finesDeSemanaMes,
       bloqueUsado,
     },
