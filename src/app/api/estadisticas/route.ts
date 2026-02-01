@@ -122,6 +122,50 @@ export async function GET(req: NextRequest) {
     ? Math.floor(totalCuposDisponibles / totalIntegrantes)
     : 0
 
+  // Obtener todos los eventos de la temporada con sus fechas y cupos para calcular máximos proporcionales
+  const eventosTemporada = await prisma.event.findMany({
+    where: { seasonId: season.id },
+    select: {
+      id: true,
+      date: true,
+      cupoOverride: true,
+      titulo: {
+        select: { cupo: true }
+      }
+    }
+  })
+
+  // Función para calcular el máximo basado en cupos reales desde la fecha de ingreso
+  // En vez de proporción de días, cuenta los cupos de eventos disponibles desde esa fecha
+  const calcularMaximoProporcional = (fechaIngreso: Date | null): number => {
+    if (!fechaIngreso) {
+      return maximoPorIntegrante
+    }
+
+    const inicioIntegrante = new Date(fechaIngreso)
+    inicioIntegrante.setHours(0, 0, 0, 0)
+
+    // Contar cupos de eventos desde la fecha de ingreso
+    let cuposDesdeIngreso = 0
+    for (const evento of eventosTemporada) {
+      const fechaEvento = new Date(evento.date)
+      fechaEvento.setHours(0, 0, 0, 0)
+
+      if (fechaEvento >= inicioIntegrante) {
+        const cupo = evento.cupoOverride ?? evento.titulo.cupo
+        cuposDesdeIngreso += cupo
+      }
+    }
+
+    // Calcular máximo proporcional: cupos desde ingreso / total integrantes
+    if (totalIntegrantes === 0 || cuposDesdeIngreso === 0) {
+      return 1
+    }
+
+    const maxProporcional = Math.floor(cuposDesdeIngreso / totalIntegrantes)
+    return Math.max(1, maxProporcional)
+  }
+
   // Obtener rotativos de temporada agrupados por usuario - pasados
   const rotativosPasadosPorUsuario = await prisma.rotativo.groupBy({
     by: ['userId'],
@@ -235,8 +279,8 @@ export async function GET(req: NextRequest) {
     const usadosFuturos = rotativosFuturosMap[usuario.id] || 0
     const balance = balancesMap[usuario.id]
     const rotativosPorLicencia = Math.floor(balance?.rotativosPorLicencia || 0)
-    // Usar ajuste manual si existe, sino el máximo calculado en tiempo real
-    const maxIndividual = balance?.maxAjustadoManual ?? maximoPorIntegrante
+    // Usar ajuste manual si existe, sino el máximo proporcional (ajustado por fecha de ingreso)
+    const maxIndividual = balance?.maxAjustadoManual ?? calcularMaximoProporcional(balance?.fechaIngreso ?? null)
 
     // Total consumidos incluye los rotativos por licencia
     const consumidos = usadosPasados + usadosFuturos + rotativosPorLicencia
@@ -306,8 +350,8 @@ export async function GET(req: NextRequest) {
   const usadosFuturosUsuario = rotativosFuturosMap[session.user.id] || 0
   const balanceUsuario = balancesMap[session.user.id]
   const rotativosPorLicenciaUsuario = Math.floor(balanceUsuario?.rotativosPorLicencia || 0)
-  // Usar ajuste manual si existe, sino el máximo calculado en tiempo real
-  const maxUsuario = balanceUsuario?.maxAjustadoManual ?? maximoPorIntegrante
+  // Usar ajuste manual si existe, sino el máximo proporcional (ajustado por fecha de ingreso)
+  const maxUsuario = balanceUsuario?.maxAjustadoManual ?? calcularMaximoProporcional(balanceUsuario?.fechaIngreso ?? null)
   const consumidosUsuario = usadosPasadosUsuario + usadosFuturosUsuario + rotativosPorLicenciaUsuario
   const restantesUsuario = Math.max(0, maxUsuario - consumidosUsuario)
   const porcentajeUsadoUsuario = maxUsuario > 0

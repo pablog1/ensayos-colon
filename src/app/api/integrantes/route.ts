@@ -123,9 +123,27 @@ export async function POST(req: NextRequest) {
         rotativosCalculados = Math.round(totalRotativos / balances.length)
       }
 
-      // Crear balance para el nuevo integrante con justificación
-      // Usamos maxAjustadoManual para nuevos integrantes ya que su máximo es proporcional
-      const justificacion = `Promedio del grupo al momento del ingreso: ${rotativosCalculados} rotativos (${balances.length} integrantes activos)`
+      // Calcular cupos reales disponibles desde la fecha de ingreso
+      const eventosDesdeIngreso = await prisma.event.findMany({
+        where: {
+          seasonId: season.id,
+          date: { gte: new Date(joinDate) }
+        },
+        include: { titulo: { select: { cupo: true } } }
+      })
+
+      let cuposDesdeIngreso = 0
+      for (const evento of eventosDesdeIngreso) {
+        cuposDesdeIngreso += evento.cupoOverride ?? evento.titulo.cupo
+      }
+
+      // Total de integrantes (incluyendo el nuevo)
+      const totalIntegrantes = await prisma.user.count()
+      const maxCalculado = totalIntegrantes > 0 ? Math.floor(cuposDesdeIngreso / totalIntegrantes) : 1
+
+      // Crear balance para el nuevo integrante
+      // NO guardamos maxAjustadoManual para que se calcule dinámicamente
+      const justificacion = `Cupos desde fecha de ingreso: ${cuposDesdeIngreso} / ${totalIntegrantes} integrantes = ${maxCalculado} rotativos`
 
       await prisma.userSeasonBalance.create({
         data: {
@@ -134,13 +152,15 @@ export async function POST(req: NextRequest) {
           rotativosTomados: 0,
           rotativosObligatorios: 0,
           rotativosPorLicencia: 0,
-          maxAjustadoManual: rotativosCalculados,
+          // maxAjustadoManual: null - se calcula dinámicamente basado en eventos desde fechaIngreso
           fechaIngreso: new Date(joinDate),
-          asignacionInicialRotativos: rotativosCalculados,
+          asignacionInicialRotativos: maxCalculado, // valor de referencia al momento del ingreso
           asignacionFechaCalculo: new Date(),
           asignacionJustificacion: justificacion,
         },
       })
+
+      rotativosCalculados = maxCalculado
 
       // Audit log
       await createAuditLog({
