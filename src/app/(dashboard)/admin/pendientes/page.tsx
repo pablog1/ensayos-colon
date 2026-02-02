@@ -27,6 +27,7 @@ interface SolicitudPendiente {
   createdAt: string
   motivo?: string | null
   eventoTitle?: string
+  eventoHora?: string | null
   tituloName?: string
   tituloType?: string
   esEventoIndividualConcierto?: boolean
@@ -42,15 +43,12 @@ interface CancelacionPendiente {
   id: string
   motivo: string | null
   createdAt: string
+  fecha: string
+  eventoTitle?: string
   user: {
     id: string
     name: string
     alias: string | null
-  }
-  event: {
-    id: string
-    title: string
-    date: string
   }
 }
 
@@ -66,6 +64,7 @@ interface EnEspera {
   }
   tituloName?: string
   eventoType?: string
+  eventoHora?: string | null
 }
 
 type AccionPendiente = {
@@ -98,6 +97,14 @@ export default function PendientesPage() {
     try {
       const res = await fetch("/api/solicitudes")
       const data = await res.json()
+
+      // Verificar que data sea un array
+      if (!Array.isArray(data)) {
+        console.error("Error fetching solicitudes:", data)
+        toast.error("Error al cargar solicitudes")
+        return
+      }
+
       // Filtrar solicitudes pendientes de aprobacion
       const pendientes = data.filter(
         (s: { estado: string }) => s.estado === "PENDIENTE"
@@ -115,6 +122,9 @@ export default function PendientesPage() {
         (s: { estado: string }) => s.estado === "EN_ESPERA"
       )
       setEnEspera(esperando)
+    } catch (error) {
+      console.error("Error fetching pendientes:", error)
+      toast.error("Error al cargar solicitudes pendientes")
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -301,6 +311,7 @@ export default function PendientesPage() {
                           day: "numeric",
                           month: "short",
                         })}
+                        {s.eventoHora && ` a las ${s.eventoHora}`}
                       </span>
                     </div>
                     <div>
@@ -374,8 +385,8 @@ export default function PendientesPage() {
                         {c.user.alias || c.user.name}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Evento: {c.event.title} -{" "}
-                        {format(new Date(c.event.date), "EEEE d 'de' MMMM", { locale: es })}
+                        Evento: {c.eventoTitle || "Sin título"} -{" "}
+                        {format(new Date(c.fecha + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
@@ -454,8 +465,9 @@ export default function PendientesPage() {
                           day: "numeric",
                           month: "short",
                         })}
-                        {e.tituloName && <> · {e.tituloName}</>}
-                        {e.eventoType && <> · {e.eventoType === "FUNCION" ? "Función" : "Ensayo"}</>}
+                        {e.eventoHora ? ` ${e.eventoHora}` : null}
+                        {e.tituloName ? ` · ${e.tituloName}` : null}
+                        {e.eventoType ? ` · ${e.eventoType === "FUNCION" ? "Función" : "Ensayo"}` : null}
                       </p>
                     </div>
                   </div>
@@ -492,6 +504,7 @@ export default function PendientesPage() {
                       day: "numeric",
                       month: "long",
                     })}
+                    {accionPendiente.solicitud.eventoHora && ` a las ${accionPendiente.solicitud.eventoHora}`}
                   </strong>
                 </>
               )}

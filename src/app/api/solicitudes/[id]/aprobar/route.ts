@@ -150,10 +150,17 @@ export async function POST(
       const maxEfectivo = totalIntegrantes > 0 ? Math.max(1, Math.floor(totalCupos / totalIntegrantes)) : 1
 
       console.log("[DEBUG Alerta] totalCupos:", totalCupos, "totalIntegrantes:", totalIntegrantes, "maxEfectivo:", maxEfectivo, "titulos:", titulos.length)
-      const totalActual =
-        balance.rotativosTomados +
-        balance.rotativosObligatorios +
-        balance.rotativosPorLicencia
+
+      // Contar rotativos aprobados en tiempo real (igual que el dashboard)
+      const rotativosAprobados = await prisma.rotativo.count({
+        where: {
+          userId: updated.userId,
+          estado: "APROBADO",
+          event: { seasonId: seasonId },
+        },
+      })
+      const totalActual = rotativosAprobados + balance.rotativosPorLicencia
+      console.log("[DEBUG Alerta] rotativosAprobados:", rotativosAprobados, "rotativosPorLicencia:", balance.rotativosPorLicencia, "totalActual:", totalActual)
 
       // Obtener umbral de alerta (default 90%)
       const reglaUmbral = await prisma.ruleConfig.findUnique({

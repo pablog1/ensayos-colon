@@ -1,14 +1,27 @@
 "use client"
 
 import Link from "next/link"
+import dynamic from "next/dynamic"
 /* eslint-disable @next/next/no-img-element */
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { MobileNav } from "./mobile-nav"
-import { ProfileModal } from "@/components/profile/profile-modal"
-import { NotificationPanel } from "@/components/notifications/notification-panel"
 import { useNotifications } from "@/hooks/use-notifications"
 import { DebugDatePicker } from "@/components/debug/debug-date-picker"
+
+// Dynamic imports para evitar errores de hidratación con Radix UI
+const MobileNav = dynamic(() => import("./mobile-nav").then(mod => mod.MobileNav), {
+  ssr: false,
+})
+
+const NotificationPanelDynamic = dynamic(
+  () => import("@/components/notifications/notification-panel").then(mod => mod.NotificationPanel),
+  { ssr: false }
+)
+
+const ProfileModalDynamic = dynamic(
+  () => import("@/components/profile/profile-modal").then(mod => mod.ProfileModal),
+  { ssr: false }
+)
 
 export function Navbar() {
   const { data: session } = useSession()
@@ -49,8 +62,8 @@ export function Navbar() {
 
           {session?.user && (
             <>
-              <NotificationPanel unreadCount={userNotifications} />
-              <ProfileModal />
+              <NotificationPanelDynamic unreadCount={userNotifications} />
+              <ProfileModalDynamic />
               <Button
                 size="sm"
                 onClick={() => signOut({ callbackUrl: "/login" })}

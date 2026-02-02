@@ -31,44 +31,67 @@ export function formatTimeAR(date: Date | null | undefined): string | null {
 
 /**
  * Formatea una fecha larga en zona horaria Argentina (ej: "lunes 15 de enero")
+ * NOTA: Para fechas que vienen de la BD como @db.Date (medianoche UTC),
+ * extraemos los componentes UTC para evitar desfase de día por timezone.
  */
 export function formatDateLongAR(date: Date): string {
-  return date.toLocaleDateString("es-AR", {
+  // Extraer componentes UTC para evitar que medianoche UTC se convierta al día anterior
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+
+  // Crear fecha a mediodía para formatear sin problemas de timezone
+  const safeDate = new Date(year, month, day, 12, 0, 0)
+
+  return safeDate.toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",
-    timeZone: TIMEZONE_AR,
   })
 }
 
 /**
  * Formatea una fecha corta en zona horaria Argentina (ej: "15/01")
+ * NOTA: Para fechas que vienen de la BD como @db.Date, usa componentes UTC.
  */
 export function formatDateShortAR(date: Date): string {
-  return date.toLocaleDateString("es-AR", {
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+  const safeDate = new Date(year, month, day, 12, 0, 0)
+
+  return safeDate.toLocaleDateString("es-AR", {
     day: "2-digit",
     month: "2-digit",
-    timeZone: TIMEZONE_AR,
   })
 }
 
 /**
  * Formatea una fecha en zona horaria Argentina (ej: "lun 15 ene")
+ * NOTA: Para fechas que vienen de la BD como @db.Date, usa componentes UTC.
  */
 export function formatDateMediumAR(date: Date): string {
-  return date.toLocaleDateString("es-AR", {
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+  const safeDate = new Date(year, month, day, 12, 0, 0)
+
+  return safeDate.toLocaleDateString("es-AR", {
     weekday: "short",
     day: "numeric",
     month: "short",
-    timeZone: TIMEZONE_AR,
   })
 }
 
 /**
  * Formatea una fecha simple en zona horaria Argentina (ej: "15/1/2024")
+ * NOTA: Para fechas que vienen de la BD como @db.Date, usa componentes UTC.
  */
 export function formatDateAR(date: Date): string {
-  return date.toLocaleDateString("es-AR", {
-    timeZone: TIMEZONE_AR,
-  })
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+  const safeDate = new Date(year, month, day, 12, 0, 0)
+
+  return safeDate.toLocaleDateString("es-AR")
 }

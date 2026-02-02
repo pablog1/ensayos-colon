@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { formatDateShortAR } from "@/lib/utils"
+import { createAuditLog } from "@/lib/services/audit"
 
 // POST /api/bloques/solicitar - Solicitar bloque completo de un título
 export async function POST(req: NextRequest) {
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
     where: { key: "MAX_PROYECTADO" },
   })
 
-  if (reglaMaxProyectado?.enabled && balance) {
+  if (reglaMaxProyectado?.enabled) {
     // Calcular máximo proyectado siempre en tiempo real
     const titulosTemp = await prisma.titulo.findMany({
       where: { seasonId: temporadaActiva.id },
@@ -169,10 +170,17 @@ export async function POST(req: NextRequest) {
     }
     const totalIntegrantesTemp = await prisma.user.count()
     const maxEfectivo = totalIntegrantesTemp > 0 ? Math.max(1, Math.floor(totalCuposTemp / totalIntegrantesTemp)) : 1
-    const totalActual =
-      balance.rotativosTomados +
-      balance.rotativosObligatorios +
-      balance.rotativosPorLicencia
+
+    // Contar rotativos REALES de la base de datos (no usar balance que puede estar desactualizado)
+    const rotativosReales = await prisma.rotativo.count({
+      where: {
+        userId: session.user.id,
+        estado: { in: ["APROBADO", "PENDIENTE"] },
+        event: { seasonId: temporadaActiva.id },
+      },
+    })
+    const rotativosPorLicencia = Math.floor(balance?.rotativosPorLicencia || 0)
+    const totalActual = rotativosReales + rotativosPorLicencia
 
     // Verificar si el usuario ya agotó sus rotativos
     if (totalActual >= maxEfectivo) {
@@ -316,6 +324,23 @@ export async function POST(req: NextRequest) {
 
   const esCompletarBloque = rotativosExistentes > 0
   const accion = esCompletarBloque ? "completado" : "solicitado"
+
+  await createAuditLog({
+    action: "BLOQUE_SOLICITADO",
+    entityType: "Block",
+    entityId: bloque.id,
+    userId: session.user.id,
+    details: {
+      bloque: titulo.name,
+      tituloId: titulo.id,
+      estado,
+      rotativosCreados: rotativosCreados.length,
+      rotativosExistentes,
+      eventosSaltados: eventosSaltados.length,
+      esCompletarBloque,
+      motivo: motivoTexto,
+    },
+  })
 
   return NextResponse.json({
     success: true,

@@ -86,7 +86,12 @@ function formatEventDateTime(details: Record<string, unknown>): string {
 
   try {
     const fechaObj = new Date(fecha)
-    parts.push(fechaObj.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }))
+    // Extraer componentes UTC para evitar desfase de día por timezone
+    // (las fechas de BD se guardan como medianoche UTC)
+    const day = fechaObj.getUTCDate()
+    const month = fechaObj.getUTCMonth() + 1
+    const year = fechaObj.getUTCFullYear()
+    parts.push(`${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year}`)
   } catch {
     // Si no se puede parsear, usar el string original
     if (typeof fecha === "string" && fecha.includes("T")) {
