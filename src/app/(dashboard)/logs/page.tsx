@@ -156,6 +156,8 @@ function getLogDescription(log: AuditLog): string {
       return `${userName} creó rotativo retroactivo para ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_PASADO_ELIMINADO":
       return `${userName} eliminó rotativo pasado de ${targetName || "un usuario"} en ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
+    case "ROTATIVO_EN_ESPERA":
+      return `${userName} quedó en espera de rotativo para ${evento || titulo || "un evento"}${eventInfo}`
 
     case "BLOQUE_SOLICITADO":
       return `${userName} solicitó bloque completo de ${titulo || "un título"}`
@@ -243,6 +245,9 @@ function getActionColor(action: string, isCritical?: boolean): string {
   if (action.includes("CANCELADO")) {
     return "bg-gray-100 text-gray-800"
   }
+  if (action.includes("ESPERA")) {
+    return "bg-yellow-100 text-yellow-800"
+  }
   if (action.includes("MODIFICAD")) {
     return "bg-orange-100 text-orange-800"
   }
@@ -264,6 +269,7 @@ function getActionLabel(action: string): string {
     ROTATIVO_ELIMINADO_ADMIN: "Admin eliminó",
     ROTATIVO_PASADO_CREADO: "Retroactivo",
     ROTATIVO_PASADO_ELIMINADO: "Eliminado pasado",
+    ROTATIVO_EN_ESPERA: "Rotativo en Espera",
     BLOQUE_SOLICITADO: "Bloque",
     BLOQUE_APROBADO: "Aprobado",
     BLOQUE_CANCELADO: "Cancelado",
