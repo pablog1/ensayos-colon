@@ -1272,40 +1272,70 @@ export default function DashboardPage() {
       pdf.text(dia, x, headerY, { align: "center" })
     })
 
-    // Calcular días del mes (igual que en la grilla)
+    // Calcular días del mes (igual que en la grilla HTML)
     const primerDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
     const ultimoDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
 
-    let diaSemana = primerDiaMes.getDay()
-    if (diaSemana === 0) diaSemana = 7
-    if (diaSemana === 1) diaSemana = 8
-    const diasAnteriores = diaSemana - 2
+    const pdfJsDay = primerDiaMes.getDay()
+    const pdfStartDayOfWeek = pdfJsDay === 0 ? 5 : pdfJsDay === 1 ? 0 : pdfJsDay - 2
+    const pdfDaysInMonth = ultimoDiaMes.getDate()
+    const pdfPrevMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 0)
+    const pdfDaysInPrevMonth = pdfPrevMonth.getDate()
 
-    const diasCalendario: Date[] = []
-    for (let i = diasAnteriores; i > 0; i--) {
-      const fecha = new Date(primerDiaMes)
-      fecha.setDate(fecha.getDate() - i)
-      diasCalendario.push(fecha)
+    const pdfCells: { date: Date; isOutside: boolean }[] = []
+
+    // Días del mes anterior (excluyendo lunes)
+    let pdfDaysToAdd = pdfStartDayOfWeek
+    let pdfPrevDay = pdfDaysInPrevMonth
+    const pdfPrevDays: { date: Date; isOutside: boolean }[] = []
+    while (pdfDaysToAdd > 0) {
+      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, pdfPrevDay)
+      if (date.getDay() !== 1) {
+        pdfPrevDays.unshift({ date, isOutside: true })
+        pdfDaysToAdd--
+      }
+      pdfPrevDay--
     }
-    for (let i = 1; i <= ultimoDiaMes.getDate(); i++) {
-      diasCalendario.push(new Date(mesActual.getFullYear(), mesActual.getMonth(), i))
+    pdfCells.push(...pdfPrevDays)
+
+    // Días del mes actual (excluyendo lunes)
+    for (let day = 1; day <= pdfDaysInMonth; day++) {
+      const date = new Date(mesActual.getFullYear(), mesActual.getMonth(), day)
+      if (date.getDay() !== 1) {
+        pdfCells.push({ date, isOutside: false })
+      }
     }
-    while (diasCalendario.length < 36) {
-      const ultimaFecha = diasCalendario[diasCalendario.length - 1]
-      const siguiente = new Date(ultimaFecha)
-      siguiente.setDate(siguiente.getDate() + 1)
-      diasCalendario.push(siguiente)
+
+    // Completar solo la última fila
+    let pdfNextDay = 1
+    while (pdfCells.length % 6 !== 0) {
+      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, pdfNextDay)
+      if (date.getDay() !== 1) {
+        pdfCells.push({ date, isOutside: true })
+      }
+      pdfNextDay++
     }
+
+    // Eliminar filas enteras que sean todas de otro mes
+    while (pdfCells.length >= 6 && pdfCells.slice(-6).every(c => c.isOutside)) {
+      pdfCells.splice(-6)
+    }
+    while (pdfCells.length >= 6 && pdfCells.slice(0, 6).every(c => c.isOutside)) {
+      pdfCells.splice(0, 6)
+    }
+
+    const totalRows = pdfCells.length / 6
 
     // Dibujar grilla
     const startY = 30
-    const cellHeight = (pageHeight - startY - margin) / 6
+    const cellHeight = (pageHeight - startY - margin) / totalRows
     let currentY = startY
 
-    for (let semana = 0; semana < 6; semana++) {
+    for (let semana = 0; semana < totalRows; semana++) {
       for (let dia = 0; dia < 6; dia++) {
         const index = semana * 6 + dia
-        const fecha = diasCalendario[index]
+        const cell = pdfCells[index]
+        const fecha = cell.date
         const x = margin + (dia * cellWidth)
         const y = currentY
 
@@ -1314,17 +1344,17 @@ export default function DashboardPage() {
         pdf.setLineWidth(0.5)
         pdf.rect(x, y, cellWidth, cellHeight)
 
-        // Color de fondo para días del mes actual
-        const esMesActual = fecha.getMonth() === mesActual.getMonth()
-        if (!esMesActual) {
-          pdf.setFillColor(245, 245, 245)
+        // Celda de otro mes: vacía
+        if (cell.isOutside) {
+          pdf.setFillColor(248, 248, 248)
           pdf.rect(x, y, cellWidth, cellHeight, "F")
+          continue
         }
 
         // Número del día (arriba a la izquierda)
         pdf.setFontSize(10)
-        pdf.setFont("helvetica", esMesActual ? "bold" : "normal")
-        pdf.setTextColor(esMesActual ? 0 : 150)
+        pdf.setFont("helvetica", "bold")
+        pdf.setTextColor(0)
         const diaNumero = fecha.getDate().toString()
         pdf.text(diaNumero, x + 2, y + 4)
 
@@ -1340,66 +1370,56 @@ export default function DashboardPage() {
           let eventoY = y + 4
           let primeraLinea = true
 
-          eventosDelDia.forEach((evento, eventoIndex) => {
+          const maxTextWidth = cellWidth - offsetX - 2
+
+          eventosDelDia.forEach((evento) => {
             if (eventoY + 3 > y + cellHeight - 1) return
 
             // Tipo y hora - en negrita, en la misma línea que el número
             const tipo = evento.eventoType === "ENSAYO" ? "E" : "F"
             const hora = format(new Date(evento.startTime), "HH:mm")
+            pdf.setFontSize(8)
             pdf.setFont("helvetica", "bold")
 
             if (primeraLinea) {
-              // Primera línea: al lado del número
               pdf.text(`${tipo} ${hora}`, x + offsetX, eventoY)
               primeraLinea = false
             } else {
               pdf.text(`${tipo} ${hora}`, x + offsetX, eventoY)
             }
-            eventoY += 2.5
+            eventoY += 3
 
-            // Título del evento - en negrita, alineado con el horario
-            pdf.text(evento.tituloName, x + offsetX, eventoY)
-            eventoY += 2.5
+            // Título del evento - truncado si excede el ancho de la celda
+            pdf.setFontSize(8)
+            let tituloText = evento.tituloName
+            while (pdf.getTextWidth(tituloText) > maxTextWidth && tituloText.length > 3) {
+              tituloText = tituloText.slice(0, -1)
+            }
+            if (tituloText !== evento.tituloName) {
+              tituloText = tituloText.slice(0, -1) + "…"
+            }
+            pdf.text(tituloText, x + offsetX, eventoY)
+            eventoY += 3
             pdf.setFont("helvetica", "normal")
 
-            // Rotativos aprobados/pendientes - TODOS los nombres
+            // Rotativos aprobados/pendientes - un nombre por línea
             const rotativosActivos = evento.rotativos.filter(r =>
               r.estado === "APROBADO" || r.estado === "PENDIENTE"
             )
             if (rotativosActivos.length > 0) {
-              pdf.setFontSize(7)
-              // Mostrar TODOS los nombres, divididos en líneas si es necesario
+              pdf.setFontSize(8)
               const todosNombres = rotativosActivos.map(r => r.user.alias || r.user.name.split(" ")[0])
-              const maxCharsPerLine = Math.floor((cellWidth - offsetX - 2) / 2) // Ajustado al offset
-              let lineaActual = ""
 
-              todosNombres.forEach((nombre, idx) => {
-                const separador = idx === 0 ? "" : ", "
-                const textoTest = lineaActual + separador + nombre
-
-                if (textoTest.length > maxCharsPerLine && lineaActual.length > 0) {
-                  // Imprimir línea actual y empezar nueva
-                  if (eventoY + 2.5 <= y + cellHeight - 1) {
-                    pdf.text(lineaActual, x + offsetX, eventoY)
-                    eventoY += 2.5
-                  }
-                  lineaActual = nombre
-                } else {
-                  lineaActual = textoTest
+              todosNombres.forEach((nombre) => {
+                if (eventoY + 3 <= y + cellHeight - 1) {
+                  pdf.text(nombre, x + offsetX, eventoY)
+                  eventoY += 3
                 }
               })
-
-              // Imprimir última línea
-              if (lineaActual.length > 0 && eventoY + 2.5 <= y + cellHeight - 1) {
-                pdf.text(lineaActual, x + offsetX, eventoY)
-                eventoY += 2.5
-              }
-
-              pdf.setFontSize(8)
             }
 
             // Más espacio entre eventos cuando hay múltiples
-            eventoY += eventosDelDia.length > 1 ? 2.5 : 1
+            eventoY += eventosDelDia.length > 1 ? 3 : 1.5
           })
         }
 
@@ -1408,10 +1428,18 @@ export default function DashboardPage() {
       currentY += cellHeight
     }
 
+    // Fecha y hora de descarga al pie
+    const ahora = new Date()
+    const fechaDescarga = format(ahora, "dd/MM/yyyy HH:mm", { locale: es })
+    pdf.setFontSize(8)
+    pdf.setFont("helvetica", "italic")
+    pdf.setTextColor(0)
+    pdf.text(`Descargado: ${fechaDescarga}`, pageWidth - margin, pageHeight - 3, { align: "right" })
+
     // Generar el PDF
     const fileName = `calendario-${format(mesActual, "yyyy-MM")}.pdf`
     pdf.save(fileName)
-    toast.success("PDF generado", { description: fileName })
+    toast.success(`PDF generado: ${fileName}`)
   }
 
   // Obtener las fechas de la semana actual (martes a domingo, sin lunes)
@@ -1506,18 +1534,16 @@ export default function DashboardPage() {
                         <span
                           key={j}
                           className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
-                            tieneExcepcion
-                              ? "bg-amber-200 text-amber-800"
-                              : r.estado === "APROBADO"
-                                ? "bg-green-200 text-green-800"
-                                : r.estado === "PENDIENTE"
-                                  ? "bg-red-200 text-red-800"
-                                  : "bg-yellow-200 text-yellow-800"
+                            r.estado === "APROBADO"
+                              ? "bg-green-200 text-green-800"
+                              : r.estado === "PENDIENTE"
+                                ? "bg-red-200 text-red-800"
+                                : "bg-yellow-200 text-yellow-800"
                           } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
                           title={tieneExcepcion ? r.motivo || "" : ""}
                         >
                           {r.user.alias || r.user.name.split(" ")[0]}
-                          {tieneExcepcion && !esMio && <AlertTriangle className="w-2.5 h-2.5" />}
+                          {tieneExcepcion && <AlertTriangle className="w-2.5 h-2.5" />}
                         </span>
                       )
                     })}
@@ -1537,49 +1563,9 @@ export default function DashboardPage() {
   // Eventos del día seleccionado
   const eventosDelDiaSeleccionado = selectedDate ? getEventosDelDia(selectedDate) : []
 
-  // Calcular la última fecha visible del calendario (para filtrar rotativos)
+  // Calcular la última fecha visible del calendario (último día del mes)
   const ultimaFechaVisibleCalendario = useMemo(() => {
-    const firstDay = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
-    const lastDay = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
-    const jsDay = firstDay.getDay()
-    const startDayOfWeek = jsDay === 0 ? 5 : jsDay === 1 ? 0 : jsDay - 2
-    const daysInMonth = lastDay.getDate()
-    const prevMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 0)
-    const daysInPrevMonth = prevMonth.getDate()
-
-    let cellCount = 0
-    // Contar días del mes anterior
-    let daysToAdd = startDayOfWeek
-    let prevDay = daysInPrevMonth
-    while (daysToAdd > 0) {
-      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, prevDay)
-      if (date.getDay() !== 1) {
-        cellCount++
-        daysToAdd--
-      }
-      prevDay--
-    }
-    // Contar días del mes actual
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(mesActual.getFullYear(), mesActual.getMonth(), day)
-      if (date.getDay() !== 1) {
-        cellCount++
-      }
-    }
-    // Calcular cuántos días del mes siguiente se necesitan
-    let nextDay = 1
-    while (cellCount < 36) {
-      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, nextDay)
-      if (date.getDay() !== 1) {
-        cellCount++
-        if (cellCount === 36) {
-          return date
-        }
-      }
-      nextDay++
-    }
-    // Si ya se llenó con días del mes actual
-    return lastDay
+    return new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
   }, [mesActual])
 
   // Obtener rotativos de eventos (nuevo sistema)
@@ -1857,18 +1843,16 @@ export default function DashboardPage() {
                                                   <span
                                                     key={r.id}
                                                     className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
-                                                      tieneExcepcion
-                                                        ? "bg-amber-100 text-amber-800"
-                                                        : r.estado === "APROBADO"
-                                                          ? "bg-green-100 text-green-800"
-                                                          : r.estado === "PENDIENTE"
-                                                            ? "bg-red-100 text-red-800"
-                                                            : "bg-yellow-100 text-yellow-800"
+                                                      r.estado === "APROBADO"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : r.estado === "PENDIENTE"
+                                                          ? "bg-red-100 text-red-800"
+                                                          : "bg-yellow-100 text-yellow-800"
                                                     } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
                                                     title={tieneExcepcion ? r.motivo || "" : ""}
                                                   >
                                                     {r.user.alias || r.user.name.split(" ")[0]}
-                                                    {tieneExcepcion && !esMio && <AlertTriangle className="w-3 h-3" />}
+                                                    {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
                                                   </span>
                                                 )
                                               })}
@@ -1911,7 +1895,7 @@ export default function DashboardPage() {
 
                           const cells: { date: Date; isOutside: boolean }[] = []
 
-                          // Días del mes anterior (excluyendo lunes)
+                          // Días del mes anterior (excluyendo lunes) - celdas vacías para alinear
                           let daysToAdd = startDayOfWeek
                           let prevDay = daysInPrevMonth
                           const prevDays: { date: Date; isOutside: boolean }[] = []
@@ -1933,9 +1917,9 @@ export default function DashboardPage() {
                             }
                           }
 
-                          // Días del mes siguiente para completar la grilla (6 filas x 6 cols = 36)
+                          // Completar solo la última fila (no agregar filas enteras extras)
                           let nextDay = 1
-                          while (cells.length < 36) {
+                          while (cells.length % 6 !== 0) {
                             const date = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, nextDay)
                             if (date.getDay() !== 1) { // No es lunes
                               cells.push({ date, isOutside: true })
@@ -1943,7 +1927,25 @@ export default function DashboardPage() {
                             nextDay++
                           }
 
+                          // Eliminar filas enteras que sean todas de otro mes
+                          while (cells.length >= 6 && cells.slice(-6).every(c => c.isOutside)) {
+                            cells.splice(-6)
+                          }
+                          while (cells.length >= 6 && cells.slice(0, 6).every(c => c.isOutside)) {
+                            cells.splice(0, 6)
+                          }
+
                           return cells.map((cell, idx) => {
+                            // Celdas de otro mes: vacías, sin contenido ni interacción
+                            if (cell.isOutside) {
+                              return (
+                                <div
+                                  key={idx}
+                                  className="h-36 border-b border-r border-border bg-gray-50/30"
+                                />
+                              )
+                            }
+
                             const isToday = cell.date.toDateString() === debugDate.toDateString()
                             const isSelected = selectedDate?.toDateString() === cell.date.toDateString()
 
@@ -1951,7 +1953,7 @@ export default function DashboardPage() {
                               <div
                                 key={idx}
                                 className={`h-36 border-b border-r border-border overflow-hidden cursor-pointer transition-all ${
-                                  cell.isOutside ? "bg-gray-100/50 text-muted-foreground/50" : getDayBgColor(cell.date)
+                                  getDayBgColor(cell.date)
                                 } ${isToday ? "ring-2 ring-inset ring-amber-400" : ""} ${
                                   isSelected ? "ring-2 ring-inset ring-primary" : ""
                                 } hover:bg-muted/50`}
@@ -2177,13 +2179,9 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={r.id}
-                            className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors ${
-                              tieneExcepcion ? "bg-amber-50 border-amber-200" : ""
-                            }`}
+                            className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors`}
                             style={{
-                              borderLeftColor: tieneExcepcion
-                                ? "#f59e0b"
-                                : r.evento
+                              borderLeftColor: r.evento
                                   ? getEventColor(r.evento)
                                   : (r.estado === "APROBADA" ? "#22c55e" : "#eab308"),
                               borderLeftWidth: 4
@@ -2334,18 +2332,16 @@ export default function DashboardPage() {
                                         <span
                                           key={r.id}
                                           className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${
-                                            tieneExcepcion
-                                              ? "bg-amber-100 text-amber-800"
-                                              : r.estado === "APROBADO"
-                                                ? "bg-green-100 text-green-800"
-                                                : r.estado === "PENDIENTE"
-                                                  ? "bg-red-100 text-red-800"
-                                                  : "bg-yellow-100 text-yellow-800"
+                                            r.estado === "APROBADO"
+                                              ? "bg-green-100 text-green-800"
+                                              : r.estado === "PENDIENTE"
+                                                ? "bg-red-100 text-red-800"
+                                                : "bg-yellow-100 text-yellow-800"
                                           } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
                                           title={tieneExcepcion ? r.motivo || "" : ""}
                                         >
                                           {r.user.alias || r.user.name.split(" ")[0]}
-                                          {tieneExcepcion && !esMio && <AlertTriangle className="w-3 h-3" />}
+                                          {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
                                         </span>
                                       )
                                     })}
@@ -2420,13 +2416,11 @@ export default function DashboardPage() {
                             <div
                               key={r.id}
                               className={`p-2 rounded border ${
-                                tieneExcepcion
-                                  ? "bg-amber-50 border-amber-200"
-                                  : r.estado === "APROBADO"
-                                    ? "bg-green-50 border-green-200"
-                                    : r.estado === "PENDIENTE"
-                                      ? "bg-red-50 border-red-200"
-                                      : "bg-yellow-50 border-yellow-200"
+                                r.estado === "APROBADO"
+                                  ? "bg-green-50 border-green-200"
+                                  : r.estado === "PENDIENTE"
+                                    ? "bg-red-50 border-red-200"
+                                    : "bg-yellow-50 border-yellow-200"
                               } ${esMio ? "ring-2 ring-offset-1 ring-gray-800" : ""}`}
                             >
                               <div className="flex items-center justify-between">
@@ -2434,7 +2428,7 @@ export default function DashboardPage() {
                                   <span className={`text-sm font-medium ${esMio ? "font-bold" : ""}`}>
                                     {r.user.alias || r.user.name}
                                   </span>
-                                  {tieneExcepcion && !esMio && (
+                                  {tieneExcepcion && (
                                     <AlertTriangle className="w-4 h-4 text-amber-600" />
                                   )}
                                 </div>
@@ -2442,7 +2436,7 @@ export default function DashboardPage() {
                                   {r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? `En Espera${r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}` : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
                                 </Badge>
                               </div>
-                              {tieneExcepcion && !esMio && r.motivo && (
+                              {tieneExcepcion && r.motivo && (
                                 <p className="text-xs text-amber-700 mt-1 pl-6">
                                   {r.motivo}
                                 </p>

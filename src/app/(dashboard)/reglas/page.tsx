@@ -378,13 +378,13 @@ export default function ReglasPage() {
             <div className="p-4 bg-muted/50 rounded-lg">
               <h4 className="font-semibold mb-2">Temporada</h4>
               <p className="text-sm text-muted-foreground">
-                La temporada es anual. El objetivo es terminar el año de forma equilibrada entre todos los músicos.
+                La temporada es anual. El objetivo es terminar el año de la forma más equilibrada posible (+/- 5 rotativos).
               </p>
             </div>
             <div className="p-4 bg-muted/50 rounded-lg">
               <h4 className="font-semibold mb-2">Artículos</h4>
               <p className="text-sm text-muted-foreground">
-                Las ausencias por normativa laboral (artículos) no cuentan como rotativo.
+                Las ausencias por normativa laboral (artículos) no cuentan como rotativo, pero quedan registradas en Calendario Notas.
               </p>
             </div>
           </div>
