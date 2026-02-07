@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
@@ -71,6 +72,9 @@ interface User {
 }
 
 export default function LicenciasPage() {
+  const { data: session } = useSession()
+  const isAdmin = session?.user?.role === "ADMIN"
+
   const [licencias, setLicencias] = useState<License[]>([])
   const [usuarios, setUsuarios] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -113,10 +117,12 @@ export default function LicenciasPage() {
 
   useEffect(() => {
     fetchLicencias()
-    fetchUsuarios()
+    if (isAdmin) {
+      fetchUsuarios()
+    }
     const interval = setInterval(() => fetchLicencias(), 30000)
     return () => clearInterval(interval)
-  }, [fetchLicencias, fetchUsuarios])
+  }, [fetchLicencias, fetchUsuarios, isAdmin])
 
   const handleCrearLicencia = async () => {
     if (!formData.userId || !formData.startDate || !formData.endDate) {
@@ -188,7 +194,9 @@ export default function LicenciasPage() {
         <div>
           <h1 className="text-2xl font-bold">Licencias</h1>
           <p className="text-muted-foreground">
-            Registra licencias de los integrantes
+            {isAdmin
+              ? "Registra licencias de los integrantes"
+              : "Licencias registradas de los integrantes"}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -201,10 +209,12 @@ export default function LicenciasPage() {
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Actualizar
           </Button>
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Licencia
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Licencia
+            </Button>
+          )}
         </div>
       </div>
 
@@ -272,14 +282,16 @@ export default function LicenciasPage() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-700"
-                    onClick={() => setEliminarDialog({ open: true, licencia })}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600 hover:text-red-700"
+                      onClick={() => setEliminarDialog({ open: true, licencia })}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -287,116 +299,120 @@ export default function LicenciasPage() {
         </CardContent>
       </Card>
 
-      {/* Dialog crear licencia */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nueva Licencia</DialogTitle>
-            <DialogDescription>
-              Registra una licencia para un integrante
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Integrante</Label>
-              <Select
-                value={formData.userId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, userId: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar integrante" />
-                </SelectTrigger>
-                <SelectContent>
-                  {usuarios.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.alias || user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+      {/* Dialog crear licencia (solo admin) */}
+      {isAdmin && (
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nueva Licencia</DialogTitle>
+              <DialogDescription>
+                Registra una licencia para un integrante
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Fecha inicio</Label>
-                <Input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, startDate: e.target.value })
+                <Label>Integrante</Label>
+                <Select
+                  value={formData.userId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, userId: value })
                   }
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar integrante" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {usuarios.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>
+                        {user.alias || user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Fecha inicio</Label>
+                  <Input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fecha fin</Label>
+                  <Input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, endDate: e.target.value })
+                    }
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>Fecha fin</Label>
-                <Input
-                  type="date"
-                  value={formData.endDate}
+                <Label>Descripcion (opcional)</Label>
+                <Textarea
+                  value={formData.description}
                   onChange={(e) =>
-                    setFormData({ ...formData, endDate: e.target.value })
+                    setFormData({ ...formData, description: e.target.value })
                   }
+                  placeholder="Notas adicionales..."
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Descripcion (opcional)</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Notas adicionales..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCrearLicencia} disabled={creando}>
-              {creando ? "Registrando..." : "Registrar Licencia"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCrearLicencia} disabled={creando}>
+                {creando ? "Registrando..." : "Registrar Licencia"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {/* Dialog eliminar */}
-      <Dialog
-        open={eliminarDialog.open}
-        onOpenChange={(open) => setEliminarDialog({ ...eliminarDialog, open })}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar Licencia</DialogTitle>
-            <DialogDescription>
-              Esta accion no se puede deshacer.
-              {eliminarDialog.licencia && (
-                <p className="mt-2 text-amber-600">
-                  Se revertirán los{" "}
-                  {Math.floor(eliminarDialog.licencia.rotativosCalculados)}{" "}
-                  rotativos sumados.
-                </p>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEliminarDialog({ open: false, licencia: null })}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleEliminar}
-              disabled={procesando}
-            >
-              {procesando ? "Eliminando..." : "Eliminar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog eliminar (solo admin) */}
+      {isAdmin && (
+        <Dialog
+          open={eliminarDialog.open}
+          onOpenChange={(open) => setEliminarDialog({ ...eliminarDialog, open })}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Eliminar Licencia</DialogTitle>
+              <DialogDescription>
+                Esta accion no se puede deshacer.
+                {eliminarDialog.licencia && (
+                  <p className="mt-2 text-amber-600">
+                    Se revertirán los{" "}
+                    {Math.floor(eliminarDialog.licencia.rotativosCalculados)}{" "}
+                    rotativos sumados.
+                  </p>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setEliminarDialog({ open: false, licencia: null })}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleEliminar}
+                disabled={procesando}
+              >
+                {procesando ? "Eliminando..." : "Eliminar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

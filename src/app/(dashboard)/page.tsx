@@ -346,16 +346,15 @@ export default function DashboardPage() {
     }
   }, [isAdmin])
 
-  // Fetch notas del mes (solo admin)
+  // Fetch notas del mes
   const fetchNotas = useCallback(async (mes: Date) => {
-    if (!isAdmin) return
     const mesStr = format(mes, "yyyy-MM")
     const res = await fetch(`/api/notas?mes=${mesStr}`)
     if (res.ok) {
       const data = await res.json()
       setNotas(data)
     }
-  }, [isAdmin])
+  }, [])
 
   const fetchEventos = useCallback(async (mes: Date) => {
     // Cancelar fetch anterior si existe para evitar race conditions

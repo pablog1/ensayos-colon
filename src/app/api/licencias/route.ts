@@ -29,10 +29,8 @@ export async function GET(req: NextRequest) {
     filters.estado = estado
   }
 
-  // Admin ve todas, integrante solo las suyas
-  if (session.user.role !== "ADMIN") {
-    filters.userId = session.user.id
-  } else if (userId) {
+  // Todos ven todas las licencias, pero se puede filtrar por userId
+  if (userId) {
     filters.userId = userId
   }
 

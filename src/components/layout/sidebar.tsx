@@ -52,10 +52,10 @@ const navItems = [
     roles: ["ADMIN"],
   },
   {
-    href: "/admin/licencias",
+    href: "/licencias",
     label: "Licencias",
     icon: CalendarOff,
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "INTEGRANTE"],
   },
   {
     href: "/admin/pendientes",
