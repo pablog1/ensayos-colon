@@ -30,7 +30,7 @@ export async function POST(
     where: { id },
     include: {
       event: {
-        select: { id: true, date: true, title: true, startTime: true, eventoType: true },
+        select: { id: true, date: true, title: true, startTime: true, eventoType: true, titulo: { select: { name: true } } },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -63,6 +63,7 @@ export async function POST(
     targetUserId: rotativo.userId,
     details: {
       evento: rotativo.event.title,
+      titulo: rotativo.event.titulo?.name,
       fecha: rotativo.event.date.toISOString(),
       horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,
@@ -113,7 +114,7 @@ export async function DELETE(
     where: { id },
     include: {
       event: {
-        select: { date: true, title: true, startTime: true, eventoType: true },
+        select: { date: true, title: true, startTime: true, eventoType: true, titulo: { select: { name: true } } },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -153,6 +154,7 @@ export async function DELETE(
     targetUserId: rotativo.userId,
     details: {
       evento: rotativo.event.title,
+      titulo: rotativo.event.titulo?.name,
       fecha: rotativo.event.date.toISOString(),
       horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,

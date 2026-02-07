@@ -72,6 +72,10 @@ const LOG_CATEGORIES: Record<string, { label: string; actions: string[]; isCriti
     label: "Licencias",
     actions: ["LICENCIA_CREADA", "LICENCIA_MODIFICADA"],
   },
+  notas: {
+    label: "Notas",
+    actions: ["NOTA_CREADA", "NOTA_ELIMINADA"],
+  },
 }
 
 // Función auxiliar para formatear fecha y hora del evento
@@ -141,11 +145,11 @@ function getLogDescription(log: AuditLog): string {
     case "ROTATIVO_CREADO":
       return `${userName} solicitó rotativo para ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_APROBADO":
-      return `${userName} aprobó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}`
+      return `${userName} aprobó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}${motivo && motivo !== "Validado por la fila" ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_RECHAZADO":
       return `${userName} rechazó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_CANCELADO":
-      return `${userName} canceló su rotativo para ${evento || titulo || "un evento"}${eventInfo}`
+      return `${userName} canceló su rotativo para ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_ASIGNADO":
       return `Se asignó rotativo a ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}`
     case "ROTATIVO_CREADO_EN_NOMBRE":
@@ -217,6 +221,35 @@ function getLogDescription(log: AuditLog): string {
     case "LISTA_ESPERA_PROMOVIDO":
       return `${userName} fue promovido de la lista de espera para ${evento || titulo || "un evento"}${eventInfo}`
 
+    case "NOTA_CREADA": {
+      const notaTitulo = details.titulo as string || "una nota"
+      const notaDescripcion = details.descripcion as string || ""
+      const notaFecha = details.fecha as string || ""
+      let notaFechaStr = ""
+      if (notaFecha) {
+        try {
+          const f = new Date(notaFecha)
+          const d = f.getUTCDate(), m = f.getUTCMonth() + 1, y = f.getUTCFullYear()
+          notaFechaStr = ` para el ${d.toString().padStart(2, "0")}/${m.toString().padStart(2, "0")}/${y}`
+        } catch { /* */ }
+      }
+      return `${userName} creó nota "${notaTitulo}"${notaFechaStr}${notaDescripcion ? ` - "${notaDescripcion}"` : ""}`
+    }
+    case "NOTA_ELIMINADA": {
+      const notaTituloE = details.titulo as string || "una nota"
+      const notaDescripcionE = details.descripcion as string || ""
+      const notaFechaE = details.fecha as string || ""
+      let notaFechaStrE = ""
+      if (notaFechaE) {
+        try {
+          const f = new Date(notaFechaE)
+          const d = f.getUTCDate(), m = f.getUTCMonth() + 1, y = f.getUTCFullYear()
+          notaFechaStrE = ` del ${d.toString().padStart(2, "0")}/${m.toString().padStart(2, "0")}/${y}`
+        } catch { /* */ }
+      }
+      return `${userName} eliminó nota "${notaTituloE}"${notaFechaStrE}${notaDescripcionE ? ` - "${notaDescripcionE}"` : ""}`
+    }
+
     case "CONSENSO_INICIADO":
       return `Se inició proceso de consenso`
     case "CONSENSO_RESUELTO":
@@ -283,6 +316,8 @@ function getActionLabel(action: string): string {
     LISTA_ESPERA_PROMOVIDO: "Promovido",
     CONSENSO_INICIADO: "Consenso",
     CONSENSO_RESUELTO: "Resuelto",
+    NOTA_CREADA: "Nota creada",
+    NOTA_ELIMINADA: "Nota eliminada",
   }
   return labels[action] || action
 }
@@ -596,29 +631,29 @@ export default function LogsPage() {
 
               {/* Vista desktop */}
               <div className="hidden md:block">
-                <Table>
+                <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[120px]">Fecha</TableHead>
-                      <TableHead className="w-[100px]">Tipo</TableHead>
+                      <TableHead className="w-24">Fecha</TableHead>
+                      <TableHead className="w-36">Tipo</TableHead>
                       <TableHead>Descripción</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.id} className={log.isCritical ? "bg-red-50" : ""}>
-                        <TableCell className="text-sm text-muted-foreground">
+                        <TableCell className="text-sm text-muted-foreground align-top">
                           {format(new Date(log.createdAt), "dd/MM HH:mm", { locale: es })}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="align-top">
                           <div className="flex items-center gap-1">
                             {log.isCritical && <span className="text-red-600 font-bold">!</span>}
-                            <Badge className={getActionColor(log.action, log.isCritical)}>
+                            <Badge className={`${getActionColor(log.action, log.isCritical)} whitespace-normal text-center`}>
                               {getActionLabel(log.action)}
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="break-words whitespace-normal">
                           {getLogDescription(log)}
                         </TableCell>
                       </TableRow>

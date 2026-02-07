@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createAuditLog } from "@/lib/services/audit"
+import { formatDateAR } from "@/lib/utils"
 
 // GET /api/notas/[id] - Obtener nota especifica
 export async function GET(
@@ -126,6 +128,19 @@ export async function DELETE(
   if (!nota) {
     return NextResponse.json({ error: "Nota no encontrada" }, { status: 404 })
   }
+
+  // Audit log antes de eliminar
+  await createAuditLog({
+    action: "NOTA_ELIMINADA",
+    entityType: "Note",
+    entityId: id,
+    userId: session.user.id,
+    details: {
+      titulo: nota.title,
+      descripcion: nota.description || null,
+      fecha: nota.date.toISOString(),
+    },
+  })
 
   await prisma.note.delete({
     where: { id },

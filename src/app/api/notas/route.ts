@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createAuditLog } from "@/lib/services/audit"
+import { formatDateAR } from "@/lib/utils"
 
 // GET /api/notas - Lista notas (por mes o rango de fechas)
 export async function GET(req: NextRequest) {
@@ -123,6 +125,21 @@ export async function POST(req: NextRequest) {
           name: true,
         },
       },
+    },
+  })
+
+  // Audit log
+  await createAuditLog({
+    action: "NOTA_CREADA",
+    entityType: "Note",
+    entityId: nota.id,
+    userId: session.user.id,
+    details: {
+      titulo: title,
+      descripcion: description || null,
+      fecha: new Date(date).toISOString(),
+      color,
+      eventoAsociado: nota.event?.title || null,
     },
   })
 

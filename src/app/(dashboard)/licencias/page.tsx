@@ -112,7 +112,7 @@ export default function LicenciasPage() {
   const fetchUsuarios = useCallback(async () => {
     const res = await fetch("/api/integrantes")
     const data = await res.json()
-    setUsuarios(data.filter((u: { role: string }) => u.role === "INTEGRANTE"))
+    setUsuarios(data)
   }, [])
 
   useEffect(() => {

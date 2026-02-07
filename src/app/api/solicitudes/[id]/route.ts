@@ -32,7 +32,7 @@ export async function DELETE(
     where: { id },
     include: {
       event: {
-        select: { id: true, date: true, title: true, startTime: true, eventoType: true },
+        select: { id: true, date: true, title: true, startTime: true, eventoType: true, titulo: { select: { name: true } } },
       },
       user: {
         select: { id: true, name: true, alias: true },
@@ -95,6 +95,7 @@ export async function DELETE(
       userId: session.user.id,
       details: {
         evento: rotativo.event.title,
+        titulo: rotativo.event.titulo?.name,
         fecha: rotativo.event.date.toISOString(),
         horario: formatTimeAR(rotativo.event.startTime),
         tipoEvento: rotativo.event.eventoType,
@@ -102,7 +103,7 @@ export async function DELETE(
         diasHastaEvento,
         estadoAnterior: rotativo.estado,
         nuevoEstado: "CANCELACION_PENDIENTE",
-        motivoEliminacion,
+        motivo: motivoEliminacion,
       },
     })
 
@@ -154,6 +155,7 @@ export async function DELETE(
     isCritical,
     details: {
       evento: rotativo.event.title,
+      titulo: rotativo.event.titulo?.name,
       fecha: rotativo.event.date.toISOString(),
       horario: formatTimeAR(rotativo.event.startTime),
       tipoEvento: rotativo.event.eventoType,
@@ -162,7 +164,7 @@ export async function DELETE(
       diasHastaEvento,
       eliminaAjeno,
       usuarioAfectado: rotativo.user.alias || rotativo.user.name,
-      motivoEliminacion,
+      motivo: motivoEliminacion,
       realizadoPor: session.user.name || session.user.email,
     },
   })

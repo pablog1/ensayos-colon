@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Clock, CheckCircle, XCircle, RefreshCw, Ban, Hourglass, AlertTriangle } from "lucide-react"
+import { Clock, CheckCircle, XCircle, RefreshCw, Ban, Hourglass, AlertTriangle, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -88,6 +88,7 @@ export default function PendientesPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [accionPendiente, setAccionPendiente] = useState<AccionPendiente>(null)
   const [motivoAdicional, setMotivoAdicional] = useState("")
+  const [motivoDefaultBorrado, setMotivoDefaultBorrado] = useState(false)
   const [procesando, setProcesando] = useState(false)
 
   const [accionCancelacion, setAccionCancelacion] = useState<AccionCancelacion>(null)
@@ -166,6 +167,7 @@ export default function PendientesPage() {
   const cerrarDialog = () => {
     setAccionPendiente(null)
     setMotivoAdicional("")
+    setMotivoDefaultBorrado(false)
   }
 
   const confirmarAccion = async () => {
@@ -173,10 +175,10 @@ export default function PendientesPage() {
 
     setProcesando(true)
     const { tipo, solicitud } = accionPendiente
-    const motivoDefault = tipo === "aprobar" ? MOTIVO_APROBACION_DEFAULT : MOTIVO_RECHAZO_DEFAULT
-    const motivoFinal = motivoAdicional.trim()
-      ? `${motivoDefault}. ${motivoAdicional.trim()}`
-      : motivoDefault
+    const motivoDefaultTexto = motivoDefaultBorrado ? "" : (tipo === "aprobar" ? MOTIVO_APROBACION_DEFAULT : MOTIVO_RECHAZO_DEFAULT)
+    const motivoFinal = motivoDefaultTexto && motivoAdicional.trim()
+      ? `${motivoDefaultTexto}. ${motivoAdicional.trim()}`
+      : motivoDefaultTexto || motivoAdicional.trim() || (tipo === "aprobar" ? MOTIVO_APROBACION_DEFAULT : MOTIVO_RECHAZO_DEFAULT)
 
     try {
       const endpoint = tipo === "aprobar" ? "aprobar" : "rechazar"
@@ -524,16 +526,40 @@ export default function PendientesPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Motivo por defecto</Label>
-              <div className={`p-3 rounded-md text-sm font-medium ${
-                accionPendiente?.tipo === "aprobar"
-                  ? "bg-green-50 text-green-800 border border-green-200"
-                  : "bg-red-50 text-red-800 border border-red-200"
-              }`}>
-                {motivoDefault}
+            {!motivoDefaultBorrado ? (
+              <div className="space-y-2">
+                <Label>Motivo por defecto</Label>
+                <div className={`p-3 rounded-md text-sm font-medium flex items-center justify-between ${
+                  accionPendiente?.tipo === "aprobar"
+                    ? "bg-green-50 text-green-800 border border-green-200"
+                    : "bg-red-50 text-red-800 border border-red-200"
+                }`}>
+                  <span>{motivoDefault}</span>
+                  <button
+                    type="button"
+                    onClick={() => setMotivoDefaultBorrado(true)}
+                    className="ml-2 p-0.5 rounded-full hover:bg-black/10 transition-colors"
+                    title="Quitar motivo por defecto"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-muted-foreground">Motivo por defecto</Label>
+                <div className="p-3 rounded-md text-sm text-muted-foreground bg-muted border border-dashed border-muted-foreground/30 flex items-center justify-between">
+                  <span className="italic">Sin motivo por defecto</span>
+                  <button
+                    type="button"
+                    onClick={() => setMotivoDefaultBorrado(false)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Restaurar
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="motivo-adicional">Aclaración adicional (opcional)</Label>
@@ -546,11 +572,18 @@ export default function PendientesPage() {
               />
             </div>
 
-            {motivoAdicional.trim() && (
+            {(motivoAdicional.trim() || motivoDefaultBorrado) && (
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Motivo final</Label>
                 <div className="p-3 bg-muted rounded-md text-sm">
-                  {motivoDefault}. {motivoAdicional.trim()}
+                  {!motivoDefaultBorrado && motivoAdicional.trim()
+                    ? `${motivoDefault}. ${motivoAdicional.trim()}`
+                    : motivoDefaultBorrado && motivoAdicional.trim()
+                      ? motivoAdicional.trim()
+                      : motivoDefaultBorrado
+                        ? <span className="italic text-muted-foreground">{motivoDefault} (se usará si no hay aclaración)</span>
+                        : motivoDefault
+                  }
                 </div>
               </div>
             )}

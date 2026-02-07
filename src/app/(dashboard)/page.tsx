@@ -1036,7 +1036,7 @@ export default function DashboardPage() {
       const res = await fetch(`/api/solicitudes/${rotativoId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ motivo: "Eliminado por administrador" }),
+        body: JSON.stringify({ motivo: gestionMotivo.trim() || "Eliminado por administrador" }),
       })
 
       if (res.ok) {
@@ -1351,12 +1351,18 @@ export default function DashboardPage() {
           continue
         }
 
-        // Número del día (arriba a la izquierda)
+        // Número del día (arriba a la izquierda) con fondo gris y borde
         pdf.setFontSize(10)
         pdf.setFont("helvetica", "bold")
-        pdf.setTextColor(0)
         const diaNumero = fecha.getDate().toString()
-        pdf.text(diaNumero, x + 2, y + 4)
+        const numWidth = pdf.getTextWidth(diaNumero) + 3
+        const numHeight = 5
+        pdf.setFillColor(230, 230, 230)
+        pdf.setDrawColor(150, 150, 150)
+        pdf.setLineWidth(0.3)
+        pdf.rect(x, y, numWidth, numHeight, "FD")
+        pdf.setTextColor(0)
+        pdf.text(diaNumero, x + 1.5, y + 3.8)
 
         // Eventos del día - comenzar al lado del número
         const eventosDelDia = getEventosDelDia(fecha)
@@ -1365,55 +1371,61 @@ export default function DashboardPage() {
           pdf.setFont("helvetica", "normal")
           pdf.setTextColor(0) // Todo en negro para imprimir
 
-          // Primera línea al lado del número del día
-          const offsetX = 8 // Espacio después del número
-          let eventoY = y + 4
-          let primeraLinea = true
+          // Primera línea al lado del número, luego usar ancho completo
+          const offsetFirstLine = numWidth + 4
+          const offsetLeft = 2
+          const numBottom = y + numHeight + 2
+          let eventoY = y + 3.8 // misma altura que el número
+          let enZonaNumero = true // indica si estamos en la franja del número
 
-          const maxTextWidth = cellWidth - offsetX - 2
+          const maxTextWidthFirst = cellWidth - offsetFirstLine - 2
+          const maxTextWidthFull = cellWidth - offsetLeft - 2
+
+          // Calcula offset y ancho según si estamos al lado del número o debajo
+          const getOffsetX = () => enZonaNumero ? offsetFirstLine : offsetLeft
+          const getMaxWidth = () => enZonaNumero ? maxTextWidthFirst : maxTextWidthFull
+          const advanceLine = () => {
+            eventoY += 3
+            if (eventoY >= numBottom) enZonaNumero = false
+          }
 
           eventosDelDia.forEach((evento) => {
             if (eventoY + 3 > y + cellHeight - 1) return
 
-            // Tipo y hora - en negrita, en la misma línea que el número
+            // Tipo y hora - en negrita
             const tipo = evento.eventoType === "ENSAYO" ? "E" : "F"
             const hora = format(new Date(evento.startTime), "HH:mm")
             pdf.setFontSize(8)
             pdf.setFont("helvetica", "bold")
+            pdf.text(`${tipo} ${hora}`, x + getOffsetX(), eventoY)
+            advanceLine()
 
-            if (primeraLinea) {
-              pdf.text(`${tipo} ${hora}`, x + offsetX, eventoY)
-              primeraLinea = false
-            } else {
-              pdf.text(`${tipo} ${hora}`, x + offsetX, eventoY)
-            }
-            eventoY += 3
-
-            // Título del evento - truncado si excede el ancho de la celda
-            pdf.setFontSize(8)
+            // Título del evento - truncado si excede el ancho
+            pdf.setFontSize(9)
             let tituloText = evento.tituloName
-            while (pdf.getTextWidth(tituloText) > maxTextWidth && tituloText.length > 3) {
+            const mW = getMaxWidth()
+            while (pdf.getTextWidth(tituloText) > mW && tituloText.length > 3) {
               tituloText = tituloText.slice(0, -1)
             }
             if (tituloText !== evento.tituloName) {
               tituloText = tituloText.slice(0, -1) + "…"
             }
-            pdf.text(tituloText, x + offsetX, eventoY)
-            eventoY += 3
+            pdf.text(tituloText, x + getOffsetX(), eventoY)
+            advanceLine()
             pdf.setFont("helvetica", "normal")
 
-            // Rotativos aprobados/pendientes - un nombre por línea
+            // Rotativos aprobados/pendientes - nombres completos, con wrapping
             const rotativosActivos = evento.rotativos.filter(r =>
               r.estado === "APROBADO" || r.estado === "PENDIENTE"
             )
             if (rotativosActivos.length > 0) {
-              pdf.setFontSize(8)
-              const todosNombres = rotativosActivos.map(r => r.user.alias || r.user.name.split(" ")[0])
-
-              todosNombres.forEach((nombre) => {
+              pdf.setFontSize(9)
+              const nombresTexto = rotativosActivos.map(r => r.user.alias || r.user.name).join(", ")
+              const lineasNombres: string[] = pdf.splitTextToSize(nombresTexto, maxTextWidthFull)
+              lineasNombres.forEach((linea: string) => {
                 if (eventoY + 3 <= y + cellHeight - 1) {
-                  pdf.text(nombre, x + offsetX, eventoY)
-                  eventoY += 3
+                  pdf.text(linea, x + getOffsetX(), eventoY)
+                  advanceLine()
                 }
               })
             }
