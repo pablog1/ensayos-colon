@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
+import { promoteFromWaitingList } from "@/lib/services/waiting-list"
 
 // GET /api/calendario/[id] - Obtener evento individual
 export async function GET(
@@ -188,6 +189,24 @@ export async function PUT(
       where: { id },
       data: updateData,
     })
+
+    // Si el cupo aumentó, promover usuarios de la lista de espera
+    if (cupoOverride !== undefined) {
+      const oldCupo = evento.cupoOverride ?? await getCupoParaEvento(
+        evento.eventoType,
+        evento.titulo?.type ?? null
+      )
+      const newCupo = cupoOverride ?? await getCupoParaEvento(
+        updated.eventoType,
+        evento.titulo?.type ?? null
+      )
+      if (newCupo > oldCupo) {
+        let promoted = true
+        while (promoted) {
+          promoted = await promoteFromWaitingList(id)
+        }
+      }
+    }
 
     return NextResponse.json(updated)
   } catch (error) {

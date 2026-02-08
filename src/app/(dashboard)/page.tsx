@@ -1196,6 +1196,10 @@ export default function DashboardPage() {
       endTime,
       cupoOverride: evento.cupoOverride ?? null,
     })
+    // Setear cupoInputValue para el input de cupo en edición
+    const tituloEvento = titulos.find((t) => t.id === evento.tituloId)
+    const cupoDefault = tituloEvento?.cupo ?? evento.cupoEfectivo
+    setCupoInputValue(String(evento.cupoOverride ?? cupoDefault))
     // Verificar si es un horario predefinido
     const fechaEvento = evento.date.substring(0, 10)
     const predefinidos = getHorariosPredefinidos(evento.eventoType, fechaEvento)
@@ -3519,19 +3523,27 @@ export default function DashboardPage() {
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            value={String(eventoForm.cupoOverride ?? cupoDefault)}
+                            value={cupoInputValue}
                             onChange={(e) => {
                               const val = e.target.value.replace(/[^0-9]/g, "")
-                              setEventoForm({ ...eventoForm, cupoOverride: val ? Math.min(20, parseInt(val)) : null })
+                              setCupoInputValue(val)
+                              if (val === "" || val === String(cupoDefault)) {
+                                setEventoForm({ ...eventoForm, cupoOverride: null })
+                              } else {
+                                setEventoForm({ ...eventoForm, cupoOverride: val ? Math.min(20, parseInt(val)) : null })
+                              }
                             }}
                             className="w-20"
                           />
-                          {eventoForm.cupoOverride !== null && (
+                          {cupoInputValue !== String(cupoDefault) && (
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => setEventoForm({ ...eventoForm, cupoOverride: null })}
+                              onClick={() => {
+                                setCupoInputValue(String(cupoDefault))
+                                setEventoForm({ ...eventoForm, cupoOverride: null })
+                              }}
                             >
                               Restablecer
                             </Button>

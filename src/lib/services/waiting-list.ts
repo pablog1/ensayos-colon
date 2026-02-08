@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { createNotification } from "./notifications"
 import { createAuditLog } from "./audit"
 import { updateUserBalance } from "./balance"
+import { getCupoParaEvento } from "./cupo-rules"
 import { formatTimeAR, formatDateMediumAR } from "@/lib/utils"
 
 export async function addToWaitingList(
@@ -82,7 +83,7 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
       event: {
         include: {
           titulo: {
-            select: { name: true },
+            select: { name: true, type: true },
           },
         },
       },
@@ -97,19 +98,15 @@ export async function promoteFromWaitingList(eventId: string): Promise<boolean> 
     where: { eventId, estado: "APROBADO" },
   })
 
-  // Obtener cupo del tipo de evento
-  const cupoConfig = await prisma.ruleConfig.findUnique({
-    where: { key: "CUPO_DIARIO" },
-  })
-
-  let cupoTotal = 2 // Default
-  if (cupoConfig) {
-    try {
-      const cupos = JSON.parse(cupoConfig.value) as Record<string, number>
-      cupoTotal = cupos[nextEntry.event.eventType] ?? 2
-    } catch {
-      // Usar default
-    }
+  // Obtener cupo efectivo: override del evento tiene prioridad sobre reglas
+  let cupoTotal: number
+  if (nextEntry.event.cupoOverride != null) {
+    cupoTotal = nextEntry.event.cupoOverride
+  } else {
+    cupoTotal = await getCupoParaEvento(
+      nextEntry.event.eventoType,
+      nextEntry.event.titulo?.type ?? null
+    )
   }
 
   if (rotativosAprobados >= cupoTotal) {
