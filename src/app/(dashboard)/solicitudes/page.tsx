@@ -42,6 +42,7 @@ interface Solicitud {
   tituloColor?: string
   tituloType?: string
   motivo?: string | null
+  motivoInicial?: string | null
   posicionEnCola?: number | null
   esParteDeBloque?: boolean
   bloqueId?: string | null
@@ -309,6 +310,12 @@ export default function SolicitudesPage() {
           })}
         </div>
       </div>
+      {s.motivoInicial && (
+        <div className="text-sm p-2 rounded text-red-600 bg-red-50">
+          <span className="font-medium">Reglas: </span>
+          {s.motivoInicial}
+        </div>
+      )}
       {s.motivo && (
         <div className={`text-sm p-2 rounded ${
           s.estado === "RECHAZADO"
@@ -366,6 +373,12 @@ export default function SolicitudesPage() {
           <span className="text-xs text-muted-foreground">
             {s.eventoType === "ENSAYO" ? "Ensayo" : "Función"}
           </span>
+          {s.motivoInicial && (
+            <span className="text-xs mt-1 text-red-600">
+              <span className="font-medium">Reglas: </span>
+              {s.motivoInicial}
+            </span>
+          )}
           {s.motivo && (
             <span className={`text-xs mt-1 truncate ${
               s.estado === "RECHAZADO"

@@ -73,6 +73,7 @@ export async function GET(req: NextRequest) {
           id: true,
           estado: true,
           motivo: true,
+          motivoInicial: true,
           validationResults: true,
           createdAt: true,
           user: {

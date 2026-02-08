@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
       createdAt: r.createdAt,
       user: r.user,
       motivo: r.motivo,
+      motivoInicial: r.motivoInicial,
       posicionEnCola,
       // Datos adicionales del evento
       eventoId: r.event.id,
@@ -242,6 +243,7 @@ export async function POST(req: NextRequest) {
           estado: nuevoEstado,
           tipo: "VOLUNTARIO",
           motivo: motivoFinal,
+          motivoInicial: requiereAprobacion ? motivoFinal : null,
           rechazadoPor: null,
           aprobadoPor: nuevoEstado === "APROBADO" ? session.user.id : null,
         },
@@ -276,6 +278,7 @@ export async function POST(req: NextRequest) {
           estado: nuevoEstado,
           tipo: "VOLUNTARIO",
           motivo: motivoFinal,
+          motivoInicial: requiereAprobacion ? motivoFinal : null,
         },
         include: {
           user: {
@@ -335,6 +338,7 @@ export async function POST(req: NextRequest) {
         estado: rotativo.estado,
         posicionEnEspera,
         requiereAprobacion: requiereAprobacion || false,
+        motivoInicial: requiereAprobacion ? motivoFinal : null,
       },
     })
 

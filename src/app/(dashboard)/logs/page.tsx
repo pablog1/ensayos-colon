@@ -133,6 +133,7 @@ function getLogDescription(log: AuditLog): string {
   const evento = details.evento as string || ""
   const titulo = details.titulo as string || ""
   const motivo = details.motivo as string || ""
+  const motivoInicial = details.motivoInicial as string || ""
   const campo = details.campo as string || ""
   const key = details.key as string || ""
   const previousValue = details.previousValue as string | undefined
@@ -143,9 +144,9 @@ function getLogDescription(log: AuditLog): string {
 
   switch (log.action) {
     case "ROTATIVO_CREADO":
-      return `${userName} solicitó rotativo para ${evento || titulo || "un evento"}${eventInfo}`
+      return `${userName} solicitó rotativo para ${evento || titulo || "un evento"}${eventInfo}${motivoInicial ? ` - Reglas: ${motivoInicial}` : ""}`
     case "ROTATIVO_APROBADO":
-      return `${userName} aprobó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}${motivo && motivo !== "Validado por la fila" ? ` - Motivo: ${motivo}` : ""}`
+      return `${userName} aprobó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}${motivoInicial ? ` - Reglas: ${motivoInicial}` : ""}${motivo && motivo !== "Validado por la fila" ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_RECHAZADO":
       return `${userName} rechazó el rotativo de ${targetName || "un usuario"} para ${evento || titulo || "un evento"}${eventInfo}${motivo ? ` - Motivo: ${motivo}` : ""}`
     case "ROTATIVO_CANCELADO":

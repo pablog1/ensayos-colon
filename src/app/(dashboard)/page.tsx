@@ -75,6 +75,7 @@ interface Evento {
     id: string
     estado: string
     motivo: string | null
+    motivoInicial: string | null
     validationResults: Record<string, unknown> | null
     posicionEnCola: number | null
     user: {
@@ -1588,6 +1589,7 @@ export default function DashboardPage() {
       fecha: e.date,
       estado: r.estado,
       motivo: r.motivo,
+      motivoInicial: r.motivoInicial,
       user: r.user,
       evento: e,
     }))
@@ -2219,6 +2221,9 @@ export default function DashboardPage() {
                                     <> · {formatTime(r.evento.startTime)} · {r.evento.tituloName}</>
                                   )}
                                 </p>
+                                {r.motivoInicial && (
+                                  <p className="text-xs text-red-600 mt-1">Reglas: {r.motivoInicial}</p>
+                                )}
                                 {tieneExcepcion && r.motivo && (
                                   <p className="text-xs text-amber-700 mt-1">{r.motivo}</p>
                                 )}
@@ -2448,6 +2453,11 @@ export default function DashboardPage() {
                                   {r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? `En Espera${r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}` : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
                                 </Badge>
                               </div>
+                              {r.motivoInicial && (
+                                <p className="text-xs text-red-600 mt-1 pl-6">
+                                  Reglas: {r.motivoInicial}
+                                </p>
+                              )}
                               {tieneExcepcion && r.motivo && (
                                 <p className="text-xs text-amber-700 mt-1 pl-6">
                                   {r.motivo}

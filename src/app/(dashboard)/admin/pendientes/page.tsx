@@ -26,6 +26,7 @@ interface SolicitudPendiente {
   porcentajeAlMomento: number | null
   createdAt: string
   motivo?: string | null
+  motivoInicial?: string | null
   eventoTitle?: string
   eventoHora?: string | null
   tituloName?: string
@@ -327,8 +328,16 @@ export default function PendientesPage() {
                     </div>
                   </div>
 
+                  {/* Reglas violadas */}
+                  {s.motivoInicial && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-2 text-sm">
+                      <span className="text-red-800 font-medium">Reglas: </span>
+                      <span className="text-red-700">{s.motivoInicial}</span>
+                    </div>
+                  )}
+
                   {/* Motivo de la solicitud */}
-                  {s.motivo && (
+                  {s.motivo && s.motivo !== s.motivoInicial && (
                     <div className="bg-amber-50 border border-amber-200 rounded-md p-2 text-sm">
                       <span className="text-amber-800 font-medium">Motivo: </span>
                       <span className="text-amber-700">{s.motivo}</span>

@@ -116,6 +116,7 @@ export async function POST(
       horario: formatTimeAR(updated.event.startTime),
       tipoEvento: updated.event.eventoType,
       motivo: motivo,
+      motivoInicial: rotativo.motivoInicial,
     },
   })
 

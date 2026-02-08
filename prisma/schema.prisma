@@ -259,6 +259,7 @@ model Rotativo {
   estado            RotativoEstado @default(PENDIENTE)
   tipo              RotativoTipo   @default(VOLUNTARIO)
   motivo            String?
+  motivoInicial     String?        // Reglas violadas al solicitar (se preserva tras aprobación)
   aprobadoPor       String?
   rechazadoPor      String?
   asignadoPor       String?        // Para rotacion obligatoria
