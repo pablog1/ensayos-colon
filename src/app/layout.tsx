@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 
@@ -12,11 +12,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+export const viewport: Viewport = {
+  themeColor: "#dc2626",
+}
+
 export const metadata: Metadata = {
   title: "Ensayos Primeros Violines OETC",
   description: "Sistema de gestion de ensayos y rotativos",
   manifest: "/manifest.json",
-  themeColor: "#dc2626",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

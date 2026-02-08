@@ -49,16 +49,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
   }
 
-  // Verificar que no existe ya un rotativo activo del usuario en este evento
+  // Verificar si existe un rotativo del usuario en este evento (cualquier estado)
   const existente = await prisma.rotativo.findFirst({
     where: {
       userId: userId,
       eventId: eventId,
-      estado: { notIn: ["RECHAZADO", "CANCELADO"] },
     },
   })
 
-  if (existente) {
+  // Si existe uno activo (no rechazado/cancelado), no permitir
+  if (existente && !["RECHAZADO", "CANCELADO"].includes(existente.estado)) {
     return NextResponse.json(
       { error: "El usuario ya tiene un rotativo en este evento" },
       { status: 400 }
@@ -72,31 +72,59 @@ export async function POST(req: NextRequest) {
   fechaEvento.setHours(0, 0, 0, 0)
   const esEventoPasado = fechaEvento < hoy
 
-  // Crear el rotativo - siempre APROBADO cuando admin lo crea
-  const rotativo = await prisma.rotativo.create({
-    data: {
-      userId: userId,
-      eventId: eventId,
-      estado: "APROBADO",
-      tipo: "VOLUNTARIO",
-      motivo: motivo || `Creado por administrador`,
-      aprobadoPor: session.user.id,
-      asignadoPor: session.user.id, // Track who created it
-    },
-    include: {
-      user: {
-        select: { id: true, name: true, alias: true },
+  // Si existe uno rechazado/cancelado, reutilizarlo; si no, crear nuevo
+  let rotativo
+  if (existente) {
+    rotativo = await prisma.rotativo.update({
+      where: { id: existente.id },
+      data: {
+        estado: "APROBADO",
+        tipo: "VOLUNTARIO",
+        motivo: motivo || `Creado por administrador`,
+        aprobadoPor: session.user.id,
+        asignadoPor: session.user.id,
+        rechazadoPor: null,
       },
-      event: {
-        select: {
-          id: true,
-          title: true,
-          date: true,
-          titulo: { select: { name: true } },
+      include: {
+        user: {
+          select: { id: true, name: true, alias: true },
+        },
+        event: {
+          select: {
+            id: true,
+            title: true,
+            date: true,
+            titulo: { select: { name: true } },
+          },
         },
       },
-    },
-  })
+    })
+  } else {
+    rotativo = await prisma.rotativo.create({
+      data: {
+        userId: userId,
+        eventId: eventId,
+        estado: "APROBADO",
+        tipo: "VOLUNTARIO",
+        motivo: motivo || `Creado por administrador`,
+        aprobadoPor: session.user.id,
+        asignadoPor: session.user.id,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, alias: true },
+        },
+        event: {
+          select: {
+            id: true,
+            title: true,
+            date: true,
+            titulo: { select: { name: true } },
+          },
+        },
+      },
+    })
+  }
 
   // Notificar al usuario afectado
   await createNotification({
