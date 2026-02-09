@@ -76,6 +76,7 @@ interface Evento {
     estado: string
     motivo: string | null
     motivoInicial: string | null
+    aprobadoPor: string | null
     validationResults: Record<string, unknown> | null
     posicionEnCola: number | null
     user: {
@@ -1545,7 +1546,8 @@ export default function DashboardPage() {
                 {e.rotativos && e.rotativos.length > 0 && (
                   <div className="bg-gray-100 rounded-b px-1.5 py-1 flex flex-wrap gap-1">
                     {e.rotativos.slice(0, 4).map((r, j) => {
-                      const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                      const esEnEsperaConReglas = r.estado === "EN_ESPERA" && !!r.motivoInicial && !r.aprobadoPor
+                      const tieneExcepcion = (r.estado === "APROBADO" && ((r.motivo && r.motivo !== "Validado por la fila") || r.motivoInicial)) || esEnEsperaConReglas
                       const esMio = r.user.id === userId
                       return (
                         <span
@@ -1553,11 +1555,11 @@ export default function DashboardPage() {
                           className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${
                             r.estado === "APROBADO"
                               ? "bg-green-200 text-green-800"
-                              : r.estado === "PENDIENTE"
+                              : r.estado === "PENDIENTE" || esEnEsperaConReglas
                                 ? "bg-red-200 text-red-800"
                                 : "bg-yellow-200 text-yellow-800"
                           } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
-                          title={tieneExcepcion ? r.motivo || "" : ""}
+                          title={tieneExcepcion ? (r.motivoInicial || r.motivo || "") : ""}
                         >
                           {r.user.alias || r.user.name.split(" ")[0]}
                           {tieneExcepcion && <AlertTriangle className="w-2.5 h-2.5" />}
@@ -1594,6 +1596,7 @@ export default function DashboardPage() {
       estado: r.estado,
       motivo: r.motivo,
       motivoInicial: r.motivoInicial,
+      aprobadoPor: r.aprobadoPor,
       user: r.user,
       evento: e,
     }))
@@ -1855,7 +1858,8 @@ export default function DashboardPage() {
                                           {evento.rotativos && evento.rotativos.length > 0 && (
                                             <div className="flex flex-wrap gap-1.5 mt-2">
                                               {evento.rotativos.map((r) => {
-                                                const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                                                const esEnEsperaConReglas = r.estado === "EN_ESPERA" && !!r.motivoInicial && !r.aprobadoPor
+                                                const tieneExcepcion = (r.estado === "APROBADO" && ((r.motivo && r.motivo !== "Validado por la fila") || r.motivoInicial)) || esEnEsperaConReglas
                                                 const esMio = r.user.id === userId
                                                 return (
                                                   <span
@@ -1863,11 +1867,11 @@ export default function DashboardPage() {
                                                     className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
                                                       r.estado === "APROBADO"
                                                         ? "bg-green-100 text-green-800"
-                                                        : r.estado === "PENDIENTE"
+                                                        : r.estado === "PENDIENTE" || esEnEsperaConReglas
                                                           ? "bg-red-100 text-red-800"
                                                           : "bg-yellow-100 text-yellow-800"
                                                     } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
-                                                    title={tieneExcepcion ? r.motivo || "" : ""}
+                                                    title={tieneExcepcion ? (r.motivoInicial || r.motivo || "") : ""}
                                                   >
                                                     {r.user.alias || r.user.name.split(" ")[0]}
                                                     {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
@@ -2193,15 +2197,22 @@ export default function DashboardPage() {
                   ) : (
                     <div className="space-y-2">
                       {rotativosFiltrados.map((r) => {
-                        const tieneExcepcion = (r.estado === "APROBADO" || r.estado === "APROBADA") && r.motivo && r.motivo !== "Validado por la fila"
+                        const esEnEsperaConReglas = r.estado === "EN_ESPERA" && !!r.motivoInicial && !r.aprobadoPor
+                        const tieneExcepcion = ((r.estado === "APROBADO" || r.estado === "APROBADA") && (
+                          (r.motivo && r.motivo !== "Validado por la fila") || r.motivoInicial
+                        )) || esEnEsperaConReglas
                         return (
                           <div
                             key={r.id}
-                            className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors`}
+                            className={`p-3 rounded-lg border ${r.evento ? "cursor-pointer hover:bg-muted/50" : ""} transition-colors ${
+                              esEnEsperaConReglas ? "bg-red-50/50" : ""
+                            }`}
                             style={{
-                              borderLeftColor: r.evento
-                                  ? getEventColor(r.evento)
-                                  : (r.estado === "APROBADA" ? "#22c55e" : "#eab308"),
+                              borderLeftColor: esEnEsperaConReglas
+                                  ? "#ef4444"
+                                  : r.evento
+                                    ? getEventColor(r.evento)
+                                    : (r.estado === "APROBADA" ? "#22c55e" : "#eab308"),
                               borderLeftWidth: 4
                             }}
                             onClick={() => r.evento && openDetalleEvento(r.evento)}
@@ -2217,7 +2228,7 @@ export default function DashboardPage() {
                                   <span className="font-medium text-sm truncate">
                                     {r.user.alias || r.user.name}
                                   </span>
-                                  {tieneExcepcion && <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />}
+                                  {tieneExcepcion && <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   {formatInArgentina(r.fecha, "EEEE d MMM")}
@@ -2228,24 +2239,37 @@ export default function DashboardPage() {
                                 {r.motivoInicial && (
                                   <p className="text-xs text-red-600 mt-1">Reglas: {r.motivoInicial}</p>
                                 )}
-                                {tieneExcepcion && r.motivo && (
+                                {tieneExcepcion && r.motivo && r.motivo !== r.motivoInicial && (
                                   <p className="text-xs text-amber-700 mt-1">{r.motivo}</p>
                                 )}
                               </div>
-                              <Badge
-                                variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
-                                className={`text-xs flex-shrink-0 ${
-                                  r.estado === "APROBADO" || r.estado === "APROBADA"
-                                    ? "bg-green-600 hover:bg-green-700"
-                                    : r.estado === "EN_ESPERA"
-                                      ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-                                      : r.estado === "PENDIENTE"
-                                        ? "bg-red-100 text-red-800 border border-red-300"
-                                        : ""
-                                }`}
-                              >
-                                {r.estado === "APROBADA" ? "Aprobado" : r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? "En Espera" : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
-                              </Badge>
+                              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                {esEnEsperaConReglas ? (
+                                  <>
+                                    <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                      En Espera
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs bg-red-100 text-red-800 border border-red-300">
+                                      Pendiente
+                                    </Badge>
+                                  </>
+                                ) : (
+                                  <Badge
+                                    variant={r.estado === "APROBADO" || r.estado === "APROBADA" ? "default" : "secondary"}
+                                    className={`text-xs ${
+                                      r.estado === "APROBADO" || r.estado === "APROBADA"
+                                        ? "bg-green-600 hover:bg-green-700"
+                                        : r.estado === "EN_ESPERA"
+                                          ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                          : r.estado === "PENDIENTE"
+                                            ? "bg-red-100 text-red-800 border border-red-300"
+                                            : ""
+                                    }`}
+                                  >
+                                    {r.estado === "APROBADA" ? "Aprobado" : r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? "En Espera" : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )
@@ -2347,7 +2371,8 @@ export default function DashboardPage() {
                                 {evento.rotativos && evento.rotativos.length > 0 && (
                                   <div className="flex flex-wrap gap-1 mt-2">
                                     {evento.rotativos.map((r) => {
-                                      const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                                      const esEnEsperaConReglas = r.estado === "EN_ESPERA" && !!r.motivoInicial && !r.aprobadoPor
+                                      const tieneExcepcion = (r.estado === "APROBADO" && ((r.motivo && r.motivo !== "Validado por la fila") || r.motivoInicial)) || esEnEsperaConReglas
                                       const esMio = r.user.id === userId
                                       return (
                                         <span
@@ -2355,11 +2380,11 @@ export default function DashboardPage() {
                                           className={`text-xs px-2 py-0.5 rounded flex items-center gap-1 ${
                                             r.estado === "APROBADO"
                                               ? "bg-green-100 text-green-800"
-                                              : r.estado === "PENDIENTE"
+                                              : r.estado === "PENDIENTE" || esEnEsperaConReglas
                                                 ? "bg-red-100 text-red-800"
                                                 : "bg-yellow-100 text-yellow-800"
                                           } ${esMio ? "ring-2 ring-offset-1 ring-gray-800 font-semibold" : ""}`}
-                                          title={tieneExcepcion ? r.motivo || "" : ""}
+                                          title={tieneExcepcion ? (r.motivoInicial || r.motivo || "") : ""}
                                         >
                                           {r.user.alias || r.user.name.split(" ")[0]}
                                           {tieneExcepcion && <AlertTriangle className="w-3 h-3" />}
@@ -2431,7 +2456,8 @@ export default function DashboardPage() {
                     {selectedEvento.rotativos && selectedEvento.rotativos.length > 0 ? (
                       <div className="space-y-2">
                         {selectedEvento.rotativos.map((r) => {
-                          const tieneExcepcion = r.estado === "APROBADO" && r.motivo && r.motivo !== "Validado por la fila"
+                          const esEnEsperaConReglas = r.estado === "EN_ESPERA" && !!r.motivoInicial && !r.aprobadoPor
+                          const tieneExcepcion = (r.estado === "APROBADO" && ((r.motivo && r.motivo !== "Validado por la fila") || r.motivoInicial)) || esEnEsperaConReglas
                           const esMio = r.user.id === userId
                           return (
                             <div
@@ -2439,7 +2465,7 @@ export default function DashboardPage() {
                               className={`p-2 rounded border ${
                                 r.estado === "APROBADO"
                                   ? "bg-green-50 border-green-200"
-                                  : r.estado === "PENDIENTE"
+                                  : r.estado === "PENDIENTE" || esEnEsperaConReglas
                                     ? "bg-red-50 border-red-200"
                                     : "bg-yellow-50 border-yellow-200"
                               } ${esMio ? "ring-2 ring-offset-1 ring-gray-800" : ""}`}
@@ -2450,19 +2476,32 @@ export default function DashboardPage() {
                                     {r.user.alias || r.user.name}
                                   </span>
                                   {tieneExcepcion && (
-                                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                                    <AlertTriangle className="w-4 h-4 text-red-600" />
                                   )}
                                 </div>
-                                <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className={`text-xs ${r.estado === "APROBADO" ? "bg-green-600 hover:bg-green-700" : ""}`}>
-                                  {r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? `En Espera${r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}` : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
-                                </Badge>
+                                <div className="flex flex-col items-end gap-1">
+                                  {esEnEsperaConReglas ? (
+                                    <>
+                                      <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800 border border-yellow-300">
+                                        En Espera{r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}
+                                      </Badge>
+                                      <Badge variant="secondary" className="text-xs bg-red-100 text-red-800 border border-red-300">
+                                        Pendiente
+                                      </Badge>
+                                    </>
+                                  ) : (
+                                    <Badge variant={r.estado === "APROBADO" ? "default" : "secondary"} className={`text-xs ${r.estado === "APROBADO" ? "bg-green-600 hover:bg-green-700" : ""}`}>
+                                      {r.estado === "APROBADO" ? "Aprobado" : r.estado === "EN_ESPERA" ? `En Espera${r.posicionEnCola ? ` (P${r.posicionEnCola})` : ""}` : r.estado === "PENDIENTE" ? "Pendiente" : r.estado}
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
                               {r.motivoInicial && (
                                 <p className="text-xs text-red-600 mt-1 pl-6">
                                   Reglas: {r.motivoInicial}
                                 </p>
                               )}
-                              {tieneExcepcion && r.motivo && (
+                              {tieneExcepcion && r.motivo && r.motivo !== r.motivoInicial && (
                                 <p className="text-xs text-amber-700 mt-1 pl-6">
                                   {r.motivo}
                                 </p>

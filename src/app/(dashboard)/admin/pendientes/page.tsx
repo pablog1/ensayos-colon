@@ -21,6 +21,7 @@ import { es } from "date-fns/locale"
 
 interface SolicitudPendiente {
   id: string
+  estado: string
   fecha: string
   esCasoEspecial: boolean
   porcentajeAlMomento: number | null
@@ -32,6 +33,8 @@ interface SolicitudPendiente {
   tituloName?: string
   tituloType?: string
   esEventoIndividualConcierto?: boolean
+  posicionEnCola?: number | null
+  aprobadoPor?: string | null
   user: {
     id: string
     name: string
@@ -93,6 +96,7 @@ export default function PendientesPage() {
   const [procesando, setProcesando] = useState(false)
 
   const [accionCancelacion, setAccionCancelacion] = useState<AccionCancelacion>(null)
+  const [usuariosConDobleEstado, setUsuariosConDobleEstado] = useState<Set<string>>(new Set())
 
   const fetchPendientes = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true)
@@ -111,7 +115,23 @@ export default function PendientesPage() {
       const pendientes = data.filter(
         (s: { estado: string }) => s.estado === "PENDIENTE"
       )
-      setSolicitudes(pendientes)
+      // EN_ESPERA con motivoInicial = reglas violadas, requieren atención del admin
+      // Excluir los que ya fueron pre-aprobados (aprobadoPor != null)
+      const enEsperaConReglas = data.filter(
+        (s: { estado: string; motivoInicial?: string | null; aprobadoPor?: string | null }) =>
+          s.estado === "EN_ESPERA" && s.motivoInicial && !s.aprobadoPor
+      )
+      setSolicitudes([...pendientes, ...enEsperaConReglas])
+
+      // Detectar usuarios con solicitudes en EN_ESPERA y PENDIENTE al mismo tiempo
+      const userIdsPendientes = new Set(pendientes.map((s: { user: { id: string } }) => s.user.id))
+      const allEnEspera = data.filter((s: { estado: string }) => s.estado === "EN_ESPERA")
+      const userIdsEnEspera = new Set(allEnEspera.map((s: { user: { id: string } }) => s.user.id))
+      const dobleEstado = new Set<string>()
+      userIdsPendientes.forEach((uid: string) => {
+        if (userIdsEnEspera.has(uid)) dobleEstado.add(uid)
+      })
+      setUsuariosConDobleEstado(dobleEstado)
 
       // Filtrar cancelaciones tardias pendientes
       const cancelacionesPendientes = data.filter(
@@ -119,9 +139,10 @@ export default function PendientesPage() {
       )
       setCancelaciones(cancelacionesPendientes)
 
-      // Filtrar en espera (informativo)
+      // Filtrar en espera sin reglas violadas (puramente informativo)
       const esperando = data.filter(
-        (s: { estado: string }) => s.estado === "EN_ESPERA"
+        (s: { estado: string; motivoInicial?: string | null }) =>
+          s.estado === "EN_ESPERA" && !s.motivoInicial
       )
       setEnEspera(esperando)
     } catch (error) {
@@ -259,11 +280,48 @@ export default function PendientesPage() {
                 <div
                   key={s.id}
                   className={`border rounded-lg p-4 space-y-3 ${
-                    s.esEventoIndividualConcierto
-                      ? "border-orange-400 border-2 bg-orange-50"
-                      : ""
+                    usuariosConDobleEstado.has(s.user.id)
+                      ? "border-red-500 border-2 bg-red-50"
+                      : s.estado === "EN_ESPERA"
+                        ? "border-yellow-400 border-2 bg-yellow-50/50"
+                        : s.esEventoIndividualConcierto
+                          ? "border-orange-400 border-2 bg-orange-50"
+                          : ""
                   }`}
                 >
+                  {/* Alerta: Usuario con solicitudes en EN_ESPERA y PENDIENTE al mismo tiempo */}
+                  {usuariosConDobleEstado.has(s.user.id) && (
+                    <div className="flex items-start gap-2 p-3 bg-red-100 border border-red-400 rounded-md">
+                      <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-red-800">
+                          DOBLE ESTADO — En Espera y Pendiente al mismo tiempo
+                        </p>
+                        <p className="text-sm text-red-700 mt-1">
+                          Este integrante tiene solicitudes en estado EN_ESPERA y PENDIENTE simultáneamente.
+                          Revisar con atención antes de aprobar.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Alerta: EN_ESPERA con reglas violadas */}
+                  {s.estado === "EN_ESPERA" && (
+                    <div className="flex items-start gap-2 p-3 bg-yellow-100 border border-yellow-300 rounded-md">
+                      <Hourglass className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-semibold text-yellow-800">
+                          EN LISTA DE ESPERA — Requiere atención
+                        </p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          No hay cupo disponible{s.posicionEnCola ? ` (posición ${s.posicionEnCola} en cola)` : ""}.
+                          Si aprobás la excepción, cuando se libere un lugar se aprobará automáticamente.
+                          Si no, cuando haya cupo volverá aquí como pendiente.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Alerta: Evento individual de concierto */}
                   {s.esEventoIndividualConcierto && (
                     <div className="flex items-start gap-2 p-3 bg-orange-100 border border-orange-300 rounded-md">
@@ -352,7 +410,7 @@ export default function PendientesPage() {
                       onClick={() => abrirDialogAccion("aprobar", s)}
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
-                      Aprobar
+                      {s.estado === "EN_ESPERA" ? "Aprobar excepción" : "Aprobar"}
                     </Button>
                     <Button
                       size="sm"
@@ -460,15 +518,28 @@ export default function PendientesPage() {
               {enEspera.map((e) => (
                 <div
                   key={e.id}
-                  className="border border-yellow-200 bg-yellow-50 rounded-lg p-3 flex items-center justify-between"
+                  className={`rounded-lg p-3 flex items-center justify-between ${
+                    usuariosConDobleEstado.has(e.user.id)
+                      ? "border-2 border-red-500 bg-red-50"
+                      : "border border-yellow-200 bg-yellow-50"
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 font-mono">
+                    <Badge variant="outline" className={`font-mono ${
+                      usuariosConDobleEstado.has(e.user.id)
+                        ? "bg-red-100 text-red-800 border-red-400"
+                        : "bg-yellow-100 text-yellow-800 border-yellow-300"
+                    }`}>
                       P{e.posicionEnCola || "?"}
                     </Badge>
                     <div>
                       <p className="font-medium">
                         {e.user.alias || e.user.name}
+                        {usuariosConDobleEstado.has(e.user.id) && (
+                          <span className="ml-2 text-xs text-red-600 font-normal">
+                            (también tiene solicitud pendiente)
+                          </span>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(e.fecha + "T12:00:00").toLocaleDateString("es-ES", {

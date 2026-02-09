@@ -54,13 +54,68 @@ export async function POST(
     )
   }
 
-  if (rotativo.estado !== "PENDIENTE") {
+  if (rotativo.estado !== "PENDIENTE" && rotativo.estado !== "EN_ESPERA") {
     return NextResponse.json(
-      { error: "Solo se pueden aprobar rotativos pendientes" },
+      { error: "Solo se pueden aprobar rotativos pendientes o en espera" },
       { status: 400 }
     )
   }
 
+  // Pre-aprobación: EN_ESPERA con reglas violadas
+  // El admin aprueba la excepción de reglas, pero el rotativo sigue en espera de cupo.
+  // Cuando se libere un cupo, se aprobará automáticamente.
+  if (rotativo.estado === "EN_ESPERA") {
+    const updated = await prisma.rotativo.update({
+      where: { id },
+      data: {
+        aprobadoPor: session.user.id,
+        // Preservar motivoInicial para que las alertas sigan visibles después de la aprobación
+        motivo: motivo || rotativo.motivo,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        event: true,
+      },
+    })
+
+    const fechaStr = formatDateLongAR(updated.event.date)
+    const horaStr = updated.event.startTime
+      ? ` a las ${formatTimeAR(updated.event.startTime)}`
+      : ""
+
+    await createNotification({
+      userId: updated.userId,
+      type: "ROTATIVO_APROBADO",
+      title: "Excepción aprobada",
+      message: `Tu solicitud para "${updated.event.title}" el ${fechaStr}${horaStr} fue pre-aprobada. Seguís en lista de espera hasta que se libere un cupo.`,
+      data: {
+        rotativoId: updated.id,
+        eventId: updated.eventId,
+        eventTitle: updated.event.title,
+      },
+    })
+
+    await createAuditLog({
+      action: "ROTATIVO_APROBADO",
+      entityType: "Rotativo",
+      entityId: updated.id,
+      userId: session.user.id,
+      targetUserId: updated.userId,
+      details: {
+        evento: updated.event.title,
+        fecha: updated.event.date.toISOString(),
+        horario: formatTimeAR(updated.event.startTime),
+        tipoEvento: updated.event.eventoType,
+        motivo: motivo,
+        motivoInicial: rotativo.motivoInicial,
+        preAprobacion: true,
+      },
+    })
+
+    return NextResponse.json(updated)
+  }
+
+  // Flujo normal: PENDIENTE → APROBADO
   const updated = await prisma.rotativo.update({
     where: { id },
     data: {

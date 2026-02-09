@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
           estado: true,
           motivo: true,
           motivoInicial: true,
+          aprobadoPor: true,
           validationResults: true,
           createdAt: true,
           user: {

@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { createNotification } from "@/lib/services/notifications"
 import { createAuditLog } from "@/lib/services/audit"
-import { promoteFromWaitingList } from "@/lib/services/waiting-list"
+import { promoteFromWaitingList, removeFromWaitingList } from "@/lib/services/waiting-list"
 import { formatDateLongAR, formatTimeAR } from "@/lib/utils"
 
 // POST /api/solicitudes/[id]/rechazar - Rechazar rotativo pendiente (solo admin)
@@ -46,12 +46,14 @@ export async function POST(
     )
   }
 
-  if (rotativo.estado !== "PENDIENTE") {
+  if (rotativo.estado !== "PENDIENTE" && rotativo.estado !== "EN_ESPERA") {
     return NextResponse.json(
-      { error: "Solo se pueden rechazar rotativos pendientes" },
+      { error: "Solo se pueden rechazar rotativos pendientes o en espera" },
       { status: 400 }
     )
   }
+
+  const estabaEnEspera = rotativo.estado === "EN_ESPERA"
 
   // Obtener motivo de rechazo del body (opcional)
   let motivoRechazo: string | null = null
@@ -110,8 +112,15 @@ export async function POST(
     },
   })
 
-  // Promover desde lista de espera si hay alguien esperando
-  await promoteFromWaitingList(rotativo.eventId)
+  if (estabaEnEspera) {
+    // Si estaba en espera, remover de la lista de espera
+    await removeFromWaitingList(rotativo.userId, rotativo.eventId)
+    // Promover al siguiente en la lista (si hay cupo)
+    await promoteFromWaitingList(rotativo.eventId)
+  } else {
+    // Si estaba pendiente, promover desde lista de espera si hay alguien esperando
+    await promoteFromWaitingList(rotativo.eventId)
+  }
 
   return NextResponse.json(updated)
 }

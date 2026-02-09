@@ -120,6 +120,8 @@ export async function GET(req: NextRequest) {
       esEventoIndividualConcierto: r.event.titulo?.type === "CONCIERTO" && !r.esParteDeBloqueId,
       // Hora del evento
       eventoHora: formatTimeAR(r.event.startTime),
+      // Pre-aprobación admin (para filtrar EN_ESPERA ya revisados)
+      aprobadoPor: r.aprobadoPor,
       // Información de bloque para cancelación
       esParteDeBloque: !!r.esParteDeBloqueId,
       bloqueId: r.esParteDeBloqueId,
