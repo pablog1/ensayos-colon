@@ -3824,7 +3824,7 @@ export default function DashboardPage() {
             <Button
               variant="destructive"
               onClick={confirmDeleteEvento}
-              disabled={deleteConfirmText !== "Eliminar"}
+              disabled={deleteConfirmText.trim() !== "Eliminar"}
               className="w-full sm:w-auto"
             >
               <Trash2 className="w-4 h-4 mr-2" />
