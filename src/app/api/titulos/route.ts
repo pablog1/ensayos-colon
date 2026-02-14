@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const seasonId = searchParams.get("seasonId")
     const year = searchParams.get("year")
+    const userId = session.user.id
 
     // Determinar temporada: por seasonId, por año, o la activa
     let targetSeasonId: string | null = seasonId
@@ -45,6 +46,13 @@ export async function GET(req: NextRequest) {
                 id: true,
                 eventoType: true,
                 cupoOverride: true,
+                rotativos: {
+                  where: {
+                    userId,
+                    estado: { notIn: ["RECHAZADO", "CANCELADO"] },
+                  },
+                  select: { id: true },
+                },
               },
             },
           },
@@ -56,6 +64,7 @@ export async function GET(req: NextRequest) {
           let totalRotativos = 0
           let totalEnsayos = 0
           let totalFunciones = 0
+          let misRotativosEnTitulo = 0
 
           for (const event of titulo.events) {
             const cupo = event.cupoOverride ?? titulo.cupo
@@ -64,6 +73,9 @@ export async function GET(req: NextRequest) {
               totalEnsayos++
             } else {
               totalFunciones++
+            }
+            if (event.rotativos.length > 0) {
+              misRotativosEnTitulo++
             }
           }
 
@@ -83,6 +95,7 @@ export async function GET(req: NextRequest) {
             totalEnsayos,
             totalFunciones,
             totalRotativos,
+            misRotativosEnTitulo,
           }
         })
 
@@ -113,6 +126,13 @@ export async function GET(req: NextRequest) {
             id: true,
             eventoType: true,
             cupoOverride: true,
+            rotativos: {
+              where: {
+                userId,
+                estado: { notIn: ["RECHAZADO", "CANCELADO"] },
+              },
+              select: { id: true },
+            },
           },
         },
       },
@@ -124,6 +144,7 @@ export async function GET(req: NextRequest) {
       let totalRotativos = 0
       let totalEnsayos = 0
       let totalFunciones = 0
+      let misRotativosEnTitulo = 0
 
       for (const event of titulo.events) {
         const cupo = event.cupoOverride ?? titulo.cupo
@@ -133,6 +154,9 @@ export async function GET(req: NextRequest) {
           totalEnsayos++
         } else {
           totalFunciones++
+        }
+        if (event.rotativos.length > 0) {
+          misRotativosEnTitulo++
         }
       }
 
@@ -152,6 +176,7 @@ export async function GET(req: NextRequest) {
         totalEnsayos,
         totalFunciones,
         totalRotativos,
+        misRotativosEnTitulo,
       }
     })
 

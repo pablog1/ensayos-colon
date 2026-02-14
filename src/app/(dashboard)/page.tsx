@@ -113,6 +113,8 @@ interface Titulo {
   cupo?: number // opcional para compatibilidad con datos cacheados
   startDate?: string
   endDate?: string
+  totalEventos?: number
+  misRotativosEnTitulo?: number
 }
 
 interface TituloRange {
@@ -905,6 +907,8 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json()
         await fetchEventos(mesActual)
+        lastFetchedYearRef.current = null
+        fetchTitulos(mesActual.getFullYear())
         setSidebarMode("rotativos")
         setSelectedEvento(null)
 
@@ -1120,6 +1124,8 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json()
         await fetchEventos(mesActual)
+        lastFetchedYearRef.current = null
+        fetchTitulos(mesActual.getFullYear())
         setSidebarMode("rotativos")
         setSelectedEvento(null)
         toast.success(data.message)
@@ -1157,6 +1163,8 @@ export default function DashboardPage() {
     if (res.ok) {
       toast.success("Rotativo cancelado")
       await fetchEventos(mesActual)
+      lastFetchedYearRef.current = null
+      fetchTitulos(mesActual.getFullYear())
       setSidebarMode("rotativos")
       setSelectedEvento(null)
     } else {
@@ -2721,16 +2729,18 @@ export default function DashboardPage() {
                 })
 
                 const renderTitulo = (titulo: typeof titulos[0]) => {
-                  // Contar rotativos del usuario en eventos de este título
-                  const eventosDelTitulo = eventos.filter(e => e.tituloId === titulo.id)
-                  const rotativosEnTitulo = eventosDelTitulo.filter(evento =>
+                  // Usar datos del backend (totalEventos y misRotativosEnTitulo) que cubren TODOS los meses,
+                  // con fallback a datos del mes actual para compatibilidad
+                  const eventosDelTituloEnMes = eventos.filter(e => e.tituloId === titulo.id)
+
+                  const totalEventosTitulo = titulo.totalEventos ?? eventosDelTituloEnMes.length
+                  const rotativosEnTitulo = titulo.misRotativosEnTitulo ?? eventosDelTituloEnMes.filter(evento =>
                     evento.rotativos?.some(r => r.user.id === userId && r.estado !== "RECHAZADO" && r.estado !== "CANCELADO")
                   ).length
                   const tieneRotativosEnTitulo = rotativosEnTitulo > 0
 
                   // Verificar si tiene todos los eventos del título (bloque completo)
-                  // Si no hay eventos visibles, no podemos saber, así que permitimos solicitar
-                  const tieneBloqueCompleto = eventosDelTitulo.length > 0 && rotativosEnTitulo >= eventosDelTitulo.length
+                  const tieneBloqueCompleto = totalEventosTitulo > 0 && rotativosEnTitulo >= totalEventosTitulo
 
                   // Verificar si el título ya pasó
                   const yaFinalizo = titulo.endDate ? new Date(titulo.endDate) < hoy : false
@@ -2738,7 +2748,7 @@ export default function DashboardPage() {
                   // Verificar si hay cupo disponible en al menos un evento del título
                   // Si no hay eventos visibles del título en el mes actual, asumimos que podría haber cupos
                   // (el backend validará al momento de solicitar el bloque)
-                  const hayCupoDisponible = eventosDelTitulo.length === 0 || eventosDelTitulo.some(e => e.cupoDisponible > 0)
+                  const hayCupoDisponible = eventosDelTituloEnMes.length === 0 || eventosDelTituloEnMes.some(e => e.cupoDisponible > 0)
 
                   // Permitir solicitar/completar bloque si no tiene todos los eventos y hay cupo
                   const puedesolicitarBloque = !tieneBloqueCompleto && !yaFinalizo && hayCupoDisponible
@@ -2794,7 +2804,7 @@ export default function DashboardPage() {
                           Este título ya finalizó
                         </p>
                       )}
-                      {!tieneRotativosEnTitulo && !yaFinalizo && eventosDelTitulo.length > 0 && !eventosDelTitulo.some(e => e.cupoDisponible > 0) && (
+                      {!tieneRotativosEnTitulo && !yaFinalizo && eventosDelTituloEnMes.length > 0 && !eventosDelTituloEnMes.some(e => e.cupoDisponible > 0) && (
                         <p className="text-xs text-muted-foreground text-center py-1">
                           Sin cupos disponibles para este título
                         </p>
