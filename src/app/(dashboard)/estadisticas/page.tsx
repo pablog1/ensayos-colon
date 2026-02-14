@@ -278,7 +278,7 @@ export default function EstadisticasPage() {
                                   <span className="font-medium">{titulo.nombre}</span>
                                   {titulo.fechaInicio && titulo.fechaFin && (
                                     <div className="text-xs text-muted-foreground">
-                                      {new Date(titulo.fechaInicio).toLocaleDateString("es-AR", { day: "numeric", month: "short" })} - {new Date(titulo.fechaFin).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}
+                                      {new Date(titulo.fechaInicio).toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone: "UTC" })} - {new Date(titulo.fechaFin).toLocaleDateString("es-AR", { day: "numeric", month: "short", timeZone: "UTC" })}
                                     </div>
                                   )}
                                 </div>
@@ -292,7 +292,7 @@ export default function EstadisticasPage() {
                                   {titulo.eventos.map((evento, idx) => (
                                     <div key={evento.id} className="flex justify-between text-sm py-1 px-3 bg-background rounded">
                                       <span className="text-muted-foreground">
-                                        {idx + 1}. {new Date(evento.fecha).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}
+                                        {idx + 1}. {new Date(evento.fecha).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}
                                       </span>
                                       <span>{evento.cupo}</span>
                                     </div>
