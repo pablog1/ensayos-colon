@@ -28,7 +28,7 @@ export function Navbar() {
   const { userNotifications } = useNotifications()
 
   return (
-    <header className="bg-[var(--burgundy)] text-white shadow-lg">
+    <header className="sticky top-0 z-50 bg-[var(--burgundy)] text-white shadow-lg">
       <div className="flex h-16 md:h-20 items-center px-4 md:px-8">
         {/* Mobile menu button */}
         <MobileNav />
