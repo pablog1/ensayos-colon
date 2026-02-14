@@ -48,6 +48,7 @@ import {
   Layers,
   Printer,
   StickyNote,
+  CalendarDays,
 } from "lucide-react"
 import jsPDF from "jspdf"
 import {
@@ -55,6 +56,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 interface Evento {
   id: string
@@ -1248,20 +1255,19 @@ export default function DashboardPage() {
     }
   }
 
-  const handlePrintCalendar = () => {
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4"
-    })
-
+  const renderMonthToPdf = (pdf: jsPDF, mesDate: Date, eventosPorFechaData: EventosPorFecha) => {
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const margin = 10
     const contentWidth = pageWidth - (margin * 2)
 
+    const getEventos = (date: Date): Evento[] => {
+      const fechaKey = format(date, "yyyy-MM-dd")
+      return eventosPorFechaData[fechaKey] || []
+    }
+
     // Título del mes
-    const mesNombre = format(mesActual, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
+    const mesNombre = format(mesDate, "LLLL yyyy", { locale: es }).replace(/^\w/, c => c.toUpperCase())
     pdf.setFontSize(24)
     pdf.setFont("helvetica", "bold")
     pdf.text(mesNombre, pageWidth / 2, 15, { align: "center" })
@@ -1279,13 +1285,13 @@ export default function DashboardPage() {
     })
 
     // Calcular días del mes (igual que en la grilla HTML)
-    const primerDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth(), 1)
-    const ultimoDiaMes = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 0)
+    const primerDiaMes = new Date(mesDate.getFullYear(), mesDate.getMonth(), 1)
+    const ultimoDiaMes = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, 0)
 
     const pdfJsDay = primerDiaMes.getDay()
     const pdfStartDayOfWeek = pdfJsDay === 0 ? 5 : pdfJsDay === 1 ? 0 : pdfJsDay - 2
     const pdfDaysInMonth = ultimoDiaMes.getDate()
-    const pdfPrevMonth = new Date(mesActual.getFullYear(), mesActual.getMonth(), 0)
+    const pdfPrevMonth = new Date(mesDate.getFullYear(), mesDate.getMonth(), 0)
     const pdfDaysInPrevMonth = pdfPrevMonth.getDate()
 
     const pdfCells: { date: Date; isOutside: boolean }[] = []
@@ -1295,7 +1301,7 @@ export default function DashboardPage() {
     let pdfPrevDay = pdfDaysInPrevMonth
     const pdfPrevDays: { date: Date; isOutside: boolean }[] = []
     while (pdfDaysToAdd > 0) {
-      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() - 1, pdfPrevDay)
+      const date = new Date(mesDate.getFullYear(), mesDate.getMonth() - 1, pdfPrevDay)
       if (date.getDay() !== 1) {
         pdfPrevDays.unshift({ date, isOutside: true })
         pdfDaysToAdd--
@@ -1306,7 +1312,7 @@ export default function DashboardPage() {
 
     // Días del mes actual (excluyendo lunes)
     for (let day = 1; day <= pdfDaysInMonth; day++) {
-      const date = new Date(mesActual.getFullYear(), mesActual.getMonth(), day)
+      const date = new Date(mesDate.getFullYear(), mesDate.getMonth(), day)
       if (date.getDay() !== 1) {
         pdfCells.push({ date, isOutside: false })
       }
@@ -1315,7 +1321,7 @@ export default function DashboardPage() {
     // Completar solo la última fila
     let pdfNextDay = 1
     while (pdfCells.length % 6 !== 0) {
-      const date = new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, pdfNextDay)
+      const date = new Date(mesDate.getFullYear(), mesDate.getMonth() + 1, pdfNextDay)
       if (date.getDay() !== 1) {
         pdfCells.push({ date, isOutside: true })
       }
@@ -1371,7 +1377,7 @@ export default function DashboardPage() {
         pdf.text(diaNumero, x + 1.5, y + 3.8)
 
         // Eventos del día - comenzar al lado del número
-        const eventosDelDia = getEventosDelDia(fecha)
+        const eventosDelDia = getEventos(fecha)
         if (eventosDelDia.length > 0) {
           pdf.setFontSize(8)
           pdf.setFont("helvetica", "normal")
@@ -1453,11 +1459,68 @@ export default function DashboardPage() {
     pdf.setFont("helvetica", "italic")
     pdf.setTextColor(0)
     pdf.text(`Descargado: ${fechaDescarga}`, pageWidth - margin, pageHeight - 3, { align: "right" })
+  }
 
-    // Generar el PDF
+  const handlePrintCalendar = () => {
+    const pdf = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4"
+    })
+
+    renderMonthToPdf(pdf, mesActual, eventosPorFecha)
+
     const fileName = `calendario-${format(mesActual, "yyyy-MM")}.pdf`
     pdf.save(fileName)
     toast.success(`PDF generado: ${fileName}`)
+  }
+
+  const handlePrintYear = async () => {
+    const year = mesActual.getFullYear()
+    toast.info(`Generando PDF del año ${year}...`)
+
+    try {
+      // Fetch eventos de los 12 meses en paralelo
+      const fetchPromises = Array.from({ length: 12 }, (_, i) => {
+        const mesStr = `${year}-${String(i + 1).padStart(2, "0")}`
+        return fetch(`/api/calendario?mes=${mesStr}`).then(res => res.ok ? res.json() : null)
+      })
+
+      const results = await Promise.all(fetchPromises)
+
+      // Construir eventosPorFecha unificado para todo el año
+      const yearEventosPorFecha: EventosPorFecha = {}
+      for (const data of results) {
+        if (!data) continue
+        const eventosData = data.eventos || data
+        for (const evento of eventosData) {
+          const fechaKey = evento.date.substring(0, 10)
+          if (!yearEventosPorFecha[fechaKey]) {
+            yearEventosPorFecha[fechaKey] = []
+          }
+          yearEventosPorFecha[fechaKey].push(evento)
+        }
+      }
+
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "mm",
+        format: "a4"
+      })
+
+      for (let month = 0; month < 12; month++) {
+        if (month > 0) pdf.addPage()
+        const mesDate = new Date(year, month, 1)
+        renderMonthToPdf(pdf, mesDate, yearEventosPorFecha)
+      }
+
+      const fileName = `calendario-${year}.pdf`
+      pdf.save(fileName)
+      toast.success(`PDF generado: ${fileName}`)
+    } catch (error) {
+      console.error("Error generando PDF del año:", error)
+      toast.error("Error al generar el PDF del año")
+    }
   }
 
   // Obtener las fechas de la semana actual (martes a domingo, sin lunes)
@@ -1720,15 +1783,28 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     {vistaCalendario === "mes" && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 md:h-9 md:w-9"
-                        onClick={handlePrintCalendar}
-                        title="Imprimir calendario del mes"
-                      >
-                        <Printer className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 md:h-9 md:w-9"
+                            title="Descargar calendario en PDF"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={handlePrintCalendar}>
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Descargar mes actual
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handlePrintYear}>
+                            <CalendarDays className="h-4 w-4 mr-2" />
+                            Descargar año completo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
