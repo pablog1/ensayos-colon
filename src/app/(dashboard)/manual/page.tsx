@@ -80,12 +80,8 @@ export default function ManualPage() {
                     <td className="py-2.5 text-muted-foreground">Un día de descanso que pedís para no tocar en un ensayo o función</td>
                   </tr>
                   <tr>
-                    <td className="py-2.5 pr-4 font-medium">Título</td>
-                    <td className="py-2.5 text-muted-foreground">Una producción (por ejemplo: &ldquo;La Traviata&rdquo;, &ldquo;El Lago de los Cisnes&rdquo;, un concierto)</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2.5 pr-4 font-medium">Bloque</td>
-                    <td className="py-2.5 text-muted-foreground">Todos los ensayos y funciones de un título completo</td>
+                    <td className="py-2.5 pr-4 font-medium">Título o bloque</td>
+                    <td className="py-2.5 text-muted-foreground">Una producción (por ejemplo: &ldquo;La Traviata&rdquo;, &ldquo;El Lago de los Cisnes&rdquo;, un concierto) con todos sus ensayos y funciones</td>
                   </tr>
                   <tr>
                     <td className="py-2.5 pr-4 font-medium">Cupo</td>
@@ -137,7 +133,7 @@ export default function ManualPage() {
                 <li className="flex items-start gap-2"><span className="text-[var(--gold)]">&#x2022;</span>Puede crear y editar el calendario de eventos</li>
                 <li className="flex items-start gap-2"><span className="text-[var(--gold)]">&#x2022;</span>Puede gestionar usuarios</li>
                 <li className="flex items-start gap-2"><span className="text-[var(--gold)]">&#x2022;</span>Puede registrar licencias</li>
-                <li className="flex items-start gap-2"><span className="text-[var(--gold)]">&#x2022;</span>Puede asignar rotativos obligatorios</li>
+                <li className="flex items-start gap-2"><span className="text-[var(--gold)]">&#x2022;</span>Puede asignar rotativos vacantes</li>
                 <li className="flex items-start gap-2"><span className="text-[var(--gold)]">&#x2022;</span>Puede configurar las reglas del sistema</li>
               </ul>
             </CardContent>
@@ -307,10 +303,10 @@ export default function ManualPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  <tr><td className="py-2 pr-4 font-medium">Cupos por evento</td><td className="py-2">Cuántos músicos pueden pedir rotativo por evento (depende si es ópera, ballet o concierto)</td></tr>
+                  <tr><td className="py-2 pr-4 font-medium">Cupos por evento</td><td className="py-2">Cuántos músicos pueden pedir rotativo por evento (depende si es ópera, ballet o concierto) y del orgánico requerido</td></tr>
                   <tr><td className="py-2 pr-4 font-medium">Máximo anual</td><td className="py-2">Cuántos rotativos podés pedir en total durante el año</td></tr>
-                  <tr><td className="py-2 pr-4 font-medium">Fines de semana</td><td className="py-2">Máximo de fines de semana con rotativo por mes (2 por mes)</td></tr>
-                  <tr><td className="py-2 pr-4 font-medium">Ensayos dobles</td><td className="py-2">Si hay varios días con ensayos dobles, solo podés pedir en uno</td></tr>
+                  <tr><td className="py-2 pr-4 font-medium">Fines de semana</td><td className="py-2">Máximo un rotativo de fin de semana por mes, eventualmente dos según disponibilidad</td></tr>
+                  <tr><td className="py-2 pr-4 font-medium">Ensayos dobles</td><td className="py-2">Si hay varios días con ensayos dobles, solo podés pedir un rotativo</td></tr>
                   <tr><td className="py-2 pr-4 font-medium">Funciones por título</td><td className="py-2">Cuántas funciones de un mismo título podés pedir</td></tr>
                   <tr><td className="py-2 pr-4 font-medium">Primer y último título</td><td className="py-2">No podés tomar el primer Y el último título del año</td></tr>
                 </tbody>
