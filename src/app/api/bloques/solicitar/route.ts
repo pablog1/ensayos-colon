@@ -101,8 +101,9 @@ export async function POST(req: NextRequest) {
     where: { key: "BLOQUE_EXCLUSIVO" },
   })
 
-  // Obtener cupo para este tipo de título (ej: conciertos = 2)
-  const cupoDelTitulo = await getCupoParaEvento(null, titulo.type)
+  // Obtener cupo del título (prioridad: titulo.cupo > regla global por tipo)
+  const cupoGlobal = await getCupoParaEvento(null, titulo.type)
+  const cupoDelTitulo = titulo.cupo ?? cupoGlobal
 
   if (reglaBloqueExclusivo?.enabled) {
     const config = JSON.parse(reglaBloqueExclusivo.value)
