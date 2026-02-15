@@ -192,6 +192,7 @@ export default function DashboardPage() {
 
   // Configuración por defecto según dispositivo
   useEffect(() => {
+    window.scrollTo(0, 0)
     const isMobile = window.innerWidth < 768
     // En móvil, vista lista por defecto
     if (isMobile) {
