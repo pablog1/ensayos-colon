@@ -66,12 +66,12 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Calcular cupo efectivo usando reglas
+  // Prioridad: cupoOverride del evento > cupo del título > regla global por tipo
   const cupoDeReglas = await getCupoParaEvento(
     evento.eventoType,
     evento.titulo?.type ?? null
   )
-  const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
+  const cupoEfectivo = evento.cupoOverride ?? evento.titulo?.cupo ?? cupoDeReglas
 
   // Determinar si irá a lista de espera (no bloqueamos, solo informamos)
   const sinCupo = evento.rotativos.length >= cupoEfectivo

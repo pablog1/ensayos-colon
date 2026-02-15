@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
           name: true,
           type: true,
           color: true,
+          cupo: true,
         },
       },
       rotativos: {
@@ -115,9 +116,10 @@ export async function GET(req: NextRequest) {
 
   // Formatear eventos para el calendario
   const eventosFormateados = eventos.map((evento) => {
-    // Usar cupoOverride si existe, sino obtener de reglas
+    // Prioridad: cupoOverride del evento > cupo del título > regla global por tipo
     const cupoEfectivo =
       evento.cupoOverride ??
+      evento.titulo?.cupo ??
       getCupoParaEvento(
         evento.eventoType,
         evento.titulo?.type ?? null

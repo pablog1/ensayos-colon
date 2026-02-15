@@ -191,12 +191,12 @@ export async function POST(req: NextRequest) {
     // Si existe uno rechazado/cancelado, lo reutilizaremos
     const rotativoAReutilizar = existente
 
-    // Calcular cupo efectivo
+    // Prioridad: cupoOverride del evento > cupo del título > regla global por tipo
     const cupoDeReglas = await getCupoParaEvento(
       evento.eventoType,
       evento.titulo?.type ?? null
     )
-    const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
+    const cupoEfectivo = evento.cupoOverride ?? evento.titulo?.cupo ?? cupoDeReglas
 
     // Verificar si hay cupo disponible
     const sinCupo = evento.rotativos.length >= cupoEfectivo

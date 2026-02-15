@@ -281,7 +281,7 @@ export async function POST(req: NextRequest) {
     ).length
     // Usar cupo de reglas (consistente con el calendario) o override del evento
     const cupoDeReglas = await getCupoParaEvento(evento.eventoType, titulo.type)
-    const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
+    const cupoEfectivo = evento.cupoOverride ?? titulo.cupo ?? cupoDeReglas
 
     if (rotativosActivos < cupoEfectivo) {
       await prisma.rotativo.create({

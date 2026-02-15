@@ -45,7 +45,7 @@ export async function GET(
       )
       return {
         ...evento,
-        cupoEfectivo: evento.cupoOverride ?? cupoDeReglas,
+        cupoEfectivo: evento.cupoOverride ?? titulo.cupo ?? cupoDeReglas,
         rotativosUsados: evento._count.rotativos,
       }
     })

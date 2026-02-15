@@ -25,6 +25,7 @@ export async function GET(
           name: true,
           type: true,
           color: true,
+          cupo: true,
         },
       },
       rotativos: {
@@ -53,7 +54,7 @@ export async function GET(
     evento.eventoType,
     evento.titulo?.type ?? null
   )
-  const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
+  const cupoEfectivo = evento.cupoOverride ?? evento.titulo?.cupo ?? cupoDeReglas
 
   return NextResponse.json({
     ...evento,
@@ -192,11 +193,11 @@ export async function PUT(
 
     // Si el cupo aumentó, promover usuarios de la lista de espera
     if (cupoOverride !== undefined) {
-      const oldCupo = evento.cupoOverride ?? await getCupoParaEvento(
+      const oldCupo = evento.cupoOverride ?? evento.titulo?.cupo ?? await getCupoParaEvento(
         evento.eventoType,
         evento.titulo?.type ?? null
       )
-      const newCupo = cupoOverride ?? await getCupoParaEvento(
+      const newCupo = cupoOverride ?? evento.titulo?.cupo ?? await getCupoParaEvento(
         updated.eventoType,
         evento.titulo?.type ?? null
       )

@@ -113,7 +113,7 @@ export async function GET(req: NextRequest) {
         evento.eventoType,
         evento.titulo?.type ?? null
       )
-      const cupoEfectivo = evento.cupoOverride ?? cupoDeReglas
+      const cupoEfectivo = evento.cupoOverride ?? evento.titulo?.cupo ?? cupoDeReglas
       const rotativosActuales = evento.rotativos.length
       const faltantes = cupoEfectivo - rotativosActuales
       const cubierto = rotativosActuales >= cupoEfectivo
