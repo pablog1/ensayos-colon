@@ -80,6 +80,40 @@ export async function POST(
   // Promover desde lista de espera
   await promoteFromWaitingList(eventId)
 
+  // Si el rotativo era parte de un bloque, verificar si el bloque quedó vacío
+  if (rotativo.esParteDeBloqueId) {
+    const rotativosRestantes = await prisma.rotativo.count({
+      where: {
+        esParteDeBloqueId: rotativo.esParteDeBloqueId,
+        estado: { in: ["APROBADO", "PENDIENTE", "EN_ESPERA", "CANCELACION_PENDIENTE"] },
+      },
+    })
+
+    if (rotativosRestantes === 0) {
+      await prisma.block.update({
+        where: { id: rotativo.esParteDeBloqueId },
+        data: {
+          estado: "CANCELADO",
+          assignedToId: null,
+        },
+      })
+
+      const temporadaActiva = await prisma.season.findFirst({
+        where: { isActive: true },
+      })
+
+      if (temporadaActiva) {
+        await prisma.userSeasonBalance.updateMany({
+          where: {
+            userId: rotativo.userId,
+            seasonId: temporadaActiva.id,
+          },
+          data: { bloqueUsado: false },
+        })
+      }
+    }
+  }
+
   // Notificar al usuario
   await createNotification({
     userId: rotativo.userId,
