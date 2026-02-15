@@ -6,7 +6,6 @@ import dynamic from "next/dynamic"
 import { useSession, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { useNotifications } from "@/hooks/use-notifications"
-import { DebugDatePicker } from "@/components/debug/debug-date-picker"
 
 // Dynamic imports para evitar errores de hidratación con Radix UI
 const MobileNav = dynamic(() => import("./mobile-nav").then(mod => mod.MobileNav), {
@@ -55,11 +54,6 @@ export function Navbar() {
         </Link>
 
         <div className="ml-auto flex items-center gap-2 md:gap-4">
-          {/* Debug date picker */}
-          <div className="hidden md:block">
-            <DebugDatePicker />
-          </div>
-
           {session?.user && (
             <>
               <NotificationPanelDynamic unreadCount={userNotifications} />

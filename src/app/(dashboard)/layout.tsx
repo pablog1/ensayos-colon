@@ -4,7 +4,6 @@ import { SessionProvider } from "next-auth/react"
 import { Navbar } from "@/components/layout/navbar"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Toaster } from "@/components/ui/sonner"
-import { DebugDateProvider } from "@/contexts/debug-date-context"
 
 export default function DashboardLayout({
   children,
@@ -13,7 +12,6 @@ export default function DashboardLayout({
 }) {
   return (
     <SessionProvider>
-      <DebugDateProvider>
         <div className="min-h-screen bg-background">
           <Navbar />
           <div className="flex">
@@ -25,7 +23,6 @@ export default function DashboardLayout({
           </div>
           <Toaster />
         </div>
-      </DebugDateProvider>
     </SessionProvider>
   )
 }
