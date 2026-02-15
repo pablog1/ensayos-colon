@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/select"
 import { toast } from "sonner"
 import { ChevronDown, ArrowUpDown, Layers } from "lucide-react"
-import { useDebugDate } from "@/contexts/debug-date-context"
 
 interface Solicitud {
   id: string
@@ -76,7 +75,6 @@ const formatEstado = (estado: string, posicionEnCola?: number | null): string =>
 type SortField = "createdAt" | "fecha"
 
 export default function SolicitudesPage() {
-  const { debugDate } = useDebugDate()
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([])
   const [tituloEventCounts, setTituloEventCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -209,7 +207,7 @@ export default function SolicitudesPage() {
 
   // Separate future and past requests, sorted by selected field
   const { futureSolicitudes, pastSolicitudes } = useMemo(() => {
-    const today = new Date(debugDate)
+    const today = new Date()
     today.setHours(0, 0, 0, 0)
     const currentYear = today.getFullYear()
 
@@ -244,7 +242,7 @@ export default function SolicitudesPage() {
     past.sort((a, b) => sortByField(a, b, pastSortField, pastAscending))
 
     return { futureSolicitudes: future, pastSolicitudes: past }
-  }, [solicitudes, futureSortField, futureAscending, pastSortField, pastAscending, debugDate])
+  }, [solicitudes, futureSortField, futureAscending, pastSortField, pastAscending])
 
   const estadoBadgeVariant = (estado: string) => {
     switch (estado) {

@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { BarChart3, Users, Calendar, Clock, AlertTriangle, Info, UserPlus, Eye, ChevronDown, ChevronRight } from "lucide-react"
-import { useDebugDate } from "@/contexts/debug-date-context"
 import {
   Dialog,
   DialogContent,
@@ -109,10 +108,9 @@ interface Desglose {
 
 export default function EstadisticasPage() {
   const { data: session } = useSession()
-  const { debugDate } = useDebugDate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
-  const currentYear = debugDate.getFullYear()
+  const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
   const [desglose, setDesglose] = useState<Desglose | null>(null)
   const [loadingDesglose, setLoadingDesglose] = useState(false)
@@ -123,12 +121,12 @@ export default function EstadisticasPage() {
     fetchStats()
     setDesglose(null) // Reset desglose cuando cambia el año
     setExpandedTitulos(new Set())
-  }, [selectedYear, debugDate])
+  }, [selectedYear])
 
   const fetchStats = async () => {
     setLoading(true)
-    const debugDateStr = debugDate.toISOString().split('T')[0]
-    const res = await fetch(`/api/estadisticas?year=${selectedYear}&debugDate=${debugDateStr}`)
+    const todayStr = new Date().toISOString().split('T')[0]
+    const res = await fetch(`/api/estadisticas?year=${selectedYear}&debugDate=${todayStr}`)
     const data = await res.json()
     setStats(data)
     setLoading(false)
