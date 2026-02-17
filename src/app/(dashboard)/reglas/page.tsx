@@ -87,9 +87,9 @@ const friendlyRules: Record<string, {
   FINES_SEMANA_MAX: {
     icon: CalendarDays,
     title: "Fines de semana",
-    summary: "Para repartir los rotativos que caen los fines de semana en forma equitativa, solo se puede tomar un día de fin de semana con rotativo por mes",
+    summary: "Para repartir los rotativos que caen los fines de semana en forma equitativa, solo se puede tomar un rotativo de fin de semana por mes",
     details: [
-      "Si algún mes permite que haya más espacios disponibles, los rotativos deben ser aprobados por el admin",
+      "Si algún mes permite que haya más espacios disponibles, los rotativos extra serán gestionados por el administrador",
     ],
     getValue: (value) => (
       <div className="flex items-center gap-3 mt-3">
