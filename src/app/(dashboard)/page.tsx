@@ -387,7 +387,10 @@ export default function DashboardPage() {
         setTituloRanges(data.titulos || [])
 
         const porFecha: EventosPorFecha = {}
+        const seenIds = new Set<string>()
         for (const evento of eventosData) {
+          if (seenIds.has(evento.id)) continue
+          seenIds.add(evento.id)
           const fechaKey = evento.date.substring(0, 10)
           if (!porFecha[fechaKey]) {
             porFecha[fechaKey] = []
@@ -1473,7 +1476,7 @@ export default function DashboardPage() {
 
     renderMonthToPdf(pdf, mesActual, eventosPorFecha)
 
-    const fileName = `calendario-${format(mesActual, "yyyy-MM")}.pdf`
+    const fileName = `calendario-${format(mesActual, "yyyy-MM")}_${format(new Date(), "yyyy-MM-dd_HH-mm-ss")}.pdf`
     pdf.save(fileName)
     toast.success(`PDF generado: ${fileName}`)
   }
@@ -1493,10 +1496,13 @@ export default function DashboardPage() {
 
       // Construir eventosPorFecha unificado para todo el año
       const yearEventosPorFecha: EventosPorFecha = {}
+      const seenEventIds = new Set<string>()
       for (const data of results) {
         if (!data) continue
         const eventosData = data.eventos || data
         for (const evento of eventosData) {
+          if (seenEventIds.has(evento.id)) continue
+          seenEventIds.add(evento.id)
           const fechaKey = evento.date.substring(0, 10)
           if (!yearEventosPorFecha[fechaKey]) {
             yearEventosPorFecha[fechaKey] = []
@@ -1517,7 +1523,7 @@ export default function DashboardPage() {
         renderMonthToPdf(pdf, mesDate, yearEventosPorFecha)
       }
 
-      const fileName = `calendario-${year}.pdf`
+      const fileName = `calendario-${year}_${format(new Date(), "yyyy-MM-dd_HH-mm-ss")}.pdf`
       pdf.save(fileName)
       toast.success(`PDF generado: ${fileName}`)
     } catch (error) {

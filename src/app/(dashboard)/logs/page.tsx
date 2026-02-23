@@ -446,7 +446,7 @@ export default function LogsPage() {
     })
 
     // Guardar
-    pdf.save(`logs_${format(currentMonth, "yyyy-MM")}.pdf`)
+    pdf.save(`logs_${format(currentMonth, "yyyy-MM")}_${format(new Date(), "yyyy-MM-dd_HH-mm-ss")}.pdf`)
   }
 
   const exportBackup = async () => {
