@@ -79,6 +79,21 @@ export async function PUT(
   if (color) updateData.color = color
   if (eventId !== undefined) updateData.eventId = eventId || null
 
+  // Calcular cambios para el audit log
+  const cambios: Record<string, { anterior: unknown; nuevo: unknown }> = {}
+  if (date && new Date(date).toISOString() !== nota.date.toISOString()) {
+    cambios.fecha = { anterior: nota.date.toISOString(), nuevo: new Date(date).toISOString() }
+  }
+  if (title && title !== nota.title) {
+    cambios.titulo = { anterior: nota.title, nuevo: title }
+  }
+  if (description !== undefined && description !== (nota.description || "")) {
+    cambios.descripcion = { anterior: nota.description || null, nuevo: description || null }
+  }
+  if (color && color !== nota.color) {
+    cambios.color = { anterior: nota.color, nuevo: color }
+  }
+
   const notaActualizada = await prisma.note.update({
     where: { id },
     data: updateData,
@@ -98,6 +113,21 @@ export async function PUT(
       },
     },
   })
+
+  // Audit log si hubo cambios
+  if (Object.keys(cambios).length > 0) {
+    await createAuditLog({
+      action: "NOTA_EDITADA",
+      entityType: "Note",
+      entityId: id,
+      userId: session.user.id,
+      details: {
+        titulo: nota.title,
+        fecha: nota.date.toISOString(),
+        cambios,
+      },
+    })
+  }
 
   return NextResponse.json(notaActualizada)
 }

@@ -74,7 +74,7 @@ const LOG_CATEGORIES: Record<string, { label: string; actions: string[]; isCriti
   },
   notas: {
     label: "Notas",
-    actions: ["NOTA_CREADA", "NOTA_ELIMINADA"],
+    actions: ["NOTA_CREADA", "NOTA_EDITADA", "NOTA_ELIMINADA"],
   },
 }
 
@@ -236,6 +236,32 @@ function getLogDescription(log: AuditLog): string {
       }
       return `${userName} creó nota "${notaTitulo}"${notaFechaStr}${notaDescripcion ? ` - "${notaDescripcion}"` : ""}`
     }
+    case "NOTA_EDITADA": {
+      const notaTituloEd = details.titulo as string || "una nota"
+      const notaFechaEd = details.fecha as string || ""
+      let notaFechaStrEd = ""
+      if (notaFechaEd) {
+        try {
+          const f = new Date(notaFechaEd)
+          const d = f.getUTCDate(), m = f.getUTCMonth() + 1, y = f.getUTCFullYear()
+          notaFechaStrEd = ` del ${d.toString().padStart(2, "0")}/${m.toString().padStart(2, "0")}/${y}`
+        } catch { /* */ }
+      }
+      const cambios = details.cambios as Record<string, { anterior: unknown; nuevo: unknown }> | undefined
+      const cambiosList = cambios ? Object.keys(cambios).map(k => {
+        if (k === "fecha") {
+          try {
+            const fa = new Date(cambios[k].anterior as string)
+            const fn = new Date(cambios[k].nuevo as string)
+            const fmtA = `${fa.getUTCDate().toString().padStart(2, "0")}/${(fa.getUTCMonth() + 1).toString().padStart(2, "0")}/${fa.getUTCFullYear()}`
+            const fmtN = `${fn.getUTCDate().toString().padStart(2, "0")}/${(fn.getUTCMonth() + 1).toString().padStart(2, "0")}/${fn.getUTCFullYear()}`
+            return `fecha: ${fmtA} → ${fmtN}`
+          } catch { return `${k} modificado` }
+        }
+        return `${k}: "${cambios[k].anterior}" → "${cambios[k].nuevo}"`
+      }).join(", ") : ""
+      return `${userName} editó nota "${notaTituloEd}"${notaFechaStrEd}${cambiosList ? ` (${cambiosList})` : ""}`
+    }
     case "NOTA_ELIMINADA": {
       const notaTituloE = details.titulo as string || "una nota"
       const notaDescripcionE = details.descripcion as string || ""
@@ -318,6 +344,7 @@ function getActionLabel(action: string): string {
     CONSENSO_INICIADO: "Consenso",
     CONSENSO_RESUELTO: "Resuelto",
     NOTA_CREADA: "Nota creada",
+    NOTA_EDITADA: "Nota editada",
     NOTA_ELIMINADA: "Nota eliminada",
   }
   return labels[action] || action
