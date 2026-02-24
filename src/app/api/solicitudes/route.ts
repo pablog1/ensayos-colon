@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { eventId, requiereAprobacion, motivo } = body
+    const { eventId, requiereAprobacion, motivo, confirmacionFechaPasada } = body
     console.log("[POST /api/solicitudes] EventId:", eventId, "User:", session.user.id, "RequiereAprobacion:", requiereAprobacion)
 
     if (!eventId) {
@@ -208,10 +208,19 @@ export async function POST(req: NextRequest) {
     const eventoDate = new Date(evento.date)
     const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
     if (fechaEventoUTC < hoyUTC) {
-      return NextResponse.json(
-        { error: "No se pueden solicitar rotativos para fechas pasadas" },
-        { status: 400 }
-      )
+      if (session.user.role !== "ADMIN") {
+        return NextResponse.json(
+          { error: "No se pueden solicitar rotativos para fechas pasadas" },
+          { status: 400 }
+        )
+      }
+      // Admin puede operar en fechas pasadas, pero debe confirmar
+      if (!confirmacionFechaPasada) {
+        return NextResponse.json(
+          { error: "Se requiere confirmación para operar en fechas pasadas" },
+          { status: 400 }
+        )
+      }
     }
 
     // Determinar estado del rotativo

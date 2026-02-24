@@ -83,8 +83,25 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Usar solo los eventos donde no tiene rotativo para el resto del proceso
-  const eventosParaSolicitar = eventosSinRotativoPropio
+  // Para non-admin, filtrar eventos con fecha pasada
+  const isAdmin = session.user.role === "ADMIN"
+  const ahora = new Date()
+  const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
+
+  let eventosParaSolicitar = eventosSinRotativoPropio
+  if (!isAdmin) {
+    eventosParaSolicitar = eventosSinRotativoPropio.filter((evento) => {
+      const eventoDate = new Date(evento.date)
+      const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
+      return fechaEventoUTC >= hoyUTC
+    })
+    if (eventosParaSolicitar.length === 0) {
+      return NextResponse.json(
+        { error: "No hay eventos futuros disponibles para solicitar en este título" },
+        { status: 400 }
+      )
+    }
+  }
 
   // 2. Verificar balance del usuario para la temporada
   const balance = await prisma.userSeasonBalance.findUnique({

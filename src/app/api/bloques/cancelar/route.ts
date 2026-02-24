@@ -56,7 +56,9 @@ export async function POST(req: NextRequest) {
 
   const rotativosCancelables = bloque.rotativos.filter((r) => {
     const fechaEvento = new Date(r.event.date)
-    return fechaEvento >= ahora && (r.estado === "APROBADO" || r.estado === "PENDIENTE")
+    const esFuturo = fechaEvento >= ahora
+    const esActivo = r.estado === "APROBADO" || r.estado === "PENDIENTE"
+    return (esFuturo || isAdmin) && esActivo
   })
 
   if (rotativosCancelables.length === 0) {

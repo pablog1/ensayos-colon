@@ -220,6 +220,15 @@ export async function DELETE(
 
   const { id } = await params
 
+  // Leer body para confirmación de fecha pasada
+  let confirmacionFechaPasada = false
+  try {
+    const body = await req.json()
+    confirmacionFechaPasada = body.confirmacionFechaPasada === true
+  } catch {
+    // DELETE sin body es válido para títulos vigentes
+  }
+
   const titulo = await prisma.titulo.findUnique({
     where: { id },
     include: {
@@ -234,15 +243,15 @@ export async function DELETE(
     )
   }
 
-  // Validar que la fecha de fin del titulo no haya pasado
+  // Validar fecha pasada: admin puede con confirmación
   const now = new Date()
-  now.setHours(0, 0, 0, 0) // Normalizar a medianoche para comparar solo fechas
+  now.setHours(0, 0, 0, 0)
   const tituloEndDate = new Date(titulo.endDate)
   tituloEndDate.setHours(0, 0, 0, 0)
 
-  if (tituloEndDate < now) {
+  if (tituloEndDate < now && !confirmacionFechaPasada) {
     return NextResponse.json(
-      { error: "No se puede eliminar un título cuya fecha de fin ya pasó" },
+      { error: "Se requiere confirmación para eliminar un título con fecha pasada" },
       { status: 400 }
     )
   }

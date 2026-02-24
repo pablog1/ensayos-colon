@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
   const hoyUTC = Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate())
   const eventoDate = new Date(evento.date)
   const fechaEventoUTC = Date.UTC(eventoDate.getUTCFullYear(), eventoDate.getUTCMonth(), eventoDate.getUTCDate())
-  if (fechaEventoUTC < hoyUTC && !isValidatingForOther) {
+  const esFechaPasada = fechaEventoUTC < hoyUTC
+  if (esFechaPasada && !isAdmin) {
     return NextResponse.json(
       { error: "No se pueden solicitar rotativos para fechas pasadas" },
       { status: 400 }
@@ -377,6 +378,7 @@ export async function POST(req: NextRequest) {
     motivos: motivosAprobacion,
     motivoTexto: motivosAprobacion.join("; "),
     sinCupo, // indica que irá a lista de espera
+    esFechaPasada, // indica que el evento ya pasó (para confirmación admin en frontend)
     debug: debugMaxProyectado, // Info de cálculo del máximo proyectado
   })
 }

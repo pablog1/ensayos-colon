@@ -240,6 +240,13 @@ export default function DashboardPage() {
   const [deleteEventoTarget, setDeleteEventoTarget] = useState<Evento | null>(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState("")
 
+  // Estado para el diálogo genérico de confirmación de fecha pasada (admin)
+  const [pastDateConfirmOpen, setPastDateConfirmOpen] = useState(false)
+  const [pastDateConfirmText, setPastDateConfirmText] = useState("")
+  const [pastDateConfirmAction, setPastDateConfirmAction] = useState<(() => Promise<void>) | null>(null)
+  const [pastDateConfirmMessage, setPastDateConfirmMessage] = useState("")
+  const [pastDateConfirmPhrase, setPastDateConfirmPhrase] = useState("")
+
   // Estado para el diálogo de bloque completo
   const [bloqueDialogOpen, setBloqueDialogOpen] = useState(false)
   const [bloqueInfo, setBloqueInfo] = useState<{
@@ -260,6 +267,24 @@ export default function DashboardPage() {
   const [gestionLoading, setGestionLoading] = useState(false)
   const [integrantes, setIntegrantes] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [deleteRotativoId, setDeleteRotativoId] = useState<string | null>(null)
+
+  // Helper para pedir confirmación de fecha pasada (admin)
+  const requestPastDateConfirmation = (message: string, phrase: string, action: () => Promise<void>) => {
+    setPastDateConfirmMessage(message)
+    setPastDateConfirmPhrase(phrase)
+    setPastDateConfirmAction(() => action)
+    setPastDateConfirmText("")
+    setPastDateConfirmOpen(true)
+  }
+
+  // Helper para verificar si una fecha es pasada
+  const isFechaPasada = (dateStr: string) => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    const date = new Date(dateStr)
+    date.setHours(0, 0, 0, 0)
+    return date < now
+  }
 
   // Lista de reglas para mostrar durante validación
   const reglasValidacion = [
@@ -586,31 +611,44 @@ export default function DashboardPage() {
   }
 
   const handleDeleteTitulo = async (titulo: Titulo) => {
-    // Validar que la fecha de fin del titulo no haya pasado (si está disponible)
-    if (titulo.endDate) {
-      const now = new Date()
-      now.setHours(0, 0, 0, 0)
-      const tituloEndDate = new Date(titulo.endDate)
-      tituloEndDate.setHours(0, 0, 0, 0)
+    const esPasado = titulo.endDate && isFechaPasada(titulo.endDate)
 
-      if (tituloEndDate < now) {
-        toast.error("No se puede eliminar un título cuya fecha de fin ya pasó")
-        return
+    // Non-admin no puede eliminar títulos pasados
+    if (esPasado && !isAdmin) {
+      toast.error("No se puede eliminar un título cuya fecha de fin ya pasó")
+      return
+    }
+
+    const doDelete = async (conConfirmacionFechaPasada = false) => {
+      const res = await fetch(`/api/titulos/${titulo.id}`, {
+        method: "DELETE",
+        ...(conConfirmacionFechaPasada ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmacionFechaPasada: true }),
+        } : {}),
+      })
+
+      if (res.ok) {
+        toast.success("Título eliminado")
+        lastFetchedYearRef.current = null
+        fetchTitulos(mesActual.getFullYear())
+        fetchEventos(mesActual)
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Error al eliminar")
       }
     }
 
-    if (!confirm(`¿Eliminar "${titulo.name}"? Se eliminarán todos sus eventos.`)) return
-
-    const res = await fetch(`/api/titulos/${titulo.id}`, { method: "DELETE" })
-
-    if (res.ok) {
-      toast.success("Título eliminado")
-      lastFetchedYearRef.current = null // Forzar re-fetch
-      fetchTitulos(mesActual.getFullYear())
-      fetchEventos(mesActual)
+    if (esPasado && isAdmin) {
+      // Admin en fecha pasada: pedir confirmación con texto
+      requestPastDateConfirmation(
+        `¿Eliminar "${titulo.name}"? Este título ya finalizó. Se eliminarán todos sus eventos.`,
+        "Eliminar titulo pasado",
+        () => doDelete(true)
+      )
     } else {
-      const error = await res.json()
-      toast.error(error.error || "Error al eliminar")
+      if (!confirm(`¿Eliminar "${titulo.name}"? Se eliminarán todos sus eventos.`)) return
+      await doDelete()
     }
   }
 
@@ -621,77 +659,112 @@ export default function DashboardPage() {
       toast.error("Título y fecha son requeridos")
       return
     }
-    setSubmitting(true)
 
-    try {
-      const res = await fetch("/api/notas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notaForm.title,
-          description: notaForm.description || null,
-          color: notaForm.color,
-          date: notaForm.date,
-        }),
-      })
+    const doCreate = async () => {
+      setSubmitting(true)
+      try {
+        const res = await fetch("/api/notas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: notaForm.title,
+            description: notaForm.description || null,
+            color: notaForm.color,
+            date: notaForm.date,
+          }),
+        })
 
-      if (res.ok) {
-        toast.success("Nota creada")
-        fetchNotas(mesActual)
-        setSidebarMode("notas")
-        setNotaForm({ title: "", description: "", color: "#6b7280", date: "" })
-      } else {
-        const error = await res.json()
-        toast.error(error.error || "Error al crear nota")
+        if (res.ok) {
+          toast.success("Nota creada")
+          fetchNotas(mesActual)
+          setSidebarMode("notas")
+          setNotaForm({ title: "", description: "", color: "#6b7280", date: "" })
+        } else {
+          const error = await res.json()
+          toast.error(error.error || "Error al crear nota")
+        }
+      } finally {
+        setSubmitting(false)
       }
-    } finally {
-      setSubmitting(false)
+    }
+
+    if (isFechaPasada(notaForm.date) && isAdmin) {
+      requestPastDateConfirmation(
+        "Estás creando una nota con fecha pasada.",
+        "Guardar nota pasada",
+        doCreate
+      )
+    } else {
+      await doCreate()
     }
   }
 
   const handleUpdateNota = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingNota) return
-    setSubmitting(true)
 
-    try {
-      const res = await fetch(`/api/notas/${editingNota.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: notaForm.title,
-          description: notaForm.description || null,
-          color: notaForm.color,
-          date: notaForm.date,
-        }),
-      })
+    const doUpdate = async () => {
+      setSubmitting(true)
+      try {
+        const res = await fetch(`/api/notas/${editingNota.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: notaForm.title,
+            description: notaForm.description || null,
+            color: notaForm.color,
+            date: notaForm.date,
+          }),
+        })
 
-      if (res.ok) {
-        toast.success("Nota actualizada")
-        fetchNotas(mesActual)
-        setSidebarMode("notas")
-        setEditingNota(null)
-        setNotaForm({ title: "", description: "", color: "#6b7280", date: "" })
-      } else {
-        const error = await res.json()
-        toast.error(error.error || "Error al actualizar nota")
+        if (res.ok) {
+          toast.success("Nota actualizada")
+          fetchNotas(mesActual)
+          setSidebarMode("notas")
+          setEditingNota(null)
+          setNotaForm({ title: "", description: "", color: "#6b7280", date: "" })
+        } else {
+          const error = await res.json()
+          toast.error(error.error || "Error al actualizar nota")
+        }
+      } finally {
+        setSubmitting(false)
       }
-    } finally {
-      setSubmitting(false)
+    }
+
+    if (isFechaPasada(notaForm.date) && isAdmin) {
+      requestPastDateConfirmation(
+        "Estás guardando una nota con fecha pasada.",
+        "Guardar nota pasada",
+        doUpdate
+      )
+    } else {
+      await doUpdate()
     }
   }
 
   const handleDeleteNota = async (nota: Nota) => {
-    if (!confirm(`¿Eliminar la nota "${nota.title}"?`)) return
+    const doDelete = async () => {
+      const res = await fetch(`/api/notas/${nota.id}`, { method: "DELETE" })
 
-    const res = await fetch(`/api/notas/${nota.id}`, { method: "DELETE" })
+      if (res.ok) {
+        toast.success("Nota eliminada")
+        fetchNotas(mesActual)
+      } else {
+        const error = await res.json()
+        toast.error(error.error || "Error al eliminar")
+      }
+    }
 
-    if (res.ok) {
-      toast.success("Nota eliminada")
-      fetchNotas(mesActual)
+    if (isFechaPasada(nota.date) && isAdmin) {
+      requestPastDateConfirmation(
+        `¿Eliminar la nota "${nota.title}"? La fecha de esta nota ya pasó.`,
+        "Eliminar nota pasada",
+        doDelete
+      )
     } else {
-      const error = await res.json()
-      toast.error(error.error || "Error al eliminar")
+      if (!confirm(`¿Eliminar la nota "${nota.title}"?`)) return
+      await doDelete()
     }
   }
 
@@ -775,18 +848,40 @@ export default function DashboardPage() {
   }
 
   const handleDeleteEvento = async (evento: Evento) => {
-    // Validar que el evento no haya pasado
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-    const eventoDate = new Date(evento.date)
-    eventoDate.setHours(0, 0, 0, 0)
+    const esPasado = isFechaPasada(evento.date)
 
-    if (eventoDate < now) {
+    if (esPasado && !isAdmin) {
       toast.error("No se puede eliminar un evento cuya fecha ya pasó")
       return
     }
 
-    // Abrir diálogo de confirmación doble
+    if (esPasado && isAdmin) {
+      // Admin eliminando evento pasado: pedir confirmación con texto especial
+      requestPastDateConfirmation(
+        `¿Eliminar el evento "${evento.tituloName}" del ${formatInArgentina(evento.date, "d 'de' MMMM")}? Este evento ya pasó.${evento.rotativos?.length > 0 ? ` Se eliminarán también ${evento.rotativos.length} rotativo${evento.rotativos.length > 1 ? 's' : ''}.` : ''}`,
+        "Eliminar evento pasado",
+        async () => {
+          const res = await fetch(`/api/calendario/${evento.id}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ confirmacionFechaPasada: true }),
+          })
+
+          if (res.ok) {
+            toast.success("Evento eliminado")
+            fetchEventos(mesActual)
+            setSelectedEvento(null)
+            setSidebarMode("eventos")
+          } else {
+            const error = await res.json()
+            toast.error(error.error || "Error al eliminar")
+          }
+        }
+      )
+      return
+    }
+
+    // Evento futuro: abrir diálogo de confirmación doble normal
     setDeleteEventoTarget(evento)
     setDeleteConfirmText("")
     setDeleteEventoDialogOpen(true)
@@ -795,7 +890,11 @@ export default function DashboardPage() {
   const confirmDeleteEvento = async () => {
     if (!deleteEventoTarget) return
 
-    const res = await fetch(`/api/calendario/${deleteEventoTarget.id}`, { method: "DELETE" })
+    const res = await fetch(`/api/calendario/${deleteEventoTarget.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmacionFechaPasada: false }),
+    })
 
     if (res.ok) {
       const rotativosCount = deleteEventoTarget.rotativos?.length || 0
@@ -881,6 +980,23 @@ export default function DashboardPage() {
         return
       }
 
+      // Si es fecha pasada y el usuario es admin, pedir confirmación antes de crear
+      if (validation.esFechaPasada && isAdmin) {
+        setSubmitting(false)
+        requestPastDateConfirmation(
+          "Estás solicitando un rotativo para un evento con fecha pasada.",
+          "Crear rotativo pasado",
+          async () => {
+            if (validation.requiereAprobacion) {
+              await crearRotativo(evento.id, true, validation.motivoTexto, true)
+            } else {
+              await crearRotativo(evento.id, false, null, true)
+            }
+          }
+        )
+        return
+      }
+
       // Si no requiere aprobación y hay cupo, crear directamente
       await crearRotativo(evento.id, false, null)
     } catch (error) {
@@ -892,14 +1008,14 @@ export default function DashboardPage() {
   }
 
   // Función para crear el rotativo (después de validación o confirmación)
-  const crearRotativo = async (eventId: string, requiereAprobacion: boolean, motivo: string | null) => {
+  const crearRotativo = async (eventId: string, requiereAprobacion: boolean, motivo: string | null, confirmacionFechaPasada = false) => {
     setSubmitting(true)
 
     try {
       const res = await fetch("/api/solicitudes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, requiereAprobacion, motivo }),
+        body: JSON.stringify({ eventId, requiereAprobacion, motivo, confirmacionFechaPasada }),
       })
 
       if (res.ok) {
@@ -2602,7 +2718,12 @@ export default function DashboardPage() {
 
                   {/* Acciones */}
                   <div className="space-y-2 pt-2 border-t">
-                    {!userHasRotativo(selectedEvento) && (
+                    {isFechaPasada(selectedEvento.date) && !isAdmin && (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        Este evento ya pasó
+                      </p>
+                    )}
+                    {(!isFechaPasada(selectedEvento.date) || isAdmin) && !userHasRotativo(selectedEvento) && (
                       <div className="space-y-2">
                         {selectedEvento.tituloType === "CONCIERTO" ? (
                           <div className="text-center p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-3">
@@ -2660,7 +2781,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                     )}
-                    {userHasRotativo(selectedEvento) && (
+                    {(!isFechaPasada(selectedEvento.date) || isAdmin) && userHasRotativo(selectedEvento) && (
                       <Button
                         variant="destructive"
                         className="w-full"
@@ -3916,6 +4037,68 @@ export default function DashboardPage() {
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Eliminar Evento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog genérico de confirmación de fecha pasada (admin) */}
+      <Dialog open={pastDateConfirmOpen} onOpenChange={(open) => {
+        if (!open) {
+          setPastDateConfirmOpen(false)
+          setPastDateConfirmAction(null)
+          setPastDateConfirmText("")
+        }
+      }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-amber-100">
+              <AlertTriangle className="h-8 w-8 text-amber-600" />
+            </div>
+            <DialogTitle className="text-xl">Acción en fecha pasada</DialogTitle>
+            <DialogDescription className="text-base mt-2">
+              {pastDateConfirmMessage}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 my-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Para confirmar, escribe <strong className="text-foreground">{pastDateConfirmPhrase}</strong> en el campo:
+            </p>
+            <Input
+              value={pastDateConfirmText}
+              onChange={(e) => setPastDateConfirmText(e.target.value)}
+              placeholder={`Escribe '${pastDateConfirmPhrase}' para confirmar`}
+              className="text-center"
+            />
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPastDateConfirmOpen(false)
+                setPastDateConfirmAction(null)
+                setPastDateConfirmText("")
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="default"
+              onClick={async () => {
+                if (pastDateConfirmAction) {
+                  setPastDateConfirmOpen(false)
+                  await pastDateConfirmAction()
+                  setPastDateConfirmAction(null)
+                  setPastDateConfirmText("")
+                }
+              }}
+              disabled={pastDateConfirmText.trim() !== pastDateConfirmPhrase}
+              className="w-full sm:w-auto"
+            >
+              Confirmar
             </Button>
           </DialogFooter>
         </DialogContent>

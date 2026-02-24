@@ -237,6 +237,15 @@ export async function DELETE(
 
     const { id } = await params
 
+    // Leer body para confirmación de fecha pasada
+    let confirmacionFechaPasada = false
+    try {
+      const body = await req.json()
+      confirmacionFechaPasada = body.confirmacionFechaPasada === true
+    } catch {
+      // DELETE sin body es válido para eventos futuros
+    }
+
     const evento = await prisma.event.findUnique({
       where: { id },
       include: {
@@ -251,15 +260,15 @@ export async function DELETE(
       )
     }
 
-    // Validar que el evento no haya pasado
+    // Validar fecha pasada: admin puede con confirmación
     const now = new Date()
-    now.setHours(0, 0, 0, 0) // Normalizar a medianoche para comparar solo fechas
+    now.setHours(0, 0, 0, 0)
     const eventoDate = new Date(evento.date)
     eventoDate.setHours(0, 0, 0, 0)
 
-    if (eventoDate < now) {
+    if (eventoDate < now && !confirmacionFechaPasada) {
       return NextResponse.json(
-        { error: "No se puede eliminar un evento cuya fecha ya pasó" },
+        { error: "Se requiere confirmación para eliminar un evento con fecha pasada" },
         { status: 400 }
       )
     }

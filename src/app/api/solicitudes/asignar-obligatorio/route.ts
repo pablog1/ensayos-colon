@@ -83,13 +83,7 @@ export async function POST(req: NextRequest) {
   const diffMs = fechaEvento.getTime() - hoy.getTime()
   const diasHastaEvento = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  // No permitir asignar a eventos pasados
-  if (diasHastaEvento < 0) {
-    return NextResponse.json(
-      { error: "No se pueden asignar rotativos a eventos pasados" },
-      { status: 400 }
-    )
-  }
+  // No permitir asignar a eventos pasados (solo admins llegan aquí, así que se permite)
 
   // Crear el rotativo obligatorio
   const rotativo = await prisma.rotativo.create({
