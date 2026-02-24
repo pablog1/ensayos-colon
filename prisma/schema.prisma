@@ -590,6 +590,8 @@ enum AuditAction {
   NOTA_CREADA
   NOTA_EDITADA
   NOTA_ELIMINADA
+  EVENTO_ELIMINADO
+  TITULO_ELIMINADO
 }
 
 enum ConsensusStatus {

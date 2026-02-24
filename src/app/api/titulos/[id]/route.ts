@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { createAuditLog } from "@/lib/services/audit"
 
 // GET /api/titulos/[id] - Obtener titulo con sus eventos
 export async function GET(
@@ -255,6 +256,23 @@ export async function DELETE(
       { status: 400 }
     )
   }
+
+  const esFechaPasada = tituloEndDate < now
+
+  // Audit log antes de eliminar
+  await createAuditLog({
+    action: "TITULO_ELIMINADO",
+    entityType: "Titulo",
+    entityId: id,
+    userId: session.user.id,
+    details: {
+      titulo: titulo.name,
+      fechaInicio: titulo.startDate.toISOString(),
+      fechaFin: titulo.endDate.toISOString(),
+      eventosEliminados: titulo._count.events,
+      esFechaPasada,
+    },
+  })
 
   // Eliminar titulo (los eventos se eliminan en cascada)
   await prisma.titulo.delete({

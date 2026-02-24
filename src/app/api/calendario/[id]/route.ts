@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getCupoParaEvento } from "@/lib/services/cupo-rules"
 import { promoteFromWaitingList } from "@/lib/services/waiting-list"
+import { createAuditLog } from "@/lib/services/audit"
 
 // GET /api/calendario/[id] - Obtener evento individual
 export async function GET(
@@ -249,6 +250,7 @@ export async function DELETE(
     const evento = await prisma.event.findUnique({
       where: { id },
       include: {
+        titulo: { select: { name: true } },
         _count: { select: { rotativos: true } },
       },
     })
@@ -272,6 +274,23 @@ export async function DELETE(
         { status: 400 }
       )
     }
+
+    const esFechaPasada = eventoDate < now
+
+    // Audit log antes de eliminar
+    await createAuditLog({
+      action: "EVENTO_ELIMINADO",
+      entityType: "Event",
+      entityId: id,
+      userId: session.user.id,
+      details: {
+        evento: evento.title,
+        titulo: evento.titulo?.name,
+        fecha: evento.date.toISOString(),
+        rotativosEliminados: evento._count.rotativos,
+        esFechaPasada,
+      },
+    })
 
     // Advertir si hay rotativos asignados
     if (evento._count.rotativos > 0) {
