@@ -247,16 +247,16 @@ export default function TitulosPage() {
                 <Label htmlFor="cupo">Cupo de rotativos</Label>
                 <Input
                   id="cupo"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  type="number"
+                  min={0}
+                  max={20}
                   className="w-20"
-                  value={formData.cupo === 0 ? "" : String(formData.cupo)}
+                  value={formData.cupo}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, "")
+                    const val = parseInt(e.target.value)
                     setFormData({
                       ...formData,
-                      cupo: val === "" ? 0 : Math.min(20, parseInt(val)),
+                      cupo: isNaN(val) ? 0 : Math.max(0, Math.min(20, val)),
                     })
                   }}
                 />
