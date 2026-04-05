@@ -302,7 +302,7 @@ export async function GET(req: NextRequest) {
     const esNuevoIntegrante = balance?.fechaIngreso != null
     const justificacion = esNuevoIntegrante ? {
       fechaIngreso: balance?.fechaIngreso?.toISOString(),
-      asignacionInicial: balance?.asignacionInicialRotativos,
+      asignacionInicial: maxIndividual,
       justificacion: balance?.asignacionJustificacion,
     } : null
 
