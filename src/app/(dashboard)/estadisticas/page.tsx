@@ -433,7 +433,7 @@ export default function EstadisticasPage() {
                           <p className="text-sm text-muted-foreground truncate max-w-[200px]">{i.email}</p>
                           {i.esNuevoIntegrante && i.justificacionAsignacion && (
                             <p className="text-xs text-blue-600 mt-1">
-                              Ingreso: {new Date(i.justificacionAsignacion.fechaIngreso).toLocaleDateString("es-AR")} - Asignación inicial: {i.justificacionAsignacion.asignacionInicial} rotativos
+                              Ingreso: {new Date(i.justificacionAsignacion.fechaIngreso).toLocaleDateString("es-AR", { timeZone: "UTC" })} - Asignación inicial: {i.justificacionAsignacion.asignacionInicial} rotativos
                             </p>
                           )}
                         </div>
@@ -529,7 +529,7 @@ export default function EstadisticasPage() {
                             </div>
                             {i.esNuevoIntegrante && i.justificacionAsignacion && (
                               <p className="text-xs text-blue-600 font-normal">
-                                Ingreso: {new Date(i.justificacionAsignacion.fechaIngreso).toLocaleDateString("es-AR")} (asignación: {i.justificacionAsignacion.asignacionInicial})
+                                Ingreso: {new Date(i.justificacionAsignacion.fechaIngreso).toLocaleDateString("es-AR", { timeZone: "UTC" })} (asignación: {i.justificacionAsignacion.asignacionInicial})
                               </p>
                             )}
                           </TableCell>

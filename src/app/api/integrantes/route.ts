@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       alias,
       password: hashedPassword,
       role: userRole,
-      joinDate: joinDate ? new Date(joinDate) : null,
+      joinDate: joinDate ? new Date(joinDate + "T12:00:00") : null,
     },
     select: {
       id: true,
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
   let rotativosCalculados = 0
   if (esIntegranteNuevo) {
     // Buscar la temporada que contenga la fecha de ingreso
-    const fechaIngresoDate = new Date(joinDate)
+    const fechaIngresoDate = new Date(joinDate + "T12:00:00")
     const season = await prisma.season.findFirst({
       where: {
         isActive: true,
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
       const eventosDesdeIngreso = await prisma.event.findMany({
         where: {
           seasonId: season.id,
-          date: { gte: new Date(joinDate) }
+          date: { gte: new Date(joinDate + "T12:00:00") }
         },
         include: { titulo: { select: { cupo: true } } }
       })
@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
           rotativosObligatorios: 0,
           rotativosPorLicencia: 0,
           // maxAjustadoManual: null - se calcula dinámicamente basado en eventos desde fechaIngreso
-          fechaIngreso: new Date(joinDate),
+          fechaIngreso: new Date(joinDate + "T12:00:00"),
           asignacionInicialRotativos: maxCalculado, // valor de referencia al momento del ingreso
           asignacionFechaCalculo: new Date(),
           asignacionJustificacion: justificacion,

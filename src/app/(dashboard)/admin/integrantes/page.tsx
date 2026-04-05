@@ -419,8 +419,12 @@ export default function IntegrantesPage() {
 
                     {/* Stats */}
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Registro: </span>
-                      <span>{new Date(i.createdAt).toLocaleDateString("es-ES")}</span>
+                      <span className="text-muted-foreground">Inicio de actividad: </span>
+                      <span>
+                        {i.joinDate && new Date(i.joinDate) >= new Date("2026-01-01T00:00:00Z")
+                          ? new Date(i.joinDate).toLocaleDateString("es-AR", { timeZone: "UTC" })
+                          : "anterior a 1/1/2026"}
+                      </span>
                     </div>
 
                     {/* Acciones */}
